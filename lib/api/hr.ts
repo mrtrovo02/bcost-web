@@ -4,7 +4,7 @@
  * Segue os princípios de arquitetura limpa (Clean Architecture).
  */
 
-import * as payrollService from './payroll-enterprise';
+import { payrollEnterpriseApi } from './payroll-enterprise';
 
 export const hrApi = {
   /**
@@ -13,7 +13,8 @@ export const hrApi = {
    */
   getPayroll: async () => {
     try {
-      const data = await payrollService.getPayroll();
+      // ✅ Correção: Acessando o método através do objeto importado
+      const data = await payrollEnterpriseApi.getPayroll();
       
       // Validação de integridade de dados (Sanitização em nível de API)
       if (!data) return [];
@@ -28,11 +29,11 @@ export const hrApi = {
 
   /**
    * Placeholder para futuras integrações de RH (ex: gestão de benefícios, férias)
-   * Centralizar aqui evita refatorações massivas no futuro.
    */
   getEmployeeMetrics: async () => {
     try {
-      return await payrollService.getEmployeeMetrics();
+      // ✅ Correção: Acessando o método através do objeto importado
+      return await payrollEnterpriseApi.getEmployeeMetrics();
     } catch (error) {
       console.error('🔴 [bCost HR Metrics Error]:', error);
       return null;
