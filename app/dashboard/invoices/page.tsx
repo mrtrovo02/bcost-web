@@ -23,18 +23,21 @@ export default function InvoicesPage() {
     try {
       setIsLoading(true);
       if (isDemoSession()) {
-        setInvoices(getDemoInvoices());
+        const demoData = getDemoInvoices();
+        setInvoices(Array.isArray(demoData) ? demoData : []);
         return;
       }
       const data = await fiscalApi.getInvoices();
-      setInvoices(data);
+      setInvoices(Array.isArray(data) ? data : []);
     } catch (error: unknown) {
       if (isDemoSession()) {
-        setInvoices(getDemoInvoices());
+        const demoData = getDemoInvoices();
+        setInvoices(Array.isArray(demoData) ? demoData : []);
         return;
       }
       const message = error instanceof Error ? error.message : String(error);
       console.error('🔴 [bCost Invoices Engine Error]:', message);
+      setInvoices([]);
     } finally {
       setIsLoading(false);
     }
@@ -45,14 +48,22 @@ export default function InvoicesPage() {
   }, [fetchInvoices]);
 
   /**
-   * Business Logic: Filtragem otimizada utilizando useMemo
+   * Business Logic: Filtragem otimizada com normalização defensiva de strings
    */
   const filteredInvoices = useMemo(() => {
-    return invoices.filter((inv) => {
-      // Busca por número da nota ou emissor (usando os campos da interface global Invoice)
+    const safeInvoices = Array.isArray(invoices) ? invoices : [];
+    const safeSearch = (searchTerm ?? '').toLowerCase();
+
+    return safeInvoices.filter((inv) => {
+      if (!inv) return false;
+
+      // Normalização robusta de propriedades em runtime
+      const invoiceNumber = (inv.number ?? '').toString().toLowerCase();
+      const invoiceIssuer = (inv.issuer ?? '').toString().toLowerCase();
+
       const matchesSearch =
-        inv.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        inv.issuer.toLowerCase().includes(searchTerm.toLowerCase());
+        invoiceNumber.includes(safeSearch) ||
+        invoiceIssuer.includes(safeSearch);
 
       const matchesStatus = filterStatus === 'ALL' || inv.status === filterStatus;
       return matchesSearch && matchesStatus;
@@ -97,6 +108,7 @@ export default function InvoicesPage() {
           <select
             className="w-full bg-slate-50 border border-slate-100 rounded-xl pl-12 pr-4 py-3 text-[11px] font-bold text-slate-600 outline-none cursor-pointer appearance-none hover:bg-slate-100 transition-colors"
             onChange={(e) => setFilterStatus(e.target.value)}
+            value={filterStatus}
           >
             <option value="ALL">TODOS OS STATUS</option>
             <option value="VALID">AUDITADOS</option>
@@ -149,7 +161,7 @@ export default function InvoicesPage() {
             ) : (
               filteredInvoices.map((nf) => (
                 <tr
-                  key={nf.id}
+                  key={nf?.id}
                   className="hover:bg-slate-50/80 transition-all group cursor-default"
                 >
                   <td className="p-6">
@@ -159,22 +171,22 @@ export default function InvoicesPage() {
                       </div>
                       <div>
                         <p className="text-[12px] font-black text-slate-900 tracking-tighter uppercase">
-                          {nf.type} #{nf.number}
+                          {(nf?.type ?? 'NFe')} #{nf?.number ?? 'S/N'}
                         </p>
                         <p className="text-[9px] font-bold text-slate-400 uppercase">
-                          Auditado em {new Date(nf.date).toLocaleDateString('pt-BR')}
+                          Auditado em {nf?.date ? new Date(nf.date).toLocaleDateString('pt-BR') : 'Data Indisponível'}
                         </p>
                       </div>
                     </div>
                   </td>
                   <td className="p-6">
                     <p className="text-[11px] font-bold text-slate-600 uppercase truncate max-w-[200px]">
-                      {nf.issuer}
+                      {nf?.issuer ?? 'Emissor Não Identificado'}
                     </p>
                   </td>
                   <td className="p-6 text-right">
                     <p className="text-[13px] font-black text-slate-900">
-                      R$ {nf.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      R$ {(nf?.value ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                   </td>
                   <td className="p-6">
@@ -183,18 +195,18 @@ export default function InvoicesPage() {
                         className={`
                         flex items-center gap-2 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border
                         ${
-                          nf.status === 'VALID'
+                          nf?.status === 'VALID'
                             ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                            : nf.status === 'PENDING'
+                            : nf?.status === 'PENDING'
                               ? 'bg-amber-50 text-amber-600 border-amber-100'
                               : 'bg-red-50 text-red-600 border-red-100'
                         }
                       `}
                       >
-                        {nf.status === 'VALID' ? <CheckCircle2 size={12} /> : <Clock size={12} />}
-                        {nf.status === 'VALID'
+                        {nf?.status === 'VALID' ? <CheckCircle2 size={12} /> : <Clock size={12} />}
+                        {nf?.status === 'VALID'
                           ? 'Auditado'
-                          : nf.status === 'PENDING'
+                          : nf?.status === 'PENDING'
                             ? 'Processando'
                             : 'Inconsistente'}
                       </span>

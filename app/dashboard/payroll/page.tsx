@@ -1,41 +1,42 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { api } from '../../../services/api';
-
-/**
- * Interface de Contrato: Estrutura de Folha de Pagamento
- */
-interface PayrollRecord {
-  id: string;
-  employeeName: string;
-  department: string;
-  grossSalary: number;
-  netSalary: number;
-  taxTotal: number; // Soma de INSS + FGTS + IRRF
-  referenceMonth: string;
-}
+import { hrApi } from '@/lib/api/hr';
+import { PayrollRecord } from '../../../lib/types/hr';
+import UploadModal from '../../../components/UploadModal';
+import { getDemoPayroll } from '@/services/demo-data';
+import { isDemoSession } from '@/services/api';
+import { Search, Filter, Users, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
 
 export default function PayrollPage() {
-  const [records, setRecords] = useState<PayrollRecord[]>([]);
+  const [payroll, setPayroll] = useState<PayrollRecord[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [selectedDept, setSelectedDept] = useState<string>('ALL');
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [filterStatus, setFilterStatus] = useState<string>('ALL');
 
   /**
-   * Engine de Carga: Busca registros da empresa ativa
+   * Data Engine: Consome a API de RH blindada com fallback para Demo
    */
   const fetchPayroll = useCallback(async () => {
     try {
       setIsLoading(true);
-      const companyId = localStorage.getItem('bcost_active_company');
-
-      if (!companyId) return;
-
-      const { data } = await api.get<PayrollRecord[]>(`/fiscal/payroll/${companyId}`);
-      setRecords(data);
+      if (isDemoSession()) {
+        const demoData = getDemoPayroll();
+        setPayroll(Array.isArray(demoData) ? demoData : []);
+        return;
+      }
+      const data = await hrApi.getPayroll();
+      setPayroll(Array.isArray(data) ? data : []);
     } catch (error: unknown) {
+      if (isDemoSession()) {
+        const demoData = getDemoPayroll();
+        setPayroll(Array.isArray(demoData) ? demoData : []);
+        return;
+      }
       const message = error instanceof Error ? error.message : String(error);
-      console.error('🔴 [Payroll Error]:', message);
+      console.error('🔴 [bCost Payroll Engine Error]:', message);
+      setPayroll([]);
     } finally {
       setIsLoading(false);
     }
@@ -46,139 +47,188 @@ export default function PayrollPage() {
   }, [fetchPayroll]);
 
   /**
-   * Cálculos de BI (Business Intelligence) em tempo real
+   * Business Logic: Filtragem otimizada com normalização defensiva de strings
    */
-  const stats = useMemo(() => {
-    const filtered =
-      selectedDept === 'ALL' ? records : records.filter((r) => r.department === selectedDept);
+  const filteredPayroll = useMemo(() => {
+    const safePayroll = Array.isArray(payroll) ? payroll : [];
+    const safeSearch = (searchTerm ?? '').toLowerCase();
 
-    return {
-      totalPayroll: filtered.reduce((acc, curr) => acc + curr.grossSalary, 0),
-      totalTaxes: filtered.reduce((acc, curr) => acc + curr.taxTotal, 0),
-      headcount: filtered.length,
-      filteredData: filtered,
-    };
-  }, [records, selectedDept]);
+    return safePayroll.filter((record) => {
+      if (!record) return false;
 
-  // Extrai departamentos únicos para o filtro
-  const departments = useMemo(
-    () => Array.from(new Set(records.map((r) => r.department))),
-    [records],
-  );
+      // Normalização robusta de propriedades em runtime
+      const employeeName = (record.employeeName ?? '').toString().toLowerCase();
+      const role = (record.role ?? '').toString().toLowerCase();
+      const department = (record.department ?? '').toString().toLowerCase();
+
+      const matchesSearch =
+        employeeName.includes(safeSearch) ||
+        role.includes(safeSearch) ||
+        department.includes(safeSearch);
+
+      const matchesStatus = filterStatus === 'ALL' || record.status === filterStatus;
+      
+      return matchesSearch && matchesStatus;
+    });
+  }, [payroll, searchTerm, filterStatus]);
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
-      {/* Header Industrial */}
-      <div className="flex justify-between items-end">
+    <div className="p-8 space-y-8 bg-[#fcfdfe] min-h-screen animate-in fade-in duration-700">
+      {/* Header Estratégico */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div>
-          <h2 className="text-3xl font-black text-white italic tracking-tighter uppercase">
-            Folha de Pagamento<span className="text-blue-500">.</span>
-          </h2>
-          <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.3em] mt-1">
-            Gestão de Encargos e Proventos Trabalhistas
+          <h1 className="text-5xl font-black text-slate-900 tracking-tighter flex items-center gap-3">
+            Folha de <span className="text-blue-600">Pagamento</span>
+          </h1>
+          <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.3em] mt-2">
+            Gestão de Colaboradores e Remuneração
           </p>
         </div>
 
-        <div className="flex gap-4">
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="group flex items-center gap-3 px-8 py-4 bg-slate-900 hover:bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest rounded-2xl transition-all shadow-2xl shadow-slate-200 active:scale-95"
+        >
+          <Users size={16} className="group-hover:scale-110 transition-transform" />
+          Importar Espelho Ponto
+        </button>
+      </div>
+
+      {/* Toolbar de Filtros */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-white rounded-[2rem] border border-slate-100 shadow-sm">
+        <div className="md:col-span-2 relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+          <input
+            type="text"
+            placeholder="Buscar por colaborador, cargo ou departamento..."
+            className="w-full bg-slate-50 border border-slate-100 rounded-xl pl-12 pr-4 py-3 text-[11px] font-bold text-slate-700 placeholder:text-slate-400 outline-none focus:ring-2 ring-blue-500/10 focus:border-blue-500 transition-all"
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <div className="relative">
+          <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
           <select
-            className="bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-[10px] font-black text-blue-400 uppercase outline-none"
-            onChange={(e) => setSelectedDept(e.target.value)}
+            className="w-full bg-slate-50 border border-slate-100 rounded-xl pl-12 pr-4 py-3 text-[11px] font-bold text-slate-600 outline-none cursor-pointer appearance-none hover:bg-slate-100 transition-colors"
+            onChange={(e) => setFilterStatus(e.target.value)}
+            value={filterStatus}
           >
-            <option value="ALL">Todos os Departamentos</option>
-            {departments.map((dept) => (
-              <option key={dept} value={dept}>
-                {dept}
-              </option>
-            ))}
+            <option value="ALL">TODOS OS STATUS</option>
+            <option value="PAID">PAGO</option>
+            <option value="PENDING">AGUARDANDO</option>
+            <option value="ERROR">INCONSISTÊNCIA</option>
           </select>
         </div>
-      </div>
-
-      {/* Grid de KPIs de Encargos */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-slate-900/40 border border-white/5 p-6 rounded-[2rem] backdrop-blur-md">
-          <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2">
-            Custo Bruto Total
-          </p>
-          <p className="text-2xl font-black text-white">
-            R$ {stats.totalPayroll.toLocaleString('pt-BR')}
-          </p>
-          <div className="mt-2 h-1 w-full bg-white/5 rounded-full overflow-hidden">
-            <div className="h-full bg-blue-600 w-[70%]" />
-          </div>
-        </div>
-
-        <div className="bg-slate-900/40 border border-white/5 p-6 rounded-[2rem] backdrop-blur-md">
-          <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2">
-            Encargos (INSS/FGTS)
-          </p>
-          <p className="text-2xl font-black text-red-500">
-            R$ {stats.totalTaxes.toLocaleString('pt-BR')}
-          </p>
-          <p className="text-[9px] font-bold text-slate-600 mt-1 uppercase">
-            Eficiência: 28.4% sobre o bruto
-          </p>
-        </div>
-
-        <div className="bg-slate-900/40 border border-white/5 p-6 rounded-[2rem] backdrop-blur-md">
-          <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2">
-            Colaboradores Ativos
-          </p>
-          <p className="text-2xl font-black text-blue-500">{stats.headcount}</p>
-          <p className="text-[9px] font-bold text-slate-600 mt-1 uppercase">
-            Unidade: {selectedDept}
-          </p>
+        <div className="flex items-center justify-center bg-blue-50 rounded-xl px-4 text-[10px] font-black text-blue-600 uppercase tracking-widest border border-blue-100">
+          {filteredPayroll.length} Registros
         </div>
       </div>
 
-      {/* Tabela Detalhada */}
-      <div className="bg-slate-900/40 rounded-[2.5rem] border border-white/5 overflow-hidden">
+      {/* Tabela de Folha de Pagamento */}
+      <div className="bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden shadow-sm">
         <table className="w-full text-left">
           <thead>
-            <tr className="bg-white/5 border-b border-white/5">
-              <th className="p-6 text-[9px] font-black uppercase text-slate-500 tracking-widest">
+            <tr className="bg-slate-50/50 border-b border-slate-100">
+              <th className="p-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">
                 Colaborador
               </th>
-              <th className="p-6 text-[9px] font-black uppercase text-slate-500 tracking-widest">
-                Departamento
+              <th className="p-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                Cargo / Departamento
               </th>
-              <th className="p-6 text-[9px] font-black uppercase text-slate-500 tracking-widest">
-                Salário Bruto
+              <th className="p-6 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">
+                Remuneração Líquida
               </th>
-              <th className="p-6 text-[9px] font-black uppercase text-slate-500 tracking-widest text-right">
-                Encargos Totais
+              <th className="p-6 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">
+                Status Pagamento
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/5">
-            {isLoading
-              ? [1, 2, 3].map((i) => <tr key={i} className="h-16 animate-pulse bg-white/5" />)
-              : stats.filteredData.map((record) => (
-                  <tr key={record.id} className="hover:bg-white/5 transition-colors group">
-                    <td className="p-6">
-                      <p className="text-[11px] font-black text-white uppercase">
-                        {record.employeeName}
-                      </p>
-                      <p className="text-[8px] font-bold text-slate-600 uppercase">
-                        REF: {record.referenceMonth}
-                      </p>
-                    </td>
-                    <td className="p-6 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                      {record.department}
-                    </td>
-                    <td className="p-6 text-[12px] font-black text-white">
-                      R$ {record.grossSalary.toLocaleString('pt-BR')}
-                    </td>
-                    <td className="p-6 text-right">
-                      <span className="text-[12px] font-black text-red-400">
-                        R$ {record.taxTotal.toLocaleString('pt-BR')}
+          <tbody className="divide-y divide-slate-50">
+            {isLoading ? (
+              [...Array(5)].map((_, i) => (
+                <tr key={i} className="animate-pulse">
+                  <td colSpan={4} className="p-8 h-20 bg-slate-50/30" />
+                </tr>
+              ))
+            ) : filteredPayroll.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="p-32 text-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <AlertCircle className="text-slate-200" size={48} />
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                      Nenhum registro encontrado no banco de dados.
+                    </p>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              filteredPayroll.map((record) => (
+                <tr
+                  key={record?.id}
+                  className="hover:bg-slate-50/80 transition-all group cursor-default"
+                >
+                  <td className="p-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                        <Users size={18} />
+                      </div>
+                      <div>
+                        <p className="text-[12px] font-black text-slate-900 tracking-tighter uppercase">
+                          {record?.employeeName ?? 'Colaborador Não Identificado'}
+                        </p>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase">
+                          ID: {record?.id ?? 'S/N'}
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="p-6">
+                    <p className="text-[11px] font-bold text-slate-900 uppercase truncate max-w-[200px]">
+                      {record?.role ?? 'Não Informado'}
+                    </p>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase">
+                      {record?.department ?? 'Sem Departamento'}
+                    </p>
+                  </td>
+                  <td className="p-6 text-right">
+                    <p className="text-[13px] font-black text-slate-900">
+                      R$ {(record?.netPay ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                  </td>
+                  <td className="p-6">
+                    <div className="flex justify-center">
+                      <span
+                        className={`
+                        flex items-center gap-2 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border
+                        ${
+                          record?.status === 'PAID'
+                            ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                            : record?.status === 'PENDING'
+                              ? 'bg-amber-50 text-amber-600 border-amber-100'
+                              : 'bg-red-50 text-red-600 border-red-100'
+                        }
+                      `}
+                      >
+                        {record?.status === 'PAID' ? <CheckCircle2 size={12} /> : <Clock size={12} />}
+                        {record?.status === 'PAID'
+                          ? 'Efetuado'
+                          : record?.status === 'PENDING'
+                            ? 'Agendado'
+                            : 'Inconsistente'}
                       </span>
-                    </td>
-                  </tr>
-                ))}
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
+
+      <UploadModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={fetchPayroll}
+      />
     </div>
   );
 }
