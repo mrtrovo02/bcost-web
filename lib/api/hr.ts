@@ -7,6 +7,19 @@
 import { payrollEnterpriseApi } from './payroll-enterprise';
 import type { PayrollRecord } from '@/types/hr';
 
+const resolveCompanyId = (): string | null => {
+  if (typeof window === 'undefined') return null;
+
+  const activeCompanyId = localStorage.getItem('bcost_active_company');
+
+  if (!activeCompanyId || activeCompanyId === 'ID_DA_EMPRESA') {
+    console.error('⚠️ [bCost HR API]: companyId ausente ou inválido.');
+    return null;
+  }
+
+  return activeCompanyId;
+};
+
 export const hrApi = {
   /**
    * Busca registros de folha de pagamento com tratamento de exceções robusto.
@@ -14,32 +27,26 @@ export const hrApi = {
    */
   getPayroll: async (): Promise<PayrollRecord[]> => {
     try {
-      // Acessando o método através do objeto importado
-      const data = await payrollEnterpriseApi.getPayroll();
-      
-      // Validação de integridade de dados (Sanitização em nível de API)
-      if (!data) return [];
-      
-      // Garante que o retorno será um array e força a tipagem para o compilador
-      return (Array.isArray(data) ? data : [data]) as PayrollRecord[];
-      
+      const companyId = resolveCompanyId();
+      if (!companyId) return [];
+
+      const response = await payrollEnterpriseApi.listPayrolls(companyId);
+      const items = Array.isArray(response?.items) ? response.items : [];
+
+      return items as PayrollRecord[];
     } catch (error) {
       console.error('🔴 [bCost HR API Error]: Falha ao recuperar folha de pagamento', error);
-      // Retorno de segurança estrito
       return [];
     }
   },
 
   /**
    * Placeholder para futuras integrações de RH (ex: gestão de benefícios, férias)
+   * Atualmente não há implementação correspondente no payrollEnterpriseApi.
    */
   getEmployeeMetrics: async (): Promise<any | null> => {
-    try {
-      return await payrollEnterpriseApi.getEmployeeMetrics();
-    } catch (error) {
-      console.error('🔴 [bCost HR Metrics Error]:', error);
-      return null;
-    }
+    console.warn('⚠️ [bCost HR API]: getEmployeeMetrics não implementado na API de payroll enterprise.');
+    return null;
   }
 };
 

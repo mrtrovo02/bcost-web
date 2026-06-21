@@ -218,7 +218,7 @@ export default function TaxEvolutionChart({
               Sincronizando Engine bCost...
             </p>
           </div>
-        ) : Array.isArray(apiData) && apiData.length > 0 && chartConfig.labels.length > 0 && chartConfig.datasets.length > 0 ? (
+        ) : Array.isArray(apiData) && apiData.length > 0 && Array.isArray(chartConfig.labels) && chartConfig.labels.length > 0 && chartConfig.datasets.length > 0 ? (
           <div className="w-full h-full">
             <Line ref={chartRef} options={options} data={chartConfig} />
           </div>
