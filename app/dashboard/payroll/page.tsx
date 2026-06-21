@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { hrApi } from '@/lib/api/hr';
-import { PayrollRecord } from '../../../lib/types/hr';
+import type { PayrollRecord } from '@/types/hr';
 import UploadModal from '../../../components/UploadModal';
 import { getDemoPayroll } from '@/services/demo-data';
 import { isDemoSession } from '@/services/api';
