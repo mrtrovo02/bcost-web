@@ -1,0 +1,1099 @@
+'use strict';
+
+import axios, {
+  AxiosError,
+  AxiosHeaders,
+  AxiosRequestConfig,
+  InternalAxiosRequestConfig,
+} from 'axios';
+
+/**
+ * Cookies e Storage
+ *
+ * Segurança:
+ * - JWT e refresh token NÃO são persistidos em localStorage.
+ * - Tokens legados em localStorage são migrados para cookie e removidos.
+ * - Cookies client-side usam Secure em HTTPS e SameSite=Lax.
+ * - HttpOnly não pode ser definido via document.cookie.
+ */
+
+const USER_STORAGE_ALLOWED_KEYS = new Set([
+  'id',
+  'email',
+  'name',
+  'companyId',
+  'role',
+  'active',
+  'twoFactor',
+  'company',
+]);
+
+function readCookie(name: string): string | null {
+  if (!isBrowser()) return null;
+
+  const cookies = document.cookie ? document.cookie.split(';') : [];
+
+  for (const cookie of cookies) {
+    const [rawKey, ...rawValue] = cookie.trim().split('=');
+    const key = rawKey?.trim();
+    const value = rawValue.join('=');
+
+    if (key === name && value) {
+      try {
+        return decodeURIComponent(value);
+      } catch {
+        return value;
+      }
+    }
+  }
+
+  return null;
+}
+
+function cookieDomainSuffix(): string {
+  if (!isBrowser()) return '';
+
+  const hostname = window.location.hostname;
+
+  if (hostname === 'bcost.com.br' || hostname.endsWith('.bcost.com.br')) {
+    return '; domain=.bcost.com.br';
+  }
+
+  return '';
+}
+
+function writeCookie(
+  name: string,
+  value: string,
+  maxAgeSeconds = DEFAULT_COOKIE_MAX_AGE_SECONDS,
+) {
+  if (!isBrowser() || !validValue(value)) return;
+
+  const encoded = encodeURIComponent(value);
+  const secure = isProductionHost() ? '; Secure' : '';
+  const domain = cookieDomainSuffix();
+
+  document.cookie = `${name}=${encoded}; path=/; max-age=${maxAgeSeconds}; SameSite=Lax${secure}`;
+
+  if (domain) {
+    document.cookie = `${name}=${encoded}; path=/; max-age=${maxAgeSeconds}; SameSite=Lax${secure}${domain}`;
+  }
+}
+
+function deleteCookie(name: string) {
+  if (!isBrowser()) return;
+
+  const secure = isProductionHost() ? '; Secure' : '';
+  const domain = cookieDomainSuffix();
+
+  document.cookie = `${name}=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secure}`;
+
+  if (domain) {
+    document.cookie = `${name}=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secure}${domain}`;
+  }
+}
+
+function getStorageItem(keys: string[]): string | null {
+  if (!isBrowser()) return null;
+
+  for (const key of keys) {
+    const value = window.localStorage.getItem(key);
+    if (validValue(value)) return value;
+  }
+
+  return null;
+}
+
+function setStorageItems(keys: string[], value: string) {
+  if (!isBrowser() || !validValue(value)) return;
+
+  for (const key of keys) {
+    window.localStorage.setItem(key, value);
+  }
+}
+
+function removeStorageItems(keys: string[]) {
+  if (!isBrowser()) return;
+
+  for (const key of keys) {
+    window.localStorage.removeItem(key);
+  }
+}
+
+function sanitizeStoredUser(user: BcostUser): BcostUser {
+  const sanitized: BcostUser = {
+    id: user.id,
+    email: user.email,
+  };
+
+  for (const [key, value] of Object.entries(user)) {
+    const normalizedKey = key.toLowerCase();
+
+    if (!USER_STORAGE_ALLOWED_KEYS.has(key)) continue;
+
+    if (
+      normalizedKey.includes('token') ||
+      normalizedKey.includes('password') ||
+      normalizedKey.includes('secret') ||
+      normalizedKey.includes('cookie')
+    ) {
+      continue;
+    }
+
+    sanitized[key] = value;
+  }
+
+  return sanitized;
+}
+
+/**
+ * Token/session API
+ */
+
+export function getToken(): string | null {
+  if (!isBrowser()) return null;
+
+  for (const key of TOKEN_KEYS) {
+    const cookieValue = readCookie(key);
+    if (validValue(cookieValue)) return cookieValue;
+  }
+
+  const legacyToken = getStorageItem(TOKEN_KEYS);
+
+  if (validValue(legacyToken)) {
+    writeCookie('bcost_token', legacyToken);
+    writeCookie('bcost_access_token', legacyToken);
+    removeStorageItems(TOKEN_KEYS);
+    return legacyToken;
+  }
+
+  return null;
+}
+
+export function getStoredToken(): string | null {
+  return getToken();
+}
+
+export function setStoredToken(token: string) {
+  if (!isBrowser() || !validValue(token)) return;
+
+  removeStorageItems(TOKEN_KEYS);
+  writeCookie('bcost_token', token);
+  writeCookie('bcost_access_token', token);
+}
+
+export function clearStoredToken() {
+  if (!isBrowser()) return;
+
+  removeStorageItems(TOKEN_KEYS);
+
+  for (const key of TOKEN_KEYS) {
+    deleteCookie(key);
+  }
+}
+
+export function getRefreshToken(): string | null {
+  if (!isBrowser()) return null;
+
+  for (const key of REFRESH_TOKEN_KEYS) {
+    const cookieValue = readCookie(key);
+    if (validValue(cookieValue)) return cookieValue;
+  }
+
+  const legacyRefreshToken = getStorageItem(REFRESH_TOKEN_KEYS);
+
+  if (validValue(legacyRefreshToken)) {
+    writeCookie('bcost_refresh_token', legacyRefreshToken);
+    removeStorageItems(REFRESH_TOKEN_KEYS);
+    return legacyRefreshToken;
+  }
+
+  return null;
+}
+
+export function setRefreshToken(token?: string | null) {
+  if (!isBrowser() || !validValue(token)) return;
+
+  removeStorageItems(REFRESH_TOKEN_KEYS);
+  writeCookie('bcost_refresh_token', token);
+}
+
+export function clearRefreshToken() {
+  if (!isBrowser()) return;
+
+  removeStorageItems(REFRESH_TOKEN_KEYS);
+
+  for (const key of REFRESH_TOKEN_KEYS) {
+    deleteCookie(key);
+  }
+}
+
+export function getActiveCompanyId(): string | null {
+  return getStorageItem(COMPANY_KEYS);
+}
+
+export function setActiveCompanyId(companyId: string) {
+  if (!validValue(companyId)) return;
+
+  setStorageItems(COMPANY_KEYS, companyId);
+}
+
+export function clearActiveCompanyId() {
+  removeStorageItems(COMPANY_KEYS);
+}
+
+export function getStoredUser(): BcostUser | null {
+  if (!isBrowser()) return null;
+
+  for (const key of USER_KEYS) {
+    const value = window.localStorage.getItem(key);
+
+    if (!validValue(value)) continue;
+
+    try {
+      return JSON.parse(value) as BcostUser;
+    } catch {
+      window.localStorage.removeItem(key);
+    }
+  }
+
+  return null;
+}
+
+export function setStoredUser(user?: BcostUser | null) {
+  if (!isBrowser() || !user) return;
+
+  const safeUser = sanitizeStoredUser(user);
+  const serialized = JSON.stringify(safeUser);
+
+  for (const key of USER_KEYS) {
+    window.localStorage.setItem(key, serialized);
+  }
+
+  const companyId =
+    safeUser.companyId ||
+    (safeUser.company && typeof safeUser.company === 'object'
+      ? (safeUser.company as Record<string, unknown>).id
+      : undefined);
+
+  if (typeof companyId === 'string') {
+    setActiveCompanyId(companyId);
+  }
+}
+
+export function clearStoredUser() {
+  if (!isBrowser()) return;
+
+  removeStorageItems(USER_KEYS);
+}
+
+export function hasSession(): boolean {
+  return Boolean(getToken());
+}
+
+function redirectToLogin(reason = 'expired') {
+  if (!isBrowser()) return;
+
+  const path = window.location.pathname;
+
+  if (path.startsWith('/login')) return;
+
+  const redirect = encodeURIComponent(
+    `${window.location.pathname}${window.location.search}`,
+  );
+
+  window.location.href = `/login?session=${reason}&redirect=${redirect}`;
+}
+
+function createAuthMissingError(config: InternalAxiosRequestConfig) {
+  const error = new Error(
+    'AUTH_MISSING: requisição protegida bloqueada no frontend antes de chegar na API.',
+  );
+
+  return Object.assign(error, {
+    isAuthMissing: true,
+    status: 0,
+    config,
+  });
+}
+
+function isAuthMissingError(error: unknown): error is {
+  isAuthMissing: boolean;
+  config?: AxiosRequestConfig;
+  status: number;
+} {
+  return Boolean(
+    error &&
+      typeof error === 'object' &&
+      (error as Record<string, unknown>).isAuthMissing === true,
+  );
+}
+
+function extractToken(data: AuthResponse): string | null {
+  return data?.access_token || data?.accessToken || data?.token || null;
+}
+
+function extractRefreshToken(data: AuthResponse): string | null {
+  return data?.refresh_token || data?.refreshToken || null;
+}
+
+function persistAuthResponse(data: AuthResponse) {
+  const token = extractToken(data);
+  const refreshToken = extractRefreshToken(data);
+
+  if (token) setStoredToken(token);
+  if (refreshToken) setRefreshToken(refreshToken);
+
+  if (data.user && typeof data.user === 'object') {
+    setStoredUser(data.user);
+  }
+
+  const companyId =
+    data.companyId ||
+    data.user?.companyId ||
+    (data.user?.company && typeof data.user.company === 'object'
+      ? (data.user.company as Record<string, unknown>).id
+      : undefined);
+
+  if (typeof companyId === 'string') {
+    setActiveCompanyId(companyId);
+  }
+}
+
+/**
+ * Interceptors
+ */
+
+api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  if (!isBrowser()) return config;
+
+  const token = getToken();
+  const companyId = getActiveCompanyId();
+  const headers = AxiosHeaders.from(config.headers || {});
+  const publicPath = isPublicApiPath(config.url);
+
+  headers.set('Accept', 'application/json');
+
+  if (!headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  /**
+   * Proteção enterprise:
+   * Se a rota é protegida e não existe token no browser, bloqueia antes de bater na API.
+   * Isso reduz logs 401 falsos em /company, /dashboard/overview, /revenue/metrics etc.
+   */
+  if (!token && !publicPath) {
+    throw createAuthMissingError(config);
+  }
+
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  if (companyId && !headers.has('x-company-id')) {
+    headers.set('x-company-id', companyId);
+  }
+
+  config.headers = headers;
+
+  return config;
+});
+
+api.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError<any> | any) => {
+    if (isAuthMissingError(error)) {
+      if (isBrowser() && window.location.pathname.startsWith('/dashboard')) {
+        redirectToLogin('expired');
+      }
+
+      return Promise.reject({
+        status: 0,
+        message:
+          'Sessão não encontrada no navegador. A chamada protegida foi bloqueada antes de chegar na API.',
+        raw: error,
+      } satisfies BcostApiError);
+    }
+
+    const status = error.response?.status || 0;
+    const data = error.response?.data || {};
+    const message =
+      data?.message ||
+      error.message ||
+      'Erro inesperado';
+
+    const apiError: BcostApiError = {
+      status,
+      message,
+      path: data?.path || error.config?.url,
+      requestId: data?.requestId,
+      raw: error,
+    };
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('🔴 API ERROR:', {
+        status: apiError.status,
+        message: apiError.message,
+        path: apiError.path,
+        requestId: apiError.requestId,
+      });
+    }
+
+    if (status === 401 && isBrowser()) {
+      clearStorageSession();
+      redirectToLogin('expired');
+    }
+
+    return Promise.reject(apiError);
+  },
+);
+
+/**
+ * Generic request helpers
+ */
+
+export async function apiGet<T = unknown>(
+  path: string,
+  params?: Record<string, unknown>,
+  config?: AxiosRequestConfig,
+): Promise<T> {
+  const response = await api.get<T>(path, {
+    ...config,
+    params: buildQuery(params),
+  });
+
+  return response.data;
+}
+
+export async function apiPost<T = unknown>(
+  path: string,
+  body?: unknown,
+  config?: AxiosRequestConfig,
+): Promise<T> {
+  const response = await api.post<T>(path, body, config);
+  return response.data;
+}
+
+export async function apiPut<T = unknown>(
+  path: string,
+  body?: unknown,
+  config?: AxiosRequestConfig,
+): Promise<T> {
+  const response = await api.put<T>(path, body, config);
+  return response.data;
+}
+
+export async function apiPatch<T = unknown>(
+  path: string,
+  body?: unknown,
+  config?: AxiosRequestConfig,
+): Promise<T> {
+  const response = await api.patch<T>(path, body, config);
+  return response.data;
+}
+
+export async function apiDelete<T = unknown>(
+  path: string,
+  config?: AxiosRequestConfig,
+): Promise<T> {
+  const response = await api.delete<T>(path, config);
+  return response.data;
+}
+
+/**
+ * Backward-compatible session functions
+ */
+
+export function setStorageSession(token: string, user?: BcostUser | any) {
+  if (!isBrowser()) return;
+
+  setStoredToken(token);
+
+  if (user) {
+    setStoredUser(user);
+
+    const companyId =
+      user.companyId ||
+      user.company?.id ||
+      user.activeCompanyId ||
+      user.company_id;
+
+    if (companyId) {
+      setActiveCompanyId(companyId);
+    }
+  }
+}
+
+export function clearStorageSession() {
+  if (!isBrowser()) return;
+
+  clearStoredToken();
+  clearRefreshToken();
+  clearActiveCompanyId();
+  clearStoredUser();
+}
+
+/**
+ * Auth
+ */
+
+export async function login(email: string, password: string) {
+  const data = await apiPost<AuthResponse>('/auth/login', {
+    email,
+    password,
+  });
+
+  persistAuthResponse(data);
+
+  return data;
+}
+
+export async function switchCompany(companyId: string) {
+  const data = await apiPost<AuthResponse>('/auth/switch-company', {
+    companyId,
+  });
+
+  persistAuthResponse(data);
+  setActiveCompanyId(companyId);
+
+  return data;
+}
+
+export async function getMe() {
+  const data = await apiGet<BcostUser>('/auth/me');
+
+  setStoredUser(data);
+
+  if (data?.companyId) {
+    setActiveCompanyId(data.companyId);
+  }
+
+  return data;
+}
+
+export const authApi = {
+  login,
+  switchCompany,
+  me: getMe,
+  logout: async () => {
+    try {
+      await apiPost('/auth/logout');
+    } catch {
+      // logout local continua mesmo se endpoint não existir
+    } finally {
+      clearStorageSession();
+    }
+  },
+  clear: clearStorageSession,
+  hasSession,
+};
+
+/**
+ * Company / SaaS
+ */
+
+export const companyApi = {
+  list: () => apiGet<Company[]>('/company'),
+  get: (companyId: string) => apiGet<Company>(`/company/${companyId}`),
+  create: (payload: Partial<Company>) => apiPost<Company>('/company', payload),
+  update: (companyId: string, payload: Partial<Company>) =>
+    apiPatch<Company>(`/company/${companyId}`, payload),
+  remove: (companyId: string) => apiDelete(`/company/${companyId}`),
+};
+
+/**
+ * Enterprise universal modules — cobre os 29 models do schema.
+ */
+
+export const enterpriseApi = {
+  catalog: () => apiGet<EnterpriseCatalogItem[]>('/enterprise/modules'),
+
+  module: <T = Record<string, unknown>>(
+    slug: EnterpriseModuleSlug | string,
+    companyId: string,
+    params?: ListParams,
+  ) =>
+    apiGet<EnterpriseModuleResponse<T>>(
+      `/enterprise/modules/${slug}/${companyId}`,
+      {
+        limit: params?.limit ?? 100,
+        offset: params?.offset ?? 0,
+        ...params,
+      },
+    ),
+
+  summary: (slug: EnterpriseModuleSlug | string, companyId: string, params?: ListParams) =>
+    apiGet(`/enterprise/modules/${slug}/${companyId}/summary`, params),
+
+  health: (slug: EnterpriseModuleSlug | string, companyId: string) =>
+    apiGet(`/enterprise/modules/${slug}/${companyId}/health`),
+
+  users: (companyId: string, params?: ListParams) =>
+    enterpriseApi.module('users', companyId, params),
+
+  companies: (companyId: string, params?: ListParams) =>
+    enterpriseApi.module('companies', companyId, params),
+
+  sessions: (companyId: string, params?: ListParams) =>
+    enterpriseApi.module('sessions', companyId, params),
+
+  companyUsers: (companyId: string, params?: ListParams) =>
+    enterpriseApi.module('company-users', companyId, params),
+
+  notifications: (companyId: string, params?: ListParams) =>
+    enterpriseApi.module('notifications', companyId, params),
+
+  invoices: (companyId: string, params?: ListParams) =>
+    enterpriseApi.module('invoices', companyId, params),
+
+  sefazEvents: (companyId: string, params?: ListParams) =>
+    enterpriseApi.module('sefaz-events', companyId, params),
+
+  taxObligations: (companyId: string, params?: ListParams) =>
+    enterpriseApi.module('tax-obligations', companyId, params),
+
+  taxCalculations: (companyId: string, params?: ListParams) =>
+    enterpriseApi.module('tax-calculations', companyId, params),
+
+  fiscalObligations: (companyId: string, params?: ListParams) =>
+    enterpriseApi.module('fiscal-obligations', companyId, params),
+
+  bankAccounts: (companyId: string, params?: ListParams) =>
+    enterpriseApi.module('bank-accounts', companyId, params),
+
+  bankTransactions: (companyId: string, params?: ListParams) =>
+    enterpriseApi.module('bank-transactions', companyId, params),
+
+  balanceLocks: (companyId: string, params?: ListParams) =>
+    enterpriseApi.module('balance-locks', companyId, params),
+
+  customers: (companyId: string, params?: ListParams) =>
+    enterpriseApi.module('customers', companyId, params),
+
+  contracts: (companyId: string, params?: ListParams) =>
+    enterpriseApi.module('contracts', companyId, params),
+
+  financialEvents: (companyId: string, params?: ListParams) =>
+    enterpriseApi.module('financial-events', companyId, params),
+
+  financialSnapshots: (companyId: string, params?: ListParams) =>
+    enterpriseApi.module('financial-snapshots', companyId, params),
+
+  cashFlowProjections: (companyId: string, params?: ListParams) =>
+    enterpriseApi.module('cash-flow-projections', companyId, params),
+
+  accountPlan: (companyId: string, params?: ListParams) =>
+    enterpriseApi.module('account-plan', companyId, params),
+
+  accountingEntries: (companyId: string, params?: ListParams) =>
+    enterpriseApi.module('accounting-entries', companyId, params),
+
+  employees: (companyId: string, params?: ListParams) =>
+    enterpriseApi.module('employees', companyId, params),
+
+  payrolls: (companyId: string, params?: ListParams) =>
+    enterpriseApi.module('payrolls', companyId, params),
+
+  payrollEntries: (companyId: string, params?: ListParams) =>
+    enterpriseApi.module('payroll-entries', companyId, params),
+
+  complianceChecks: (companyId: string, params?: ListParams) =>
+    enterpriseApi.module('compliance-checks', companyId, params),
+
+  automationJobs: (companyId: string, params?: ListParams) =>
+    enterpriseApi.module('automation-jobs', companyId, params),
+
+  businessRules: (companyId: string, params?: ListParams) =>
+    enterpriseApi.module('business-rules', companyId, params),
+
+  digitalCertificates: (companyId: string, params?: ListParams) =>
+    enterpriseApi.module('digital-certificates', companyId, params),
+
+  webhooks: (companyId: string, params?: ListParams) =>
+    enterpriseApi.module('webhooks', companyId, params),
+
+  auditLogs: (companyId: string, params?: ListParams) =>
+    enterpriseApi.module('audit-logs', companyId, params),
+};
+
+/**
+ * Dashboard / Overview / Revenue
+ */
+
+export const dashboardApi = {
+  overview: (params?: ListParams) => apiGet('/dashboard/overview', params),
+};
+
+export const revenueApi = {
+  metrics: (companyId: string, params?: ListParams) =>
+    apiGet(`/revenue/metrics/${companyId}`, params),
+
+  list: (companyId: string, params?: ListParams) =>
+    apiGet(`/revenue/${companyId}`, params),
+
+  create: (payload: Record<string, unknown>) =>
+    apiPost('/revenue', payload),
+};
+
+/**
+ * Fiscal Intelligence
+ */
+
+export const fiscalApi = {
+  diagnostics: (companyId: string, params?: ListParams) =>
+    apiGet(`/fiscal/diagnostics/${companyId}`, params),
+
+  status: (companyId: string, params?: ListParams) =>
+    apiGet(`/fiscal/status/${companyId}`, params),
+
+  syncStatus: (companyId: string, params?: ListParams) =>
+    apiGet(`/fiscal/sync-status/${companyId}`, params),
+
+  performance: (companyId: string, params?: ListParams) =>
+    apiGet(`/fiscal/performance/${companyId}`, params),
+
+  payroll: (companyId: string, params?: ListParams) =>
+    apiGet(`/fiscal/payroll/${companyId}`, params),
+
+  // Via API enterprise universal
+  invoices: (companyId: string, params?: ListParams) =>
+    enterpriseApi.invoices(companyId, params),
+
+  sefazEvents: (companyId: string, params?: ListParams) =>
+    enterpriseApi.sefazEvents(companyId, params),
+
+  taxObligations: (companyId: string, params?: ListParams) =>
+    enterpriseApi.taxObligations(companyId, params),
+
+  taxCalculations: (companyId: string, params?: ListParams) =>
+    enterpriseApi.taxCalculations(companyId, params),
+
+  fiscalObligations: (companyId: string, params?: ListParams) =>
+    enterpriseApi.fiscalObligations(companyId, params),
+
+  complianceChecks: (companyId: string, params?: ListParams) =>
+    enterpriseApi.complianceChecks(companyId, params),
+};
+
+/**
+ * Banking / Reconciliation
+ */
+
+export const bankingApi = {
+  status: (companyId: string) => apiGet(`/banking/status/${companyId}`),
+
+  summary: (companyId: string) => apiGet(`/banking/summary/${companyId}`),
+
+  health: (companyId: string) => apiGet(`/banking/health/${companyId}`),
+
+  transactions: (companyId: string, params?: ListParams) =>
+    apiGet(`/banking/transactions/${companyId}`, params),
+
+  accounts: (companyId: string, params?: ListParams) =>
+    apiGet(`/banking/accounts/${companyId}`, params),
+
+  importOfx: (
+    companyId: string,
+    bankAccountId: string,
+    formData: FormData,
+  ) =>
+    apiPost(`/banking/import/${companyId}/${bankAccountId}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }),
+
+  reconcile: (companyId: string) =>
+    apiPost(`/banking/reconcile/${companyId}`),
+
+  unmatch: (transactionId: string) =>
+    apiPost(`/banking/unmatch/${transactionId}`),
+
+  // Fallback universal
+  bankAccounts: (companyId: string, params?: ListParams) =>
+    enterpriseApi.bankAccounts(companyId, params),
+
+  bankTransactions: (companyId: string, params?: ListParams) =>
+    enterpriseApi.bankTransactions(companyId, params),
+};
+
+export const reconciliationApi = {
+  auto: (companyId: string) =>
+    apiPost(`/reconciliation/auto/${companyId}`),
+
+  summary: (companyId: string) =>
+    apiGet(`/reconciliation/summary/${companyId}`),
+
+  undo: (bankTransactionId: string) =>
+    apiDelete(`/reconciliation/undo/${bankTransactionId}`),
+
+  manual: (payload: Record<string, unknown>) =>
+    apiPost('/reconciliation/manual', payload),
+
+  query: (params?: ListParams) =>
+    apiGet('/reconciliation/query', params),
+};
+
+/**
+ * Financeiro
+ */
+
+export const financeApi = {
+  balanceLocks: (companyId: string, params?: ListParams) =>
+    enterpriseApi.balanceLocks(companyId, params),
+
+  customers: (companyId: string, params?: ListParams) =>
+    enterpriseApi.customers(companyId, params),
+
+  contracts: (companyId: string, params?: ListParams) =>
+    enterpriseApi.contracts(companyId, params),
+
+  financialEvents: (companyId: string, params?: ListParams) =>
+    enterpriseApi.financialEvents(companyId, params),
+
+  financialSnapshots: (companyId: string, params?: ListParams) =>
+    enterpriseApi.financialSnapshots(companyId, params),
+
+  cashFlowProjections: (companyId: string, params?: ListParams) =>
+    enterpriseApi.cashFlowProjections(companyId, params),
+};
+
+/**
+ * Contábil
+ */
+
+export const accountingApi = {
+  accountPlan: (companyId: string, params?: ListParams) =>
+    enterpriseApi.accountPlan(companyId, params),
+
+  entries: (companyId: string, params?: ListParams) =>
+    enterpriseApi.accountingEntries(companyId, params),
+};
+
+/**
+ * Folha
+ */
+
+export const payrollApi = {
+  employees: (companyId: string, params?: ListParams) =>
+    enterpriseApi.employees(companyId, params),
+
+  payrolls: (companyId: string, params?: ListParams) =>
+    enterpriseApi.payrolls(companyId, params),
+
+  entries: (companyId: string, params?: ListParams) =>
+    enterpriseApi.payrollEntries(companyId, params),
+
+  factorR: (companyId: string, params?: ListParams) =>
+    fiscalApi.payroll(companyId, params),
+};
+
+/**
+ * Compliance
+ */
+
+export const complianceApi = {
+  checks: (companyId: string, params?: ListParams) =>
+    enterpriseApi.complianceChecks(companyId, params),
+};
+
+/**
+ * Automação e regras
+ */
+
+export const automationApi = {
+  metrics: () => apiGet('/automation/metrics'),
+
+  jobs: (companyId: string, params?: ListParams) =>
+    enterpriseApi.automationJobs(companyId, params),
+
+  retry: (jobId: string) =>
+    apiPost(`/automation/jobs/${jobId}/retry`),
+
+  cancel: (jobId: string) =>
+    apiPost(`/automation/jobs/${jobId}/cancel`),
+};
+
+export const businessRulesApi = {
+  list: (companyId: string, params?: ListParams) =>
+    enterpriseApi.businessRules(companyId, params),
+
+  create: (companyId: string, payload: Record<string, unknown>) =>
+    apiPost(`/business-rules/${companyId}`, payload),
+
+  update: (ruleId: string, payload: Record<string, unknown>) =>
+    apiPatch(`/business-rules/${ruleId}`, payload),
+
+  remove: (ruleId: string) =>
+    apiDelete(`/business-rules/${ruleId}`),
+};
+
+/**
+ * Integrações
+ */
+
+export const digitalCertificatesApi = {
+  list: (companyId: string, params?: ListParams) =>
+    enterpriseApi.digitalCertificates(companyId, params),
+
+  create: (companyId: string, payload: Record<string, unknown>) =>
+    apiPost(`/digital-certificates/${companyId}`, payload),
+
+  remove: (certificateId: string) =>
+    apiDelete(`/digital-certificates/${certificateId}`),
+};
+
+export const webhooksApi = {
+  list: (companyId: string, params?: ListParams) =>
+    enterpriseApi.webhooks(companyId, params),
+
+  create: (companyId: string, payload: Record<string, unknown>) =>
+    apiPost(`/webhooks/${companyId}`, payload),
+
+  update: (webhookId: string, payload: Record<string, unknown>) =>
+    apiPatch(`/webhooks/${webhookId}`, payload),
+
+  remove: (webhookId: string) =>
+    apiDelete(`/webhooks/${webhookId}`),
+
+  test: (webhookId: string) =>
+    apiPost(`/webhooks/${webhookId}/test`),
+};
+
+/**
+ * Segurança, sessões e auditoria
+ */
+
+export const securityApi = {
+  sessions: (companyId: string, params?: ListParams) =>
+    enterpriseApi.sessions(companyId, params),
+
+  users: (companyId: string, params?: ListParams) =>
+    enterpriseApi.users(companyId, params),
+
+  companyUsers: (companyId: string, params?: ListParams) =>
+    enterpriseApi.companyUsers(companyId, params),
+
+  auditLogs: (companyId: string, params?: ListParams) =>
+    enterpriseApi.auditLogs(companyId, params),
+};
+
+export const auditApi = {
+  list: (companyId: string, params?: ListParams) =>
+    apiGet(`/audit/${companyId}`, params),
+
+  summary: (companyId: string, params?: ListParams) =>
+    apiGet(`/audit/summary/${companyId}`, params),
+
+  health: (companyId: string) =>
+    apiGet(`/audit/health/${companyId}`),
+
+  create: (companyId: string, payload: Record<string, unknown>) =>
+    apiPost(`/audit/${companyId}`, payload),
+
+  enterprise: (companyId: string, params?: ListParams) =>
+    enterpriseApi.auditLogs(companyId, params),
+};
+
+/**
+ * Notificações
+ */
+
+export const notificationsApi = {
+  list: (companyId: string, params?: ListParams) =>
+    enterpriseApi.notifications(companyId, params),
+
+  markRead: (notificationId: string) =>
+    apiPost(`/notifications/${notificationId}/read`),
+
+  acknowledge: (notificationId: string) =>
+    apiPost(`/notifications/${notificationId}/acknowledge`),
+
+  archive: (notificationId: string) =>
+    apiPost(`/notifications/${notificationId}/archive`),
+};
+
+/**
+ * Insights / Intelligence
+ */
+
+export const insightsApi = {
+  health: (companyId: string) =>
+    apiGet(`/insights/health/${companyId}`),
+};
+
+/**
+ * Health
+ */
+
+export const healthApi = {
+  api: () => apiGet('/health'),
+};
+
+/**
+ * Resolver empresa ativa de forma robusta.
+ */
+
+export async function resolveActiveCompanyId(): Promise<string | null> {
+  const active = getActiveCompanyId();
+
+  if (active) return active;
+
+  try {
+    const me = await getMe();
+
+    if (me?.companyId) {
+      setActiveCompanyId(me.companyId);
+      return me.companyId;
+    }
+  } catch {
+    // segue para fallback
+  }
+
+  try {
+    const companies = await companyApi.list();
+    const first = Array.isArray(companies) ? companies[0] : null;
+
+    if (first?.id) {
+      setActiveCompanyId(first.id);
+      return first.id;
+    }
+  } catch {
+    // sem fallback
+  }
+
+  return null;
+}
+
+/**
+ * Facade principal para uso opcional.
+ */
+
+export const bcostApi = {
+  raw: api,
+  auth: authApi,
+  company: companyApi,
+  enterprise: enterpriseApi,
+  dashboard: dashboardApi,
+  revenue: revenueApi,
+  fiscal: fiscalApi,
+  banking: bankingApi,
+  reconciliation: reconciliationApi,
+  finance: financeApi,
+  accounting: accountingApi,
+  payroll: payrollApi,
+  compliance: complianceApi,
+  automation: automationApi,
+  businessRules: businessRulesApi,
+  digitalCertificates: digitalCertificatesApi,
+  webhooks: webhooksApi,
+  security: securityApi,
+  audit: auditApi,
+  notifications: notificationsApi,
+  insights: insightsApi,
+  health: healthApi,
+  resolveActiveCompanyId,
+};
+
+export default api;

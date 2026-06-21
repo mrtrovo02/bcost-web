@@ -1,0 +1,96 @@
+/**
+ * bCost Engine API 1.0 - Enterprise Edition
+ * bcost-web > types > fiscal.ts
+ * Definições globais de tipos para o Motor de Inteligência Fiscal
+ */
+
+/**
+ * Tipos de Documentos Suportados pela Engine
+ */
+export enum XmlDocumentType {
+  NFE = 'NFE',
+  NFSE = 'NFSE',
+  CTE = 'CTE'
+}
+
+/**
+ * KPIs Estratégicos e Saúde Fiscal (DashboardPrincipal)
+ */
+export interface FiscalDashboardStats {
+  revenue: number;           // Faturamento Total no período
+  taxPaid: number;          // Impostos pagos (Anexo IV/V padrão)
+  taxSaved: number;         // Economia gerada via Fator R (Anexo III)
+  healthScore: number;      // 0-100 calculado pela Engine
+  rbt12: number;            // Receita Bruta Total acumulada (12 meses)
+  usagePercent: string;     // % de utilização do limite do Simples Nacional
+  warning: string;          // Mensagem de alerta da Engine bCost
+  lastUpdate: string;       // Timestamp da última sincronização
+}
+
+/**
+ * Série Temporal de Performance para Gráficos (Recharts)
+ */
+export interface MonthlyPerformance {
+  month: string;            // Ex: "Jan/26"
+  billed: number;           // Valor faturado
+  tax: number;              // Imposto calculado
+  saving?: number;          // Valor economizado no mês
+  optimized: boolean;       // Indica se o mês usou Fator R
+  action?: string;          // Sugestão de ação (ex: "Ajustar Pró-labore")
+  potentialSaving?: string; // Valor de economia potencial
+}
+
+/**
+ * Diagnóstico de Inteligência: Fator R e Folha de Pagamento
+ */
+export interface PayrollDiagnostic {
+  currentFactor: number;    // R = Folha / Faturamento (ex: 0.28)
+  requiredPayroll: number; // Valor de folha necessário para Anexo III
+  actualPayroll: number;   // Valor de folha atual
+  status: 'SAFE' | 'CRITICAL' | 'OPTIMIZING';
+  projection: {
+    nextMonth: string;
+    estimatedSaving: number;
+  };
+}
+
+/**
+ * Documento Fiscal Individual (Auditado)
+ */
+export interface Invoice {
+  id: string;
+  accessKey: string;
+  number: string;
+  issuer: string;
+  recipient: string;
+  value: number;
+  date: string;
+  type: XmlDocumentType;
+  status: 'VALID' | 'INVALID' | 'PENDING';
+}
+
+/**
+ * Resposta de Processamento de Lotes XML
+ */
+export interface BatchUploadResponse {
+  totalProcessed: number;
+  success: number;
+  errors: Array<{
+    fileName: string;
+    reason: string;
+  }>;
+  batchId: string;
+}
+
+/**
+ * Interface de Integração Global da Store (Zustand)
+ */
+export interface FiscalIntelligence {
+  health: FiscalDashboardStats;
+  optimization: MonthlyPerformance[];
+  performance: PayrollDiagnostic;
+  integrity: {
+    status: 'VALID' | 'WARNING' | 'AUDIT_REQUIRED';
+    lastAudit: string;
+  };
+}
