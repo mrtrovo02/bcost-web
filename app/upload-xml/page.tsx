@@ -31,7 +31,7 @@ export default function UploadXMLPage() {
   const onFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const selectedFiles = Array.from(e.target.files);
-      const xmlFiles = selectedFiles.filter((file) => file.name.toLowerCase().endsWith('.xml'));
+      const xmlFiles = selectedFiles.filter((file) => file?.name?.toLowerCase().endsWith('.xml'));
 
       if (xmlFiles.length !== selectedFiles.length) {
         setUploadStatus({

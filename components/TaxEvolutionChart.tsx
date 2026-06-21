@@ -218,8 +218,10 @@ export default function TaxEvolutionChart({
               Sincronizando Engine bCost...
             </p>
           </div>
-        ) : Array.isArray(apiData) && apiData.length > 0 ? (
-          <Line ref={chartRef} options={options} data={chartConfig} />
+        ) : Array.isArray(apiData) && apiData.length > 0 && chartConfig.labels.length > 0 && chartConfig.datasets.length > 0 ? (
+          <div className="w-full h-full">
+            <Line ref={chartRef} options={options} data={chartConfig} />
+          </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full border border-dashed border-white/5 rounded-2xl bg-white/[0.01] p-6">
             <TrendingUp size={36} className="text-slate-800 mb-3" />

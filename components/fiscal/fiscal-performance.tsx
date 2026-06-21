@@ -147,9 +147,7 @@ export function FiscalPerformance({ data = [] }: FiscalPerformanceProps) {
 
           <p className="mt-2 text-2xl font-black text-emerald-600">
             {currencyFormatter(
-              chartData.reduce((acc, item) => {
-                return acc + (item.impostoSemBcost - item.impostoComBcost);
-              }, 0),
+              (Array.isArray(chartData) ? chartData.reduce((acc, item) => acc + (item.impostoSemBcost - item.impostoComBcost), 0) : 0),
             )}
           </p>
         </div>
@@ -161,9 +159,9 @@ export function FiscalPerformance({ data = [] }: FiscalPerformanceProps) {
 
           <p className="mt-2 text-2xl font-black text-slate-900">
             {currencyFormatter(
-              chartData.reduce((acc, item) => {
-                return acc + item.impostoComBcost;
-              }, 0) / chartData.length,
+              (Array.isArray(chartData) && chartData.length > 0
+                ? chartData.reduce((acc, item) => acc + item.impostoComBcost, 0) / chartData.length
+                : 0),
             )}
           </p>
         </div>
