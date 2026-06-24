@@ -1,6 +1,7 @@
 /**
  * services/api.ts
  * Camada de comunicacao HTTP do bCost Frontend.
+ * Alinhado com as diretrizes de resiliencia e Clean Architecture.
  */
 
 import axios, {
@@ -149,6 +150,7 @@ function lsGet(keys: readonly string[]): string | null {
   return null;
 }
 
+// Usado internamente no fluxo de salvamento de sessoes e fallbacks
 function lsSet(keys: readonly string[], value: string): void {
   if (!isBrowser() || !isValidValue(value)) return;
   for (const key of keys) {
@@ -189,7 +191,7 @@ function sanitizeUser(user: BcostUser): BcostUser {
   return out;
 }
 
-// Token
+// Token getters & setters
 export function getToken(): string | null {
   if (!isBrowser()) return null;
   for (const key of TOKEN_KEYS) {
@@ -267,7 +269,7 @@ export function clearActiveCompanyId(): void {
   deleteCookie('bcost_company_id');
 }
 
-// User
+// User Profile
 export function getStoredUser(): BcostUser | null {
   if (!isBrowser()) return null;
   for (const key of USER_KEYS) {
@@ -317,7 +319,7 @@ export function clearStoredUser(): void {
   lsRemove(USER_KEYS);
 }
 
-// Session
+// Session Validation
 export function hasSession(): boolean {
   return Boolean(getToken() || isDemoSession());
 }
@@ -364,11 +366,10 @@ export function persistAuthResponse(data: AuthResponse): void {
 
 export const setStorageSession = persistAuthResponse;
 
-// Redirect
+// Redirect Logic
 function redirectToLogin(reason = 'expired'): void {
   if (!isBrowser()) return;
   if (window.location.pathname.startsWith('/login')) return;
-  // Em modo demo, não redireciona
   if (isDemoSession()) return;
   const redirect = encodeURIComponent(`${window.location.pathname}${window.location.search}`);
   window.location.replace(`/login?session=${reason}&redirect=${redirect}`);
@@ -382,16 +383,17 @@ export function isAuthMissingError(error: unknown): error is AuthMissingError {
   );
 }
 
-// Instancia Axios
+// Instancia Axios unificada
 const API_BASE = '/api/v1';
 
 export const api: AxiosInstance = axios.create({
   baseURL: API_BASE,
   withCredentials: true,
+  timeout: 15000, // Timeout adicionado para evitar travamento de chunks no Next.js 16
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Interceptor de Requisicao
+// Interceptor de Requisicao (Injeção de Metadados e Tokens)
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = getToken();
@@ -408,30 +410,32 @@ api.interceptors.request.use(
   (error: unknown) => Promise.reject(error),
 );
 
-// Interceptor de Resposta — sem loop de 401
+// Interceptor de Resposta (Tratamento Anti-Loop de Erro 401)
 let isHandling401 = false;
 
 api.interceptors.response.use(
   (response: AxiosResponse) => response,
   (error: unknown) => {
     if (axios.isAxiosError(error) && error.response?.status === 401) {
+      console.warn('[API Interceptor] Requisicao nao autorizada (401) capturada em:', error.config?.url);
       if (!isHandling401) {
         isHandling401 = true;
-        // Em modo demo, não limpa sessão nem redireciona
         if (!isDemoSession()) {
           clearSession();
           redirectToLogin('expired');
+        } else {
+          console.info('[API Interceptor] Erro 401 ignorado por estar em uma Demo Session ativa.');
         }
         setTimeout(() => {
           isHandling401 = false;
-        }, 0);
+        }, 500);
       }
     }
     return Promise.reject(error);
   },
 );
 
-// Atalhos HTTP tipados
+// Atalhos HTTP Tipados Corporativos
 export const apiGet = <T = unknown>(
   url: string,
   config?: AxiosRequestConfig,
@@ -456,7 +460,7 @@ export const apiDelete = <T = unknown>(
   config?: AxiosRequestConfig,
 ): Promise<AxiosResponse<T>> => api.delete<T>(url, config);
 
-// Auth login
+// Fluxo do Caso de Uso de Autenticação (Login)
 export async function login(
   emailOrCredentials: string | Record<string, unknown>,
   password?: string,
