@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import { OpenFinanceModuleFactory } from '@/shared/factories/open-finance-factory.shared';
@@ -43,7 +43,7 @@ export default function OpenFinanceWidget({ companyId }: OpenFinanceWidgetProps)
           disabled={loading}
           className="bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs py-2 px-4 rounded-xl flex items-center gap-2 transition-all duration-200 disabled:opacity-50"
         >
-          <RefreshCw className={w-3.5 h-3.5 \} />
+          <RefreshCw className="w-3.5 h-3.5" />
           {accounts.length > 0 ? 'Atualizar Dados' : 'Conectar Banco'}
         </button>
       </div>
@@ -95,3 +95,4 @@ export default function OpenFinanceWidget({ companyId }: OpenFinanceWidgetProps)
     </div>
   );
 }
+
