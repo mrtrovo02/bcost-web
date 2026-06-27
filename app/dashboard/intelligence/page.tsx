@@ -64,9 +64,29 @@ export default function DashboardPage() {
       }
 
       const useCase = FiscalModuleFactory.makeFetchTaxDataUseCase();
-      const result = await useCase.execute({ companyId });
+      const raw = await useCase.execute({ companyId });
+
+      const aliquota = raw.isEligibleAnexoIII ? 0.11 : 0.14;
+      const estimatedTax = Math.round(raw.faturamentoBruto * aliquota);
+
+      setData({
+        company: raw.companyId,
+        overview: {
+          totalRevenue: raw.faturamentoBruto,
+          estimatedTax,
+          netRevenue: raw.faturamentoBruto - estimatedTax,
+          fatorR: `${raw.fatorR.toFixed(1)}%`,
+          totalInvoices: 0,
+        },
+        insights: {
+          taxEfficiency: raw.isEligibleAnexoIII ? 'Anexo III • Otimizado' : 'Anexo V • Revisar',
+          suggestion: raw.isEligibleAnexoIII
+            ? 'Fator R elegível ao Anexo III. Manter folha de pagamento estável.'
+            : 'Fator R abaixo de 28%. Avaliar pró-labore para migrar ao Anexo III.',
+        },
+        history: [],
+      });
       lastLoadedId.current = companyId;
-      setData(result as FiscalData);
     } catch (error: unknown) {
       console.error('Erro capturado pela esteira Clean Architecture:', error);
       const status =
