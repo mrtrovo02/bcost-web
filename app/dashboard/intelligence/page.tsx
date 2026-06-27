@@ -6,16 +6,21 @@ import { isDemoSession } from "@/services/api";
 import { getDemoFiscalData } from "@/services/demo-data";
 import { useCompany } from "@/app/context/CompanyContext";
 import TaxEvolutionChart from "@/components/TaxEvolutionChart";
-import { FiscalDashboardResult } from "@/lib/types/fiscal";
 import { FiscalModuleFactory } from "@/shared/factories/fiscal-factory.shared";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { TrendingUp, Download, Activity, AlertCircle, Clock, DollarSign } from "lucide-react";
 
+// Inferencia estrita e dinamica do contrato de retorno do Caso de Uso (Padrao de Mercado 2026)
+type UseCaseExecuteMethod = ReturnType<typeof FiscalModuleFactory.makeFetchTaxDataUseCase>["execute"];
+type FiscalDomainOutput = Awaited<ReturnType<UseCaseExecuteMethod>>;
+
 export default function DashboardPage() {
   const router = useRouter();
   const { selectedCompany } = useCompany();
-  const [data, setData] = useState<FiscalDashboardResult | null>(null);
+  
+  // O Estado agora reflete com precisao cirurgica o tipo de dados real do Dominio
+  const [data, setData] = useState<FiscalDomainOutput | null>(null);
   const [loading, setLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const lastLoadedId = useRef<string | null>(null);
@@ -25,18 +30,12 @@ export default function DashboardPage() {
 
     setLoading(true);
     try {
-      const useCase = FiscalModuleFactory.makeFetchTaxDataUseCase();
-      const result = await useCase.execute({ companyId });
-      lastLoadedId.current = companyId;
-      setData(result);
-    } catch (error: unknown) {
-      console.error("Erro capturado pela esteira Clean Architecture:", error);
-
       if (isDemoSession()) {
         const demoData = getDemoFiscalData(selectedCompany?.name || "");
         const totalRevenue = demoData.evolucao.reduce((sum, item) => sum + item.faturamento, 0);
         
-        setData({
+        // Mapeamento explicito dos dados de mock respeitando o contrato de Dominio inferido
+        const mockResult: FiscalDomainOutput = {
           company: selectedCompany?.name || "",
           overview: {
             totalRevenue,
@@ -50,23 +49,35 @@ export default function DashboardPage() {
             suggestion: "Exibição de demonstração localizada para o painel de vendas.",
           },
           history: demoData.evolucao,
-        });
-        lastLoadedId.current = companyId;
-      } else {
-        const status =
-          typeof error === "object" &&
-          error !== null &&
-          "status" in error &&
-          typeof (error as Record<string, unknown>).status === "number"
-            ? (error as { status?: number }).status
-            : undefined;
+        };
 
-        if (status === 401) {
-          router.push("/login");
-        }
-        setData(null);
-        lastLoadedId.current = null;
+        setData(mockResult);
+        lastLoadedId.current = companyId;
+        return;
       }
+
+      // Execucao da esteira limpa da Clean Architecture
+      const useCase = FiscalModuleFactory.makeFetchTaxDataUseCase();
+      const result = await useCase.execute({ companyId });
+      
+      lastLoadedId.current = companyId;
+      setData(result);
+    } catch (error: unknown) {
+      console.error("Erro capturado pela esteira Clean Architecture:", error);
+
+      const status =
+        typeof error === "object" &&
+        error !== null &&
+        "status" in error &&
+        typeof (error as Record<string, unknown>).status === "number"
+          ? (error as { status?: number }).status
+          : undefined;
+
+      if (status === 401) {
+        router.push("/login");
+      }
+      setData(null);
+      lastLoadedId.current = null;
     } finally {
       setLoading(false);
     }
@@ -97,7 +108,7 @@ export default function DashboardPage() {
       const imgWidth = 210;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
       pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
-      pdf.save(`Relatorio_bCost_${selectedCompany?.name}.pdf`);
+      pdf.save(`Relatorio_bCost_\${selectedCompany?.name}.pdf`);
     } catch (e) {
       console.error("Falha na exportação:", e);
     } finally {
