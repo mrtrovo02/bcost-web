@@ -1,13 +1,13 @@
-﻿import { OpenFinanceRepository, PixPaymentInfo } from '@/domain/open-finance/open-finance.repository';
-import { BankAccountEntity } from '@/domain/open-finance/bank-account.entity';
-import { TransactionEntity } from '@/domain/open-finance/transaction.entity';
-import { apiGet, apiPost } from '@/services/api';
+import { OpenFinanceRepository, PixPaymentInfo } from "@/domain/open-finance/open-finance.repository";
+import { BankAccountEntity } from "@/domain/open-finance/bank-account.entity";
+import { TransactionEntity } from "@/domain/open-finance/transaction.entity";
+import { apiGet, apiPost } from "@/services/api";
 
 interface ApiBankAccountSchema {
   id: string;
   display_name: string;
   provider_name: string;
-  account_type: 'CHECKING' | 'SAVINGS' | 'BUSINESS';
+  account_type: "CHECKING" | "SAVINGS" | "BUSINESS";
   current_balance: number;
   currency_code: string;
   provider_logo?: string;
@@ -18,7 +18,7 @@ interface ApiTransactionSchema {
   id: string;
   account_id: string;
   amount_value: number;
-  direction: 'CREDIT' | 'DEBIT';
+  direction: "CREDIT" | "DEBIT";
   description_raw: string;
   category_normalized: string;
   booking_date: string;
@@ -28,7 +28,7 @@ export class AxiosOpenFinanceRepository implements OpenFinanceRepository {
   
   public async getAccounts(companyId: string): Promise<BankAccountEntity[]> {
     const rawData = await apiGet<ApiBankAccountSchema[]>(
-      /open-finance/accounts?company_id=\
+      `/open-finance/accounts?company_id=${encodeURIComponent(companyId)}`
     );
 
     return rawData.map(raw => new BankAccountEntity({
@@ -45,7 +45,7 @@ export class AxiosOpenFinanceRepository implements OpenFinanceRepository {
 
   public async getTransactions(accountId: string): Promise<TransactionEntity[]> {
     const rawData = await apiGet<ApiTransactionSchema[]>(
-      /open-finance/accounts/\/transactions
+      `/open-finance/accounts/${encodeURIComponent(accountId)}/transactions`
     );
 
     return rawData.map(raw => new TransactionEntity({
@@ -61,14 +61,14 @@ export class AxiosOpenFinanceRepository implements OpenFinanceRepository {
 
   public async createConnectToken(companyId: string): Promise<{ connectUrl: string; token: string }> {
     return await apiPost<{ connectUrl: string; token: string }, { companyId: string }>(
-      '/open-finance/connect',
+      "/open-finance/connect",
       { companyId }
     );
   }
 
   public async createPixImmediateCharge(companyId: string, amount: number): Promise<PixPaymentInfo> {
     return await apiPost<PixPaymentInfo, { companyId: string; amount: number }>(
-      '/payments/pix/charge',
+      "/payments/pix/charge",
       { companyId, amount }
     );
   }
