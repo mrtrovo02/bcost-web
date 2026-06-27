@@ -1,25 +1,22 @@
-"use client";
+'use client';
 
-import { useEffect, useState, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { isDemoSession } from "@/services/api";
-import { getDemoFiscalData } from "@/services/demo-data";
-import { useCompany } from "@/app/context/CompanyContext";
-import TaxEvolutionChart from "@/components/TaxEvolutionChart";
-import { FiscalModuleFactory } from "@/shared/factories/fiscal-factory.shared";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
-import { TrendingUp, Download, Activity, AlertCircle, Clock, DollarSign } from "lucide-react";
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { isDemoSession } from '@/services/api';
+import { getDemoFiscalData } from '@/services/demo-data';
+import { useCompany } from '@/app/context/CompanyContext';
+import TaxEvolutionChart from '@/components/TaxEvolutionChart';
+import { FiscalModuleFactory } from '@/shared/factories/fiscal-factory.shared';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import { TrendingUp, Download, Activity, AlertCircle, Clock, DollarSign } from 'lucide-react';
 
-// Inferencia estrita e dinamica do contrato de retorno do Caso de Uso (Padrao de Mercado 2026)
-type UseCaseExecuteMethod = ReturnType<typeof FiscalModuleFactory.makeFetchTaxDataUseCase>["execute"];
+type UseCaseExecuteMethod = ReturnType<typeof FiscalModuleFactory.makeFetchTaxDataUseCase>['execute'];
 type FiscalDomainOutput = Awaited<ReturnType<UseCaseExecuteMethod>>;
 
 export default function DashboardPage() {
   const router = useRouter();
   const { selectedCompany } = useCompany();
-  
-  // O Estado agora reflete com precisao cirurgica o tipo de dados real do Dominio
   const [data, setData] = useState<FiscalDomainOutput | null>(null);
   const [loading, setLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -27,54 +24,47 @@ export default function DashboardPage() {
 
   const fetchTaxData = useCallback(async (companyId: string) => {
     if (companyId === lastLoadedId.current) return;
-
     setLoading(true);
+
     try {
       if (isDemoSession()) {
-        const demoData = getDemoFiscalData(selectedCompany?.name || "");
+        const demoData = getDemoFiscalData(selectedCompany?.name || '');
         const totalRevenue = demoData.evolucao.reduce((sum, item) => sum + item.faturamento, 0);
-        
-        // Mapeamento explicito dos dados de mock respeitando o contrato de Dominio inferido
-        const mockResult: FiscalDomainOutput = {
-          company: selectedCompany?.name || "",
+        setData({
+          company: selectedCompany?.name || '',
           overview: {
             totalRevenue,
             estimatedTax: demoData.comparison.comBcost,
             netRevenue: totalRevenue - demoData.comparison.comBcost,
-            fatorR: "11.0%",
+            fatorR: '11.0%',
             totalInvoices: demoData.evolucao.length,
           },
           insights: {
             taxEfficiency: `Anexo ${demoData.metadata.anexoUtilizado} • Demo Ativo`,
-            suggestion: "Exibição de demonstração localizada para o painel de vendas.",
+            suggestion: 'Exibição de demonstração localizada para o painel de vendas.',
           },
           history: demoData.evolucao,
-        };
-
-        setData(mockResult);
+        });
         lastLoadedId.current = companyId;
         return;
       }
 
-      // Execucao da esteira limpa da Clean Architecture
       const useCase = FiscalModuleFactory.makeFetchTaxDataUseCase();
       const result = await useCase.execute({ companyId });
-      
       lastLoadedId.current = companyId;
       setData(result);
     } catch (error: unknown) {
-      console.error("Erro capturado pela esteira Clean Architecture:", error);
-
+      console.error('Erro capturado pela esteira Clean Architecture:', error);
       const status =
-        typeof error === "object" &&
+        typeof error === 'object' &&
         error !== null &&
-        "status" in error &&
-        typeof (error as Record<string, unknown>).status === "number"
+        'status' in error &&
+        typeof (error as Record<string, unknown>).status === 'number'
           ? (error as { status?: number }).status
           : undefined;
 
       if (status === 401) {
-        router.push("/login");
+        router.push('/login');
       }
       setData(null);
       lastLoadedId.current = null;
@@ -93,24 +83,23 @@ export default function DashboardPage() {
   }, [selectedCompany?.id, fetchTaxData]);
 
   const exportToPDF = async () => {
-    const element = document.getElementById("dashboard-content");
+    const element = document.getElementById('dashboard-content');
     if (!element || !data) return;
     setIsExporting(true);
-
     try {
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
-        backgroundColor: "#020408",
+        backgroundColor: '#020408',
       });
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF("p", "mm", "a4");
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
       const imgWidth = 210;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
-      pdf.save(`Relatorio_bCost_\${selectedCompany?.name}.pdf`);
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      pdf.save(`Relatorio_bCost_${selectedCompany?.name}.pdf`);
     } catch (e) {
-      console.error("Falha na exportação:", e);
+      console.error('Falha na exportação:', e);
     } finally {
       setIsExporting(false);
     }
@@ -124,7 +113,7 @@ export default function DashboardPage() {
             bCost <span className="text-blue-500 font-normal">Intelligence</span>
           </h2>
           <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mt-1">
-            {selectedCompany?.name || "Aguardando Unidade"} • Ciclo {new Date().getFullYear()}
+            {selectedCompany?.name || 'Aguardando Unidade'} • Ciclo {new Date().getFullYear()}
           </p>
         </div>
         <button
@@ -137,7 +126,7 @@ export default function DashboardPage() {
           ) : (
             <Download size={15} />
           )}
-          {isExporting ? "Gerando Relatório..." : "Exportar Relatório"}
+          {isExporting ? 'Gerando Relatório...' : 'Exportar Relatório'}
         </button>
       </div>
 
@@ -165,7 +154,7 @@ export default function DashboardPage() {
       ) : (
         <div
           id="dashboard-content"
-          className={`space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 \${loading ? "opacity-40 pointer-events-none" : ""}`}
+          className={`space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 ${loading ? 'opacity-40 pointer-events-none' : ''}`}
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <KPICard
@@ -183,7 +172,7 @@ export default function DashboardPage() {
             />
             <KPICard
               title="Fator R Atual"
-              value={data?.overview.fatorR || "0%"}
+              value={data?.overview.fatorR || '0%'}
               icon={<Activity size={18} />}
               isCurrency={false}
               color="text-amber-400"
@@ -206,7 +195,7 @@ export default function DashboardPage() {
               <Clock className="text-blue-500" size={16} /> Histórico de Performance
             </h3>
             <div className="h-[380px] w-full relative z-10 min-w-0">
-              <TaxEvolutionChart data={data?.history || []} />
+              <TaxEvolutionChart data={data?.history || []} loading={loading} />
             </div>
           </div>
 
@@ -269,22 +258,22 @@ function KPICard({
   value,
   icon,
   isCurrency = true,
-  color = "text-white",
-  badgeColor = "bg-white/5 text-slate-400",
+  color = 'text-white',
+  badgeColor = 'bg-white/5 text-slate-400',
 }: KPICardProps) {
   return (
     <div className="bg-[#090d16] p-6 rounded-[2.2rem] border border-white/5 shadow-[0_4px_25px_rgba(0,0,0,0.2)] transition-all duration-300 hover:border-white/10 group">
       <div
-        className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 transition-all duration-300 group-hover:scale-105 \${badgeColor}`}
+        className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 transition-all duration-300 group-hover:scale-105 ${badgeColor}`}
       >
         {icon}
       </div>
       <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest mb-1.5">
         {title}
       </p>
-      <h4 className={`text-xl font-black tracking-tight \${color}`}>
+      <h4 className={`text-xl font-black tracking-tight ${color}`}>
         {isCurrency
-          ? Number(value).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+          ? Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
           : value}
       </h4>
     </div>
