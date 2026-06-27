@@ -6,18 +6,32 @@ import { isDemoSession } from '@/services/api';
 import { getDemoFiscalData } from '@/services/demo-data';
 import { useCompany } from '@/app/context/CompanyContext';
 import TaxEvolutionChart from '@/components/TaxEvolutionChart';
+import { MonthlyPerformance } from '@/lib/types/fiscal';
 import { FiscalModuleFactory } from '@/shared/factories/fiscal-factory.shared';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { TrendingUp, Download, Activity, AlertCircle, Clock, DollarSign } from 'lucide-react';
 
-type UseCaseExecuteMethod = ReturnType<typeof FiscalModuleFactory.makeFetchTaxDataUseCase>['execute'];
-type FiscalDomainOutput = Awaited<ReturnType<UseCaseExecuteMethod>>;
+interface FiscalData {
+  company: string;
+  overview: {
+    totalRevenue: number;
+    estimatedTax: number;
+    netRevenue: number;
+    fatorR: string;
+    totalInvoices: number;
+  };
+  insights: {
+    taxEfficiency: string;
+    suggestion: string;
+  };
+  history: MonthlyPerformance[];
+}
 
 export default function DashboardPage() {
   const router = useRouter();
   const { selectedCompany } = useCompany();
-  const [data, setData] = useState<FiscalDomainOutput | null>(null);
+  const [data, setData] = useState<FiscalData | null>(null);
   const [loading, setLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const lastLoadedId = useRef<string | null>(null);
@@ -52,7 +66,7 @@ export default function DashboardPage() {
       const useCase = FiscalModuleFactory.makeFetchTaxDataUseCase();
       const result = await useCase.execute({ companyId });
       lastLoadedId.current = companyId;
-      setData(result);
+      setData(result as FiscalData);
     } catch (error: unknown) {
       console.error('Erro capturado pela esteira Clean Architecture:', error);
       const status =
