@@ -14,6 +14,8 @@ import ScenarioComparisonCard from '../components/ScenarioComparisonCard';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { formatCompactCurrency, formatCurrency, formatPercentage, getAnexoLabel } from '@/lib/formatters';
+import { LoadingShell } from '@/components/ui/LoadingShell';
+import { StatePanel } from '@/components/ui/StatePanel';
 
 interface DashboardChartPoint {
   label?: string;
@@ -249,14 +251,14 @@ export default function DashboardPage() {
           </div>
 
           {!selectedCompany ? (
-            <div className="h-96 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-[3rem] text-slate-400 p-8 text-center">
-              <p className="font-bold text-lg">Selecione uma empresa na barra lateral.</p>
-            </div>
+            <StatePanel
+              title="Selecione uma empresa"
+              description="Acesse a navegação lateral para escolher uma unidade e abrir a visão executiva completa do bCost."
+              actionLabel="Ir para o painel"
+              actionHref="/dashboard"
+            />
           ) : loading ? (
-            <div className="animate-pulse space-y-10">
-              <div className="h-64 bg-slate-200 rounded-[3rem]" />
-              <div className="h-96 bg-slate-200 rounded-[3rem]" />
-            </div>
+            <LoadingShell />
           ) : data ? (
             <div
               id="dashboard-content"

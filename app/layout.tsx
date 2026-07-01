@@ -27,11 +27,20 @@ export const metadata: Metadata = {
     'auditoria fiscal',
     'planejamento tributário',
     'inteligência financeira',
+    'fintech',
+    'contabilidade digital',
   ],
+  metadataBase: new URL('https://bcost.com.br'),
   openGraph: {
     title: 'bCost Intelligence',
     description: 'Painel executivo para gestão fiscal e otimização tributária.',
     type: 'website',
+    siteName: 'bCost Intelligence',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'bCost Intelligence',
+    description: 'Painel executivo para gestão fiscal e otimização tributária.',
   },
 };
 
