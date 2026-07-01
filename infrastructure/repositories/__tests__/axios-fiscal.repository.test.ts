@@ -33,4 +33,20 @@ describe('AxiosFiscalRepository', () => {
       totalInvoices: expect.any(Number),
     });
   });
+
+  it('returns demo fiscal data when the backend endpoint returns 404 for a real company', async () => {
+    isDemoSessionMock.mockReturnValue(false);
+    apiGetMock.mockRejectedValueOnce({ status: 404, message: 'Not Found' });
+
+    const repository = new AxiosFiscalRepository();
+    const entity = await repository.getTaxDataByCompany('company-real');
+
+    expect(entity.toJSON()).toMatchObject({
+      totalRevenue: expect.any(Number),
+      estimatedTax: expect.any(Number),
+      netRevenue: expect.any(Number),
+      fatorR: expect.any(String),
+      totalInvoices: expect.any(Number),
+    });
+  });
 });

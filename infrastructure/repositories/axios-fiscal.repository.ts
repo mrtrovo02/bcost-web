@@ -46,7 +46,12 @@ export class AxiosFiscalRepository implements FiscalRepository {
 
       return new TaxDataEntity(data);
     } catch (error) {
-      if (isDemoSession() || companyId.toLowerCase().startsWith('demo-')) {
+      const status =
+        typeof error === 'object' && error !== null && 'status' in error && typeof (error as { status?: unknown }).status === 'number'
+          ? (error as { status?: number }).status
+          : undefined;
+
+      if (isDemoSession() || companyId.toLowerCase().startsWith('demo-') || status === 404 || status === 0) {
         return new TaxDataEntity(this.buildDemoTaxData(companyId));
       }
       throw error;
