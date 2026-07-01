@@ -4,6 +4,7 @@ import './globals.css';
 // Importando o Provider para que o useCompany funcione em todas as páginas
 import { CompanyProvider } from '@/app/context/CompanyContext';
 import { QueryProvider } from '@/app/context/QueryProvider';
+import { SkipLink } from '@/components/ui/SkipLink';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -54,6 +55,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-50 text-slate-900`}
       >
+        <SkipLink />
         {/* O QueryProvider fornece cache global e queda de dados moderna. */}
         <QueryProvider>
           {/* O CompanyProvider deve envolver o children para que Sidebar e Dashboard 

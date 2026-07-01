@@ -2,6 +2,11 @@
 
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { api } from '@/services/api';
+import {
+  safeJsonParse,
+  safeLocalStorageGet,
+  safeLocalStorageSet,
+} from '@/lib/utils/runtime-guards';
 
 export interface Company {
   id: string;
@@ -32,15 +37,15 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const hydrate = () => {
       try {
-        const saved = localStorage.getItem('bcost_active_company_data');
-        const savedId = localStorage.getItem('bcost_active_company');
-        const storedCompanies = JSON.parse(localStorage.getItem('bcost_companies') || '[]');
-        const isDemo = localStorage.getItem('bcost_token') === 'demo-token-local';
+        const saved = safeLocalStorageGet('bcost_active_company_data');
+        const savedId = safeLocalStorageGet('bcost_active_company');
+        const storedCompanies = safeJsonParse<Company[]>(safeLocalStorageGet('bcost_companies'), []);
+        const isDemo = safeLocalStorageGet('bcost_token') === 'demo-token-local';
 
         if (saved) {
-          const parsedCompany = JSON.parse(saved);
-          setSelectedCompany(parsedCompany);
-          if (parsedCompany.id) {
+          const parsedCompany = safeJsonParse<Company | null>(saved, null);
+          if (parsedCompany?.id) {
+            setSelectedCompany(parsedCompany);
             api.defaults.headers.common['x-company-id'] = parsedCompany.id;
           }
           return;
@@ -51,7 +56,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
             storedCompanies.find((company: Company) => company.id === savedId) ||
             storedCompanies[0];
           setSelectedCompany(restored);
-          localStorage.setItem('bcost_active_company_data', JSON.stringify(restored));
+          safeLocalStorageSet('bcost_active_company_data', JSON.stringify(restored));
           if (restored.id) {
             api.defaults.headers.common['x-company-id'] = restored.id;
           }
@@ -63,8 +68,8 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         if (!saved && isDemo) {
           if (Array.isArray(storedCompanies) && storedCompanies.length > 0) {
             const demoCompany = storedCompanies[0];
-            localStorage.setItem('bcost_active_company_data', JSON.stringify(demoCompany));
-            localStorage.setItem('bcost_active_company', demoCompany.id);
+            safeLocalStorageSet('bcost_active_company_data', JSON.stringify(demoCompany));
+            safeLocalStorageSet('bcost_active_company', demoCompany.id);
             setSelectedCompany(demoCompany);
             if (demoCompany.id) {
               api.defaults.headers.common['x-company-id'] = demoCompany.id;
@@ -91,8 +96,8 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     setSelectedCompany(company);
 
     // Persistimos o objeto completo para a UI e o ID para o Interceptor
-    localStorage.setItem('bcost_active_company_data', JSON.stringify(company));
-    localStorage.setItem('bcost_active_company', company.id);
+    safeLocalStorageSet('bcost_active_company_data', JSON.stringify(company));
+    safeLocalStorageSet('bcost_active_company', company.id);
 
     // Injeção em tempo real na instância do Axios
     api.defaults.headers.common['x-company-id'] = company.id;

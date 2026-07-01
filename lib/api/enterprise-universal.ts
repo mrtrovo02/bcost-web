@@ -1,6 +1,7 @@
 'use strict';
 
 import { api, getActiveCompanyId, setActiveCompanyId } from '@/services/api';
+import { safeLocalStorageGet } from '@/lib/utils/runtime-guards';
 
 export type EnterpriseModuleStatus = 'OK' | 'OK_WITH_FALLBACK' | 'ERROR' | 'EMPTY' | string;
 
@@ -113,7 +114,7 @@ export function getStoredCompanyId(): string | null {
   const keys = ['bcost_active_company', 'bcost_company_id', 'companyId', 'activeCompanyId'];
 
   for (const key of keys) {
-    const value = window.localStorage.getItem(key);
+    const value = safeLocalStorageGet(key);
 
     if (value && value !== 'null' && value !== 'undefined' && value !== 'ID_DA_EMPRESA') {
       return value;

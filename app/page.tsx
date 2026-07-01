@@ -228,7 +228,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#F8FAFC]">
+    <div className="flex min-h-screen bg-[#F8FAFC]" id="main-content">
       <Sidebar />
       <main className="flex-1 p-4 md:p-10 text-slate-900 overflow-y-auto">
         <div className="max-w-7xl mx-auto space-y-12">
