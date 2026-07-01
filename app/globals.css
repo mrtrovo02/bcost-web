@@ -23,7 +23,9 @@
 
 @layer base {
   body {
-    background-color: var(--background);
+    background:
+      radial-gradient(circle at top left, rgba(37, 99, 235, 0.12), transparent 24%),
+      linear-gradient(135deg, #f8fafc 0%, #eef4ff 100%);
     color: var(--foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
@@ -32,8 +34,27 @@
   }
 }
 
+@layer components {
+  .glass-panel {
+    @apply rounded-[2rem] border border-white/70 bg-white/70 shadow-[0_20px_60px_-20px_rgba(15,23,42,0.2)] backdrop-blur-xl;
+  }
+}
+
 #dashboard-content {
   background-color: var(--background);
   contain: content;
   overflow: visible;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.06);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(37, 99, 235, 0.35);
+  border-radius: 999px;
 }

@@ -8,8 +8,11 @@ import { useCompany } from '@/app/context/CompanyContext';
 import TaxComparisonCard from '../components/TaxComparisonCard';
 import TaxEvolutionChart from '../components/TaxEvolutionChart';
 import Sidebar from '../components/Sidebar';
+import ExecutiveCommandCenter from '../components/ExecutiveCommandCenter';
+import DecisionIntelligencePanel from '../components/DecisionIntelligencePanel';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { formatCompactCurrency, formatCurrency, formatPercentage, getAnexoLabel } from '@/lib/formatters';
 
 interface DashboardChartPoint {
   label?: string;
@@ -235,6 +238,67 @@ export default function DashboardPage() {
               id="dashboard-content"
               className={`space-y-12 transition-all duration-500 ${isRefetching ? 'opacity-40 grayscale' : 'opacity-100'}`}
             >
+              <section className="glass-panel p-8 md:p-10">
+                <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+                  <div className="space-y-3">
+                    <p className="text-[11px] font-black uppercase tracking-[0.35em] text-blue-600">
+                      Snapshot executivo
+                    </p>
+                    <h2 className="text-2xl font-black tracking-tight text-slate-900">
+                      Visão imediata de economia e risco fiscal
+                    </h2>
+                    <p className="max-w-2xl text-sm leading-7 text-slate-600">
+                      O painel consolida eficiência tributária, impacto do planejamento e a decisão mais
+                      relevante para o time financeiro em tempo real.
+                    </p>
+                  </div>
+                  <div className="rounded-[1.5rem] border border-emerald-200 bg-emerald-50 px-5 py-4 text-emerald-700">
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em]">Status</p>
+                    <p className="mt-2 text-xl font-black">Operação otimizada</p>
+                  </div>
+                </div>
+
+                <div className="mt-8 grid gap-4 md:grid-cols-3">
+                  <div className="rounded-[1.5rem] bg-slate-900 p-6 text-white">
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
+                      Economia líquida
+                    </p>
+                    <p className="mt-3 text-3xl font-black">{formatCurrency(data.comparison.netSavings)}</p>
+                  </div>
+                  <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-6">
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+                      Imposto estimado com bCost
+                    </p>
+                    <p className="mt-3 text-3xl font-black text-slate-900">
+                      {formatCompactCurrency(data.comparison.comBcost)}
+                    </p>
+                  </div>
+                  <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-6">
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+                      Estratégia aplicada
+                    </p>
+                    <p className="mt-3 text-xl font-black text-slate-900">
+                      {getAnexoLabel(data.metadata.anexoUtilizado)}
+                    </p>
+                    <p className="mt-2 text-sm text-slate-500">
+                      {formatPercentage(data.evolucao[0]?.taxPercentage ?? 0)} média no ciclo
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              <ExecutiveCommandCenter
+                companyName={data.company}
+                netSavings={data.comparison.netSavings}
+                taxSavingsRate={data.evolucao[0]?.taxPercentage ?? 0}
+                anexo={data.metadata.anexoUtilizado}
+                activeAlerts={2}
+              />
+              <DecisionIntelligencePanel
+                riskLevel="médio"
+                opportunityValue={Math.max(data.comparison.netSavings * 0.6, 50000)}
+                nextAction="Revisar documentos pendentes"
+              />
               <TaxComparisonCard data={data} />
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
                 <div className="lg:col-span-8">

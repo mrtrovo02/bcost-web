@@ -27,7 +27,7 @@ interface ApiTransactionSchema {
 export class AxiosOpenFinanceRepository implements OpenFinanceRepository {
   
   public async getAccounts(companyId: string): Promise<BankAccountEntity[]> {
-    const rawData = await apiGet<ApiBankAccountSchema[]>(
+    const { data: rawData } = await apiGet<ApiBankAccountSchema[]>(
       `/open-finance/accounts?company_id=${encodeURIComponent(companyId)}`
     );
 
@@ -44,7 +44,7 @@ export class AxiosOpenFinanceRepository implements OpenFinanceRepository {
   }
 
   public async getTransactions(accountId: string): Promise<TransactionEntity[]> {
-    const rawData = await apiGet<ApiTransactionSchema[]>(
+    const { data: rawData } = await apiGet<ApiTransactionSchema[]>(
       `/open-finance/accounts/${encodeURIComponent(accountId)}/transactions`
     );
 
@@ -60,16 +60,18 @@ export class AxiosOpenFinanceRepository implements OpenFinanceRepository {
   }
 
   public async createConnectToken(companyId: string): Promise<{ connectUrl: string; token: string }> {
-    return await apiPost<{ connectUrl: string; token: string }, { companyId: string }>(
+    const { data } = await apiPost<{ connectUrl: string; token: string }>(
       "/open-finance/connect",
       { companyId }
     );
+    return data;
   }
 
   public async createPixImmediateCharge(companyId: string, amount: number): Promise<PixPaymentInfo> {
-    return await apiPost<PixPaymentInfo, { companyId: string; amount: number }>(
+    const { data } = await apiPost<PixPaymentInfo>(
       "/payments/pix/charge",
       { companyId, amount }
     );
+    return data;
   }
 }

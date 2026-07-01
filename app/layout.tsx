@@ -17,8 +17,22 @@ const geistMono = Geist_Mono({
 
 // Metadados atualizados para o seu produto real
 export const metadata: Metadata = {
-  title: 'bCost Intelligence | Gestão Fiscal Pro',
-  description: 'Análise de Fator R e Planejamento Tributário Avançado',
+  title: 'bCost Intelligence | Plataforma de Gestão Fiscal e Tributária',
+  description:
+    'Plataforma empresarial para análise de Fator R, otimização tributária, auditoria fiscal e visão executiva em tempo real.',
+  keywords: [
+    'gestão fiscal',
+    'fator r',
+    'tributação',
+    'auditoria fiscal',
+    'planejamento tributário',
+    'inteligência financeira',
+  ],
+  openGraph: {
+    title: 'bCost Intelligence',
+    description: 'Painel executivo para gestão fiscal e otimização tributária.',
+    type: 'website',
+  },
 };
 
 export default function RootLayout({
