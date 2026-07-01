@@ -53,7 +53,12 @@ export function isDemoModeEnabled(): boolean {
 }
 
 export function isDemoSession(): boolean {
-  return isBrowser() && isDemoModeEnabled() && localStorage.getItem('bcost_token') === DEMO_TOKEN;
+  if (!isBrowser()) return false;
+
+  const token = localStorage.getItem('bcost_token');
+  const hasDemoToken = token === DEMO_TOKEN;
+
+  return isDemoModeEnabled() && (hasDemoToken || !getToken());
 }
 
 // Tipos publicos
@@ -417,7 +422,9 @@ api.interceptors.response.use(
   (response: AxiosResponse) => response,
   (error: unknown) => {
     if (axios.isAxiosError(error) && error.response?.status === 401) {
-      console.warn('[API Interceptor] Requisicao nao autorizada (401) capturada em:', error.config?.url);
+      const requestUrl = error.config?.url ?? 'unknown';
+      console.warn('[API Interceptor] Requisicao nao autorizada (401) capturada em:', requestUrl);
+
       if (!isHandling401) {
         isHandling401 = true;
         if (!isDemoSession()) {

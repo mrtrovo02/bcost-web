@@ -80,7 +80,28 @@ export default function DashboardPage() {
         const month = now.getMonth() + 1;
         const year = now.getFullYear();
 
-        // Usa as rotas reais da API
+        const shouldUseDemoFallback = isDemoSession() || !selectedCompany?.id;
+
+        if (shouldUseDemoFallback) {
+          const demoData = getDemoFiscalData(selectedCompany?.name ?? 'Empresa Demo');
+          setData({
+            company: selectedCompany?.name ?? 'Empresa Demo',
+            comparison: {
+              comBcost: demoData.comparison.comBcost,
+              semBcost: demoData.comparison.semBcost,
+              netSavings: demoData.comparison.netSavings,
+            },
+            metadata: {
+              anexoUtilizado: demoData.metadata.anexoUtilizado,
+            },
+            evolucao: demoData.evolucao,
+          });
+          setLoading(false);
+          setIsRefetching(false);
+          lastFetchedCompanyId.current = selectedCompany?.id ?? 'demo';
+          return;
+        }
+
         const [overviewRes, metricsRes] = await Promise.all([
           api.get('/dashboard/overview', {
             headers: { 'x-company-id': selectedCompany.id },
@@ -145,6 +166,7 @@ export default function DashboardPage() {
             evolucao: demoData.evolucao,
           });
         } else if (status === 401) {
+          setData(null);
           router.push('/login');
         }
       } finally {
