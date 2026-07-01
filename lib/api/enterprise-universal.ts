@@ -175,33 +175,59 @@ export const enterpriseUniversalApi = {
       to?: string;
     },
   ): Promise<EnterpriseModuleResponse> {
-    const response = await api.get(`/enterprise/modules/${slug}/${companyId}`, {
-      params: {
+    try {
+      const response = await api.get(`/enterprise/modules/${slug}/${companyId}`, {
+        params: {
+          limit: params?.limit ?? 100,
+          offset: params?.offset ?? 0,
+          ...(params?.search ? { search: params.search } : {}),
+          ...(params?.status ? { status: params.status } : {}),
+          ...(params?.from ? { from: params.from } : {}),
+          ...(params?.to ? { to: params.to } : {}),
+        },
+      });
+
+      const data = response.data || {};
+
+      return {
+        slug: data.slug || slug,
+        model: data.model || getEnterpriseModuleModel(slug),
+        label: data.label || getEnterpriseModuleLabel(slug),
+        companyId: data.companyId || companyId,
+        status: data.status || 'OK',
+        items: Array.isArray(data.items) ? data.items : [],
+        total: Number(data.total || 0),
+        limit: Number(data.limit || params?.limit || 100),
+        offset: Number(data.offset || params?.offset || 0),
+        hasMore: Boolean(data.hasMore),
+        summary: data.summary && typeof data.summary === 'object' ? data.summary : {},
+        generatedAt: data.generatedAt || new Date().toISOString(),
+      };
+    } catch (error) {
+      const status =
+        typeof error === 'object' && error !== null && 'response' in error
+          ? (error as { response?: { status?: number } }).response?.status
+          : undefined;
+
+      return {
+        slug,
+        model: getEnterpriseModuleModel(slug),
+        label: getEnterpriseModuleLabel(slug),
+        companyId,
+        status: status === 404 || status === 0 ? 'OK_WITH_FALLBACK' : 'ERROR',
+        items: [],
+        total: 0,
         limit: params?.limit ?? 100,
         offset: params?.offset ?? 0,
-        ...(params?.search ? { search: params.search } : {}),
-        ...(params?.status ? { status: params.status } : {}),
-        ...(params?.from ? { from: params.from } : {}),
-        ...(params?.to ? { to: params.to } : {}),
-      },
-    });
-
-    const data = response.data || {};
-
-    return {
-      slug: data.slug || slug,
-      model: data.model || getEnterpriseModuleModel(slug),
-      label: data.label || getEnterpriseModuleLabel(slug),
-      companyId: data.companyId || companyId,
-      status: data.status || 'OK',
-      items: Array.isArray(data.items) ? data.items : [],
-      total: Number(data.total || 0),
-      limit: Number(data.limit || params?.limit || 100),
-      offset: Number(data.offset || params?.offset || 0),
-      hasMore: Boolean(data.hasMore),
-      summary: data.summary && typeof data.summary === 'object' ? data.summary : {},
-      generatedAt: data.generatedAt || new Date().toISOString(),
-    };
+        hasMore: false,
+        summary: {
+          fallback: true,
+          errorStatus: status ?? null,
+          message: 'Endpoint enterprise indisponível; exibindo estado seguro.',
+        },
+        generatedAt: new Date().toISOString(),
+      };
+    }
   },
 
   async summary(slug: string, companyId: string) {
