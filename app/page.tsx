@@ -81,7 +81,8 @@ export default function DashboardPage() {
         const month = now.getMonth() + 1;
         const year = now.getFullYear();
 
-        const shouldUseDemoFallback = isDemoSession() || !selectedCompany?.id;
+        const shouldUseDemoFallback =
+          isDemoSession() || !selectedCompany?.id || selectedCompany.id.toLowerCase().startsWith('demo-');
 
         if (shouldUseDemoFallback) {
           const demoData = getDemoFiscalData(selectedCompany?.name ?? 'Empresa Demo');

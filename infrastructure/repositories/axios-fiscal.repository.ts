@@ -31,7 +31,9 @@ export class AxiosFiscalRepository implements FiscalRepository {
     const periodParam = period ? `&period=${encodeURIComponent(period)}` : "";
     const url = `/modules/fiscal/tax-data?company_id=${encodeURIComponent(companyId)}${periodParam}`;
 
-    if (isDemoSession()) {
+    const shouldUseDemoFallback = isDemoSession() || companyId.toLowerCase().startsWith('demo-');
+
+    if (shouldUseDemoFallback) {
       return new TaxDataEntity(this.buildDemoTaxData(companyId));
     }
 
@@ -44,7 +46,7 @@ export class AxiosFiscalRepository implements FiscalRepository {
 
       return new TaxDataEntity(data);
     } catch (error) {
-      if (isDemoSession()) {
+      if (isDemoSession() || companyId.toLowerCase().startsWith('demo-')) {
         return new TaxDataEntity(this.buildDemoTaxData(companyId));
       }
       throw error;

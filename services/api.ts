@@ -52,13 +52,23 @@ export function isDemoModeEnabled(): boolean {
   return process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true' || process.env.NODE_ENV === 'development';
 }
 
+function isDemoCompanyContext(): boolean {
+  if (!isBrowser()) return false;
+
+  const companyId = getActiveCompanyId();
+  const storageCompanyId = window.localStorage.getItem('bcost_active_company') ?? window.localStorage.getItem('companyId');
+  const candidate = companyId ?? storageCompanyId ?? '';
+  return candidate.toLowerCase().startsWith('demo-');
+}
+
 export function isDemoSession(): boolean {
   if (!isBrowser()) return false;
 
   const token = localStorage.getItem('bcost_token');
   const hasDemoToken = token === DEMO_TOKEN;
+  const hasDemoCompanyContext = isDemoCompanyContext();
 
-  return isDemoModeEnabled() && (hasDemoToken || !getToken());
+  return isDemoModeEnabled() && (hasDemoToken || hasDemoCompanyContext || !getToken());
 }
 
 // Tipos publicos
