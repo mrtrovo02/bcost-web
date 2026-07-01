@@ -10,6 +10,7 @@ import TaxEvolutionChart from '../components/TaxEvolutionChart';
 import Sidebar from '../components/Sidebar';
 import ExecutiveCommandCenter from '../components/ExecutiveCommandCenter';
 import DecisionIntelligencePanel from '../components/DecisionIntelligencePanel';
+import ScenarioComparisonCard from '../components/ScenarioComparisonCard';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { formatCompactCurrency, formatCurrency, formatPercentage, getAnexoLabel } from '@/lib/formatters';
@@ -320,6 +321,10 @@ export default function DashboardPage() {
                 riskLevel="médio"
                 opportunityValue={Math.max(data.comparison.netSavings * 0.6, 50000)}
                 nextAction="Revisar documentos pendentes"
+              />
+              <ScenarioComparisonCard
+                baseScenario={data.comparison.semBcost}
+                optimizedScenario={data.comparison.comBcost}
               />
               <TaxComparisonCard data={data} />
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
