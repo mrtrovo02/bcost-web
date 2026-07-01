@@ -7,6 +7,7 @@ import {
   safeLocalStorageGet,
   safeLocalStorageSet,
 } from '@/lib/utils/runtime-guards';
+import { trackEvent } from '@/lib/utils/telemetry';
 
 export interface Company {
   id: string;
@@ -47,6 +48,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
           if (parsedCompany?.id) {
             setSelectedCompany(parsedCompany);
             api.defaults.headers.common['x-company-id'] = parsedCompany.id;
+            trackEvent('company_context_restored', { companyId: parsedCompany.id });
           }
           return;
         }
@@ -73,6 +75,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
             setSelectedCompany(demoCompany);
             if (demoCompany.id) {
               api.defaults.headers.common['x-company-id'] = demoCompany.id;
+              trackEvent('company_context_demo_fallback', { companyId: demoCompany.id });
             }
             setIsLoading(false);
             return;
@@ -98,6 +101,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     // Persistimos o objeto completo para a UI e o ID para o Interceptor
     safeLocalStorageSet('bcost_active_company_data', JSON.stringify(company));
     safeLocalStorageSet('bcost_active_company', company.id);
+    trackEvent('company_selected', { companyId: company.id });
 
     // Injeção em tempo real na instância do Axios
     api.defaults.headers.common['x-company-id'] = company.id;

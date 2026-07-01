@@ -2,6 +2,7 @@
 
 import { api, getActiveCompanyId, setActiveCompanyId } from '@/services/api';
 import { safeLocalStorageGet } from '@/lib/utils/runtime-guards';
+import { trackEvent } from '@/lib/utils/telemetry';
 
 export type EnterpriseModuleStatus = 'OK' | 'OK_WITH_FALLBACK' | 'ERROR' | 'EMPTY' | string;
 
@@ -209,6 +210,8 @@ export const enterpriseUniversalApi = {
         typeof error === 'object' && error !== null && 'response' in error
           ? (error as { response?: { status?: number } }).response?.status
           : undefined;
+
+      trackEvent('enterprise_module_fallback', { slug, companyId, status });
 
       return {
         slug,
