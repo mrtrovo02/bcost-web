@@ -7,8 +7,6 @@ import { getDemoFiscalData } from '@/services/demo-data';
 import { useCompany } from '@/app/context/CompanyContext';
 import TaxEvolutionChart from '@/components/TaxEvolutionChart';
 import { MonthlyPerformance } from '@/lib/types/fiscal';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import { TrendingUp, Download, Activity, AlertCircle, Clock, DollarSign } from 'lucide-react';
 
 type DashboardHistoryEntry = MonthlyPerformance;
@@ -162,6 +160,11 @@ export default function DashboardPage() {
     if (!element || !data) return;
     setIsExporting(true);
     try {
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ]);
+
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
