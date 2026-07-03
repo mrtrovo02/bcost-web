@@ -1,77 +1,118 @@
-import { OpenFinanceRepository, PixPaymentInfo } from "@/domain/open-finance/open-finance.repository";
-import { BankAccountEntity } from "@/domain/open-finance/bank-account.entity";
-import { TransactionEntity } from "@/domain/open-finance/transaction.entity";
-import { apiGet, apiPost } from "@/services/api";
+/**
+ * infrastructure/repositories/axios-open-finance.repository.ts
+ * Repositório Open Finance usando o cliente api do projeto.
+ */
+import { api } from '@/services/api';
+import { OpenFinanceRepository, PixPaymentInfo } from '@/domain/open-finance/open-finance.repository';
+import { BankAccountEntity, BankAccountProps } from '@/domain/open-finance/bank-account.entity';
+import { TransactionEntity } from '@/domain/open-finance/transaction.entity';
 
 interface ApiBankAccountSchema {
   id: string;
-  display_name: string;
-  provider_name: string;
-  account_type: "CHECKING" | "SAVINGS" | "BUSINESS";
-  current_balance: number;
-  currency_code: string;
+  display_name?: string;
+  name?: string;
+  provider_name?: string;
+  bankName?: string;
+  account_type?: 'CHECKING' | 'SAVINGS' | 'BUSINESS';
+  type?: 'CHECKING' | 'SAVINGS' | 'BUSINESS';
+  current_balance?: number;
+  balance?: number;
+  currency_code?: string;
+  currency?: string;
   provider_logo?: string;
-  updated_at: string;
+  logoUrl?: string;
+  updated_at?: string;
+  lastSyncedAt?: string;
 }
 
 interface ApiTransactionSchema {
   id: string;
-  account_id: string;
-  amount_value: number;
-  direction: "CREDIT" | "DEBIT";
-  description_raw: string;
-  category_normalized: string;
-  booking_date: string;
+  account_id?: string;
+  accountId?: string;
+  amount_value?: number;
+  amount?: number;
+  direction?: 'CREDIT' | 'DEBIT';
+  type?: 'CREDIT' | 'DEBIT';
+  description_raw?: string;
+  description?: string;
+  category_normalized?: string;
+  category?: string;
+  booking_date?: string;
+  date?: string;
 }
 
 export class AxiosOpenFinanceRepository implements OpenFinanceRepository {
-  
   public async getAccounts(companyId: string): Promise<BankAccountEntity[]> {
-    const { data: rawData } = await apiGet<ApiBankAccountSchema[]>(
-      `/open-finance/accounts?company_id=${encodeURIComponent(companyId)}`
+    const response = await api.get<ApiBankAccountSchema[] | { items?: ApiBankAccountSchema[]; accounts?: ApiBankAccountSchema[] }>(
+      `/open-finance/accounts?company_id=${encodeURIComponent(companyId)}`,
     );
+    const raw = response.data;
+    const list: ApiBankAccountSchema[] = Array.isArray(raw)
+      ? raw
+      : Array.isArray((raw as any)?.items)
+        ? (raw as any).items
+        : Array.isArray((raw as any)?.accounts)
+          ? (raw as any).accounts
+          : [];
 
-    return rawData.map(raw => new BankAccountEntity({
-      id: raw.id,
-      name: raw.display_name,
-      bankName: raw.provider_name,
-      type: raw.account_type,
-      balance: raw.current_balance,
-      currency: raw.currency_code,
-      logoUrl: raw.provider_logo,
-      lastSyncedAt: raw.updated_at
-    }));
+    return list.map(
+      (item) =>
+        new BankAccountEntity({
+          id: item.id,
+          name: item.display_name ?? item.name ?? '',
+          bankName: item.provider_name ?? item.bankName ?? '',
+          type: item.account_type ?? item.type ?? 'CHECKING',
+          balance: item.current_balance ?? item.balance ?? 0,
+          currency: item.currency_code ?? item.currency ?? 'BRL',
+          logoUrl: item.provider_logo ?? item.logoUrl,
+          lastSyncedAt: item.updated_at ?? item.lastSyncedAt ?? new Date().toISOString(),
+        } satisfies BankAccountProps),
+    );
   }
 
   public async getTransactions(accountId: string): Promise<TransactionEntity[]> {
-    const { data: rawData } = await apiGet<ApiTransactionSchema[]>(
-      `/open-finance/accounts/${encodeURIComponent(accountId)}/transactions`
+    const response = await api.get<ApiTransactionSchema[] | { items?: ApiTransactionSchema[] }>(
+      `/open-finance/accounts/${encodeURIComponent(accountId)}/transactions`,
     );
+    const raw = response.data;
+    const list: ApiTransactionSchema[] = Array.isArray(raw)
+      ? raw
+      : Array.isArray((raw as any)?.items)
+        ? (raw as any).items
+        : [];
 
-    return rawData.map(raw => new TransactionEntity({
-      id: raw.id,
-      accountId: raw.account_id,
-      amount: raw.amount_value,
-      type: raw.direction,
-      description: raw.description_raw,
-      category: raw.category_normalized,
-      date: raw.booking_date
-    }));
+    return list.map(
+      (item) =>
+        new TransactionEntity({
+          id: item.id,
+          accountId: item.account_id ?? item.accountId ?? '',
+          amount: item.amount_value ?? item.amount ?? 0,
+          type: item.direction ?? item.type ?? 'CREDIT',
+          description: item.description_raw ?? item.description ?? '',
+          category: item.category_normalized ?? item.category ?? '',
+          date: item.booking_date ?? item.date ?? '',
+        }),
+    );
   }
 
-  public async createConnectToken(companyId: string): Promise<{ connectUrl: string; token: string }> {
-    const { data } = await apiPost<{ connectUrl: string; token: string }>(
-      "/open-finance/connect",
-      { companyId }
+  public async createConnectToken(
+    companyId: string,
+  ): Promise<{ connectUrl: string; token: string }> {
+    const response = await api.post<{ connectUrl: string; token: string }>(
+      '/open-finance/connect',
+      { companyId },
     );
-    return data;
+    return response.data;
   }
 
-  public async createPixImmediateCharge(companyId: string, amount: number): Promise<PixPaymentInfo> {
-    const { data } = await apiPost<PixPaymentInfo>(
-      "/payments/pix/charge",
-      { companyId, amount }
-    );
-    return data;
+  public async createPixImmediateCharge(
+    companyId: string,
+    amount: number,
+  ): Promise<PixPaymentInfo> {
+    const response = await api.post<PixPaymentInfo>('/payments/pix/charge', {
+      companyId,
+      amount,
+    });
+    return response.data;
   }
 }

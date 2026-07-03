@@ -1,19 +1,27 @@
-import axios from "axios";
-import { IContabilRepository } from "@/application/use-cases/generate-dre.usecase";
+/**
+ * infrastructure/repositories/axios-contabil.repository.ts
+ * Repositório contábil usando o cliente api do projeto (com interceptors de auth).
+ */
+import { api } from '@/services/api';
+import { IContabilRepository } from '@/application/use-cases/generate-dre.usecase';
 
 export class AxiosContabilRepository implements IContabilRepository {
-  public async getLancamentosPeriodo(companyId: string, dataInicio: string, dataFim: string): Promise<any[]> {
+  public async getLancamentosPeriodo(
+    companyId: string,
+    dataInicio: string,
+    dataFim: string,
+  ): Promise<any[]> {
     try {
-      const response = await axios.get(`/api/v1/contabil/lancamentos`, {
-        params: { companyId, dataInicio, dataFim }
+      const response = await api.get('/accounting/enterprise/entries/' + companyId, {
+        params: { from: dataInicio, to: dataFim, limit: 1000 },
       });
-      
-      // Garante o desempacotamento seguro do .data do Axios exigido pelo compilador
-      return response.data?.lancamentos || response.data || [];
+      const payload = response.data;
+      if (Array.isArray(payload)) return payload;
+      if (Array.isArray(payload?.items)) return payload.items;
+      return [];
     } catch (error) {
-      console.error("Erro na camada de infraestrutura (Contábil Axios):", error);
+      console.error('[AxiosContabilRepository] getLancamentosPeriodo:', error);
       throw error;
     }
   }
 }
-

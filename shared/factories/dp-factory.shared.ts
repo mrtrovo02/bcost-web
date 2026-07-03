@@ -1,10 +1,14 @@
-import { CalculateFolhaUseCase } from "@/application/use-cases/calculate-folha.usecase";
-import { AxiosDepartamentoPessoalRepository } from "@/infrastructure/repositories/axios-dp.repository";
+/**
+ * shared/factories/dp-factory.shared.ts
+ * Factory do módulo de Departamento Pessoal.
+ */
+import { AxiosDepartamentoPessoalRepository } from '@/infrastructure/repositories/axios-dp.repository';
+import { CalculateFolhaUseCase } from '@/application/use-cases/calculate-folha.usecase';
 
-export class DpModuleFactory {
-  public static makeCalculateFolhaUseCase(): CalculateFolhaUseCase {
-    const repository = new AxiosDepartamentoPessoalRepository();
+const repository = new AxiosDepartamentoPessoalRepository();
+
+export const DpModuleFactory = {
+  makeCalculateFolhaUseCase(): CalculateFolhaUseCase {
     return new CalculateFolhaUseCase(repository);
-  }
-}
-
+  },
+};
