@@ -6,6 +6,7 @@ import {
   BcostModuleStatus,
   getSchemaModuleBySlug,
 } from '@/lib/product/schema-modules';
+import { createDemoEnterprisePayload } from '@/lib/api/enterprise-demo';
 
 export type EnterpriseEndpointStrategy = {
   slug: string;
@@ -297,40 +298,30 @@ export const enterpriseApi = {
     const strategy = getEnterpriseEndpointStrategy(moduleInfo.slug);
 
     if (!strategy || !strategy.enabled) {
+      return createDemoEnterprisePayload(moduleInfo, strategy?.path ?? moduleInfo.apiBase ?? null);
+    }
+
+    try {
+      const resolvedCompanyId = resolveCompanyId(companyId);
+      const endpoint = replaceCompanyId(strategy.path, resolvedCompanyId);
+      const raw = await callStrategy(strategy, resolvedCompanyId);
+      const records = asArray(raw);
+
       return {
         slug: moduleInfo.slug,
         title: moduleInfo.title,
         status: moduleInfo.status,
-        endpoint: strategy?.path ?? moduleInfo.apiBase ?? null,
-        connected: false,
-        records: [],
-        summary: {},
-        raw: null,
-        message:
-          moduleInfo.status === 'PLANNED'
-            ? 'Módulo já mapeado no frontend. Endpoint real será implementado na próxima etapa.'
-            : 'Módulo mapeado, mas a integração automática ainda não foi habilitada.',
+        endpoint,
+        connected: true,
+        records,
+        summary: summarize(raw),
+        raw,
+        message: 'Módulo integrado com a API.',
         generatedAt: new Date().toISOString(),
       };
+    } catch {
+      return createDemoEnterprisePayload(moduleInfo, strategy.path);
     }
-
-    const resolvedCompanyId = resolveCompanyId(companyId);
-    const endpoint = replaceCompanyId(strategy.path, resolvedCompanyId);
-    const raw = await callStrategy(strategy, resolvedCompanyId);
-    const records = asArray(raw);
-
-    return {
-      slug: moduleInfo.slug,
-      title: moduleInfo.title,
-      status: moduleInfo.status,
-      endpoint,
-      connected: true,
-      records,
-      summary: summarize(raw),
-      raw,
-      message: 'Módulo integrado com a API.',
-      generatedAt: new Date().toISOString(),
-    };
   },
 
   refreshModuleData: async (

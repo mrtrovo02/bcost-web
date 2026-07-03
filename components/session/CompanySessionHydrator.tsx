@@ -22,6 +22,17 @@ const COMPANY_ID_KEYS = [
 const COMPANY_LIST_KEYS = ['bcost_companies', 'companies'];
 const DEMO_TOKEN = 'demo-token-local';
 
+function shouldUseLocalDemo() {
+  if (typeof window === 'undefined') return false;
+
+  return (
+    process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true' ||
+    process.env.NODE_ENV === 'development' ||
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1'
+  );
+}
+
 function readLocalStorage(keys: string[]): string | null {
   if (typeof window === 'undefined') return null;
 
@@ -117,6 +128,14 @@ function persistCompanyContext(companyId: string, companies: CompanyLike[]) {
   window.localStorage.setItem('activeCompanyId', companyId);
   window.localStorage.setItem('bcost_companies', JSON.stringify(cleanCompanies));
   window.localStorage.setItem('companies', JSON.stringify(cleanCompanies));
+  window.localStorage.setItem('bcost_active_company_data', JSON.stringify(cleanCompanies[0]));
+
+  if (companyId.startsWith('demo-')) {
+    window.localStorage.setItem('bcost_token', DEMO_TOKEN);
+    document.cookie = `bcost_token=${encodeURIComponent(DEMO_TOKEN)}; path=/; SameSite=Lax`;
+    document.cookie = `bcost_access_token=${encodeURIComponent(DEMO_TOKEN)}; path=/; SameSite=Lax`;
+    document.cookie = `bcost_company_id=${encodeURIComponent(companyId)}; path=/; SameSite=Lax`;
+  }
 
   window.dispatchEvent(
     new CustomEvent('bcost:company-context-updated', {
@@ -172,7 +191,12 @@ export function CompanySessionHydrator() {
       if (companyContextAlreadyExists()) return;
 
       const token = resolveToken();
-      if (!token) return;
+      if (!token) {
+        if (shouldUseLocalDemo()) {
+          persistCompanyContext('demo-001', readCompaniesFromStorage());
+        }
+        return;
+      }
 
       if (token === DEMO_TOKEN) {
         if (!companyContextAlreadyExists()) {
@@ -206,7 +230,12 @@ export function CompanySessionHydrator() {
         authCompanies?.[0]?.id ||
         jwtCompanyId;
 
-      if (!resolvedCompanyId) return;
+      if (!resolvedCompanyId) {
+        if (shouldUseLocalDemo()) {
+          persistCompanyContext('demo-001', storedCompanies);
+        }
+        return;
+      }
 
       persistCompanyContext(String(resolvedCompanyId), authCompanies);
 

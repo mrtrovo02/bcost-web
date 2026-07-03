@@ -17,14 +17,14 @@ describe('enterpriseUniversalApi', () => {
     vi.clearAllMocks();
   });
 
-  it('returns a fallback response when the enterprise module endpoint is unavailable', async () => {
+  it('returns an operational demo fallback when the enterprise module endpoint is unavailable', async () => {
     apiGetMock.mockRejectedValueOnce({ response: { status: 404 } });
 
     const response = await enterpriseUniversalApi.getModule('users', 'company-123');
 
     expect(response.status).toBe('OK_WITH_FALLBACK');
-    expect(response.items).toEqual([]);
-    expect(response.total).toBe(0);
-    expect(response.summary).toMatchObject({ fallback: true });
+    expect(response.items.length).toBeGreaterThan(0);
+    expect(response.total).toBeGreaterThan(0);
+    expect(response.summary).toMatchObject({ fallback: true, mode: 'DEMO_OPERATIONAL' });
   });
 });

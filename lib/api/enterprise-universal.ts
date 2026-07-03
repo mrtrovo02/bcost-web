@@ -3,6 +3,12 @@
 import { api, getActiveCompanyId, setActiveCompanyId } from '@/services/api';
 import { safeLocalStorageGet } from '@/lib/utils/runtime-guards';
 import { trackEvent } from '@/lib/utils/telemetry';
+import { getSchemaModuleBySlug } from '@/lib/product/schema-modules';
+import {
+  createDemoEnterpriseCatalog,
+  createDemoEnterpriseResponse,
+  getDemoEnterpriseCompanyId,
+} from '@/lib/api/enterprise-demo';
 
 export type EnterpriseModuleStatus = 'OK' | 'OK_WITH_FALLBACK' | 'ERROR' | 'EMPTY' | string;
 
@@ -100,11 +106,11 @@ export const ENTERPRISE_MODULE_MODELS: Record<string, string> = {
 };
 
 export function getEnterpriseModuleLabel(slug: string): string {
-  return ENTERPRISE_MODULE_LABELS[slug] || slug;
+  return ENTERPRISE_MODULE_LABELS[slug] || getSchemaModuleBySlug(slug)?.title || slug;
 }
 
 export function getEnterpriseModuleModel(slug: string): string {
-  return ENTERPRISE_MODULE_MODELS[slug] || slug;
+  return ENTERPRISE_MODULE_MODELS[slug] || getSchemaModuleBySlug(slug)?.model || slug;
 }
 
 export function getStoredCompanyId(): string | null {
@@ -156,13 +162,25 @@ export async function resolveEnterpriseCompanyId(): Promise<string | null> {
     // sem fallback disponível
   }
 
-  return null;
+  const fallbackCompanyId = getDemoEnterpriseCompanyId();
+  setActiveCompanyId?.(fallbackCompanyId);
+  return fallbackCompanyId;
 }
 
 export const enterpriseUniversalApi = {
   async catalog(): Promise<EnterpriseCatalogItem[]> {
-    const response = await api.get('/enterprise/modules');
-    return Array.isArray(response.data) ? response.data : [];
+    try {
+      const response = await api.get('/enterprise/modules');
+      return Array.isArray(response.data) ? response.data : createDemoEnterpriseCatalog();
+    } catch (error) {
+      const status =
+        typeof error === 'object' && error !== null && 'response' in error
+          ? (error as { response?: { status?: number } }).response?.status
+          : undefined;
+
+      trackEvent('enterprise_catalog_fallback', { status });
+      return createDemoEnterpriseCatalog();
+    }
   },
 
   async getModule(
@@ -213,35 +231,31 @@ export const enterpriseUniversalApi = {
 
       trackEvent('enterprise_module_fallback', { slug, companyId, status });
 
-      return {
-        slug,
-        model: getEnterpriseModuleModel(slug),
-        label: getEnterpriseModuleLabel(slug),
-        companyId,
-        status: status === 404 || status === 0 ? 'OK_WITH_FALLBACK' : 'ERROR',
-        items: [],
-        total: 0,
-        limit: params?.limit ?? 100,
-        offset: params?.offset ?? 0,
-        hasMore: false,
-        summary: {
-          fallback: true,
-          errorStatus: status ?? null,
-          message: 'Endpoint enterprise indisponível; exibindo estado seguro.',
-        },
-        generatedAt: new Date().toISOString(),
-      };
+      return createDemoEnterpriseResponse(slug, companyId, params);
     }
   },
 
   async summary(slug: string, companyId: string) {
-    const response = await api.get(`/enterprise/modules/${slug}/${companyId}/summary`);
-    return response.data;
+    try {
+      const response = await api.get(`/enterprise/modules/${slug}/${companyId}/summary`);
+      return response.data;
+    } catch {
+      return createDemoEnterpriseResponse(slug, companyId).summary;
+    }
   },
 
   async health(slug: string, companyId: string) {
-    const response = await api.get(`/enterprise/modules/${slug}/${companyId}/health`);
-    return response.data;
+    try {
+      const response = await api.get(`/enterprise/modules/${slug}/${companyId}/health`);
+      return response.data;
+    } catch {
+      return {
+        slug,
+        companyId,
+        status: 'OK_WITH_FALLBACK',
+        generatedAt: new Date().toISOString(),
+      };
+    }
   },
 };
 

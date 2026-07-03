@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   Users,
   Activity,
+  Layers,
 } from 'lucide-react';
 import { useCompany, type Company } from '@/app/context/CompanyContext';
 import { api, deleteCookie } from '@/services/api';
@@ -113,6 +114,12 @@ export default function Sidebar() {
       { icon: Users, label: 'Folha de Pagto', href: '/dashboard/payroll', desc: 'Encargos RH' },
       { icon: PieChart, label: 'Relatórios', href: '/dashboard/reports', desc: 'Exportação' },
       { icon: Activity, label: 'Conciliação', href: '/dashboard/banking', desc: 'Cash Flow' },
+      {
+        icon: Layers,
+        label: 'Módulos Pro',
+        href: '/dashboard/enterprise',
+        desc: 'Coverage 360',
+      },
       {
         icon: Settings,
         label: 'Configurações',
