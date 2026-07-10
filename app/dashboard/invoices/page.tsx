@@ -6,7 +6,8 @@ import { Invoice } from '../../../lib/types/fiscal';
 import UploadModal from '../../../components/UploadModal';
 import { getDemoInvoices } from '@/services/demo-data';
 import { isDemoSession } from '@/services/api';
-import { Search, Filter, FileSpreadsheet, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
+import { calcularCbsIbs } from '@/components/alerts/CbsIbsAlertBanner';
+import { Search, Filter, FileSpreadsheet, AlertCircle, CheckCircle2, Clock, ShieldAlert } from 'lucide-react';
 
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -15,10 +16,6 @@ export default function InvoicesPage() {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
 
-  /**
-   * Data Engine: Consome a fiscalApi blindada.
-   * O resolveCompanyId interno da API garante que o ID seja válido.
-   */
   const fetchInvoices = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -47,28 +44,26 @@ export default function InvoicesPage() {
     fetchInvoices();
   }, [fetchInvoices]);
 
-  /**
-   * Business Logic: Filtragem otimizada com normalização defensiva de strings
-   */
   const filteredInvoices = useMemo(() => {
     const safeInvoices = Array.isArray(invoices) ? invoices : [];
     const safeSearch = (searchTerm ?? '').toLowerCase();
 
     return safeInvoices.filter((inv) => {
       if (!inv) return false;
-
-      // Normalização robusta de propriedades em runtime
       const invoiceNumber = (inv.number ?? '').toString().toLowerCase();
       const invoiceIssuer = (inv.issuer ?? '').toString().toLowerCase();
-
       const matchesSearch =
-        invoiceNumber.includes(safeSearch) ||
-        invoiceIssuer.includes(safeSearch);
-
+        invoiceNumber.includes(safeSearch) || invoiceIssuer.includes(safeSearch);
       const matchesStatus = filterStatus === 'ALL' || inv.status === filterStatus;
       return matchesSearch && matchesStatus;
     });
   }, [invoices, searchTerm, filterStatus]);
+
+  // Totalizadores CBS/IBS do lote exibido
+  const totaisCbsIbs = useMemo(() => {
+    const totalValor = filteredInvoices.reduce((s, nf) => s + (nf?.value ?? 0), 0);
+    return calcularCbsIbs(totalValor);
+  }, [filteredInvoices]);
 
   return (
     <div className="p-8 space-y-8 bg-[#fcfdfe] min-h-screen animate-in fade-in duration-700">
@@ -82,7 +77,6 @@ export default function InvoicesPage() {
             Engine de Auditoria e Repositório Digital
           </p>
         </div>
-
         <button
           onClick={() => setIsModalOpen(true)}
           className="group flex items-center gap-3 px-8 py-4 bg-slate-900 hover:bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest rounded-2xl transition-all shadow-2xl shadow-slate-200 active:scale-95"
@@ -91,6 +85,39 @@ export default function InvoicesPage() {
           Importar Lote XML
         </button>
       </div>
+
+      {/* Painel CBS/IBS do lote */}
+      {filteredInvoices.length > 0 && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 p-5 bg-white rounded-[2rem] border border-amber-100 shadow-sm">
+          <div className="col-span-2 lg:col-span-1 flex items-center gap-3">
+            <div className="w-9 h-9 bg-amber-50 border border-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+              <ShieldAlert size={16} className="text-amber-500" />
+            </div>
+            <div>
+              <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">CBS/IBS</p>
+              <p className="text-xs font-black text-slate-700">Impacto do lote</p>
+            </div>
+          </div>
+          <div>
+            <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1">CBS (0,9%)</p>
+            <p className="text-sm font-black text-amber-600">
+              {totaisCbsIbs.cbs.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            </p>
+          </div>
+          <div>
+            <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1">IBS (0,1%)</p>
+            <p className="text-sm font-black text-orange-600">
+              {totaisCbsIbs.ibs.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            </p>
+          </div>
+          <div>
+            <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1">Total CBS+IBS</p>
+            <p className="text-sm font-black text-red-600">
+              {totaisCbsIbs.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Toolbar de Filtros */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-white rounded-[2rem] border border-slate-100 shadow-sm">
@@ -135,6 +162,9 @@ export default function InvoicesPage() {
               <th className="p-6 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">
                 Valor Total
               </th>
+              <th className="p-6 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">
+                CBS + IBS
+              </th>
               <th className="p-6 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">
                 Status Auditoria
               </th>
@@ -144,12 +174,12 @@ export default function InvoicesPage() {
             {isLoading ? (
               [...Array(5)].map((_, i) => (
                 <tr key={i} className="animate-pulse">
-                  <td colSpan={4} className="p-8 h-20 bg-slate-50/30" />
+                  <td colSpan={5} className="p-8 h-20 bg-slate-50/30" />
                 </tr>
               ))
             ) : filteredInvoices.length === 0 ? (
               <tr>
-                <td colSpan={4} className="p-32 text-center">
+                <td colSpan={5} className="p-32 text-center">
                   <div className="flex flex-col items-center gap-3">
                     <AlertCircle className="text-slate-200" size={48} />
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
@@ -159,63 +189,115 @@ export default function InvoicesPage() {
                 </td>
               </tr>
             ) : (
-              filteredInvoices.map((nf) => (
-                <tr
-                  key={nf?.id}
-                  className="hover:bg-slate-50/80 transition-all group cursor-default"
-                >
-                  <td className="p-6">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all">
-                        <FileSpreadsheet size={18} />
+              filteredInvoices.map((nf) => {
+                const impact = calcularCbsIbs(nf?.value ?? 0);
+                return (
+                  <tr
+                    key={nf?.id}
+                    className="hover:bg-slate-50/80 transition-all group cursor-default"
+                  >
+                    <td className="p-6">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                          <FileSpreadsheet size={18} />
+                        </div>
+                        <div>
+                          <p className="text-[12px] font-black text-slate-900 tracking-tighter uppercase">
+                            {(nf?.type ?? 'NFe')} #{nf?.number ?? 'S/N'}
+                          </p>
+                          <p className="text-[9px] font-bold text-slate-400 uppercase">
+                            Auditado em{' '}
+                            {nf?.date
+                              ? new Date(nf.date).toLocaleDateString('pt-BR')
+                              : 'Data Indisponível'}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-[12px] font-black text-slate-900 tracking-tighter uppercase">
-                          {(nf?.type ?? 'NFe')} #{nf?.number ?? 'S/N'}
-                        </p>
-                        <p className="text-[9px] font-bold text-slate-400 uppercase">
-                          Auditado em {nf?.date ? new Date(nf.date).toLocaleDateString('pt-BR') : 'Data Indisponível'}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="p-6">
-                    <p className="text-[11px] font-bold text-slate-600 uppercase truncate max-w-[200px]">
-                      {nf?.issuer ?? 'Emissor Não Identificado'}
-                    </p>
-                  </td>
-                  <td className="p-6 text-right">
-                    <p className="text-[13px] font-black text-slate-900">
-                      R$ {(nf?.value ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </p>
-                  </td>
-                  <td className="p-6">
-                    <div className="flex justify-center">
-                      <span
-                        className={`
-                        flex items-center gap-2 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border
-                        ${
-                          nf?.status === 'VALID'
-                            ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                    </td>
+                    <td className="p-6">
+                      <p className="text-[11px] font-bold text-slate-600 uppercase truncate max-w-[200px]">
+                        {nf?.issuer ?? 'Emissor Não Identificado'}
+                      </p>
+                    </td>
+                    <td className="p-6 text-right">
+                      <p className="text-[13px] font-black text-slate-900">
+                        {(nf?.value ?? 0).toLocaleString('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                        })}
+                      </p>
+                    </td>
+                    <td className="p-6 text-right">
+                      <p className="text-[11px] font-black text-amber-600">
+                        {impact.total.toLocaleString('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                        })}
+                      </p>
+                      <p className="text-[9px] text-slate-400 mt-0.5">
+                        CBS{' '}
+                        {impact.cbs.toLocaleString('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                        })}{' '}
+                        + IBS{' '}
+                        {impact.ibs.toLocaleString('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                        })}
+                      </p>
+                    </td>
+                    <td className="p-6">
+                      <div className="flex justify-center">
+                        <span
+                          className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${
+                            nf?.status === 'VALID'
+                              ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                              : nf?.status === 'PENDING'
+                                ? 'bg-amber-50 text-amber-600 border-amber-100'
+                                : 'bg-red-50 text-red-600 border-red-100'
+                          }`}
+                        >
+                          {nf?.status === 'VALID' ? (
+                            <CheckCircle2 size={12} />
+                          ) : (
+                            <Clock size={12} />
+                          )}
+                          {nf?.status === 'VALID'
+                            ? 'Auditado'
                             : nf?.status === 'PENDING'
-                              ? 'bg-amber-50 text-amber-600 border-amber-100'
-                              : 'bg-red-50 text-red-600 border-red-100'
-                        }
-                      `}
-                      >
-                        {nf?.status === 'VALID' ? <CheckCircle2 size={12} /> : <Clock size={12} />}
-                        {nf?.status === 'VALID'
-                          ? 'Auditado'
-                          : nf?.status === 'PENDING'
-                            ? 'Processando'
-                            : 'Inconsistente'}
-                      </span>
-                    </div>
-                  </td>
-                </tr>
-              ))
+                              ? 'Processando'
+                              : 'Inconsistente'}
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
+          {filteredInvoices.length > 0 && (
+            <tfoot>
+              <tr className="bg-slate-900">
+                <td colSpan={2} className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  TOTAL DO LOTE — {filteredInvoices.length} documentos
+                </td>
+                <td className="p-5 text-right text-sm font-black text-white">
+                  {totaisCbsIbs.baseValue.toLocaleString('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL',
+                  })}
+                </td>
+                <td className="p-5 text-right text-sm font-black text-amber-400">
+                  {totaisCbsIbs.total.toLocaleString('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL',
+                  })}
+                </td>
+                <td />
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
 

@@ -6,11 +6,21 @@ import { isDemoSession } from '@/services/api';
 import { getDemoFiscalData } from '@/services/demo-data';
 import { useCompany } from '@/app/context/CompanyContext';
 import TaxEvolutionChart from '@/components/TaxEvolutionChart';
+import CbsIbsAlertBanner, { calcularCbsIbs } from '@/components/alerts/CbsIbsAlertBanner';
 import { MonthlyPerformance } from '@/lib/types/fiscal';
 import { FiscalModuleFactory } from '@/shared/factories/fiscal-factory.shared';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { TrendingUp, Download, Activity, AlertCircle, Clock, DollarSign } from 'lucide-react';
+import {
+  TrendingUp,
+  Download,
+  Activity,
+  AlertCircle,
+  Clock,
+  DollarSign,
+  Receipt,
+  ShieldAlert,
+} from 'lucide-react';
 
 interface FiscalData {
   company: string;
@@ -134,8 +144,14 @@ export default function DashboardPage() {
     }
   };
 
+  // Calcula impacto CBS/IBS com base no faturamento atual
+  const cbsIbsImpact = data?.overview.totalRevenue
+    ? calcularCbsIbs(data.overview.totalRevenue)
+    : null;
+
   return (
     <div className="w-full space-y-8 pb-10">
+      {/* Título e ações */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-white/5 pb-6">
         <div>
           <h2 className="text-3xl font-black text-white tracking-tight">
@@ -185,6 +201,7 @@ export default function DashboardPage() {
           id="dashboard-content"
           className={`space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 ${loading ? 'opacity-40 pointer-events-none' : ''}`}
         >
+          {/* KPIs principais */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <KPICard
               title="Faturamento Bruto"
@@ -216,6 +233,88 @@ export default function DashboardPage() {
             />
           </div>
 
+          {/* ─── Painel CBS/IBS com impacto calculado ──────────────────── */}
+          {cbsIbsImpact && (
+            <div className="bg-[#090d16] border border-amber-500/20 rounded-[2rem] p-6 space-y-5 animate-in fade-in duration-500">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <ShieldAlert size={18} className="text-amber-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-white uppercase tracking-wider">
+                    Impacto CBS/IBS no seu Faturamento
+                  </h3>
+                  <p className="text-[10px] text-slate-500 mt-0.5">
+                    Obrigatório em NF-e a partir de 01/08/2026 • Reforma Tributária EC 132/2023
+                  </p>
+                </div>
+              </div>
+
+              {/* Métricas de impacto */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-4">
+                  <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2">
+                    Base de Cálculo
+                  </p>
+                  <p className="text-base font-black text-white">
+                    {cbsIbsImpact.baseValue.toLocaleString('pt-BR', {
+                      style: 'currency',
+                      currency: 'BRL',
+                    })}
+                  </p>
+                  <p className="text-[9px] text-slate-500 mt-1">faturamento atual</p>
+                </div>
+
+                <div className="bg-amber-500/[0.06] border border-amber-500/20 rounded-2xl p-4">
+                  <p className="text-[9px] font-black uppercase text-amber-500/70 tracking-widest mb-2">
+                    CBS — 0,9%
+                  </p>
+                  <p className="text-base font-black text-amber-400">
+                    {cbsIbsImpact.cbs.toLocaleString('pt-BR', {
+                      style: 'currency',
+                      currency: 'BRL',
+                    })}
+                  </p>
+                  <p className="text-[9px] text-slate-500 mt-1">Contribuição sobre B&S</p>
+                </div>
+
+                <div className="bg-orange-500/[0.06] border border-orange-500/20 rounded-2xl p-4">
+                  <p className="text-[9px] font-black uppercase text-orange-500/70 tracking-widest mb-2">
+                    IBS — 0,1%
+                  </p>
+                  <p className="text-base font-black text-orange-400">
+                    {cbsIbsImpact.ibs.toLocaleString('pt-BR', {
+                      style: 'currency',
+                      currency: 'BRL',
+                    })}
+                  </p>
+                  <p className="text-[9px] text-slate-500 mt-1">Imposto sobre B&S</p>
+                </div>
+
+                <div className="bg-red-500/[0.06] border border-red-500/20 rounded-2xl p-4">
+                  <p className="text-[9px] font-black uppercase text-red-500/70 tracking-widest mb-2">
+                    Impacto Total — 1%
+                  </p>
+                  <p className="text-base font-black text-red-400">
+                    {cbsIbsImpact.total.toLocaleString('pt-BR', {
+                      style: 'currency',
+                      currency: 'BRL',
+                    })}
+                  </p>
+                  <p className="text-[9px] text-slate-500 mt-1">CBS + IBS por ciclo</p>
+                </div>
+              </div>
+
+              {/* Banner compacto com contagem regressiva */}
+              <CbsIbsAlertBanner
+                estimatedMonthlyRevenue={0}
+                dismissible={false}
+                compact
+              />
+            </div>
+          )}
+
+          {/* Gráfico do Histórico */}
           <div className="bg-[#090d16] border border-white/5 p-8 rounded-[2.5rem] shadow-[0_4px_30px_rgba(0,0,0,0.4)] relative overflow-hidden">
             <div className="absolute top-0 right-0 p-8 opacity-[0.02] pointer-events-none">
               <TrendingUp size={140} className="text-white" />
@@ -228,6 +327,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
+          {/* Banner de Insight Estratégico */}
           <div className="bg-gradient-to-r from-[#090d16] to-[#0d1527] p-7 rounded-[2rem] text-white flex flex-col md:flex-row items-start md:items-center justify-between border border-white/5 shadow-xl gap-4">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 flex-shrink-0">

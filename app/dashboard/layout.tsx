@@ -5,6 +5,7 @@ import { Building2 } from 'lucide-react';
 import { useCompany } from '@/app/context/CompanyContext';
 import CompanySessionHydrator from '@/components/session/CompanySessionHydrator';
 import Sidebar from '@/components/Sidebar';
+import CbsIbsAlertBanner from '@/components/alerts/CbsIbsAlertBanner';
 
 /**
  * DashboardLayout (Enterprise Grade)
@@ -25,7 +26,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Core Viewport Container */}
         <main className="flex-1 flex flex-col min-w-0 min-h-screen p-8 lg:p-12">
           {/* Header de Contexto do Ecossistema */}
-          <header className="flex justify-between items-center mb-10 w-full animate-in fade-in slide-in-from-top-3 duration-500">
+          <header className="flex justify-between items-center mb-6 w-full animate-in fade-in slide-in-from-top-3 duration-500">
             <div>
               <div className="flex items-center gap-2 mb-1.5">
                 <Building2
@@ -58,7 +59,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           </header>
 
-          {/* 
+          {/* ─── Banner Global CBS/IBS ─────────────────────────────────────
+              Aparece em todas as rotas do dashboard até o usuário fechar.
+              Passa o faturamento da empresa selecionada quando disponível.
+          ──────────────────────────────────────────────────────────────── */}
+          <div className="mb-6 animate-in fade-in slide-in-from-top-2 duration-700">
+            <CbsIbsAlertBanner
+              dismissible
+              compact={false}
+            />
+          </div>
+
+          {/*
             Container de Injeção de Rota Dinâmica
             w-full e min-w-0 são mandatórios para forçar o Recharts a calcular a largura real do grid.
           */}
