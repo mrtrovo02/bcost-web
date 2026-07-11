@@ -6,8 +6,11 @@ import { api, isDemoSession } from '@/services/api';
 import { getDemoFiscalData } from '@/services/demo-data';
 import { useCompany } from '@/app/context/CompanyContext';
 import TaxEvolutionChart from '@/components/TaxEvolutionChart';
+import CbsIbsAlertBanner, { calcularCbsIbs } from '@/components/alerts/CbsIbsAlertBanner';
+import SplitPaymentProjector from '@/components/split-payment/SplitPaymentProjector';
 import { MonthlyPerformance } from '@/lib/types/fiscal';
-import { TrendingUp, Download, Activity, AlertCircle, Clock, DollarSign } from 'lucide-react';
+import { CBS_IBS_TRANSITION } from '@/lib/tax-reform/official-data';
+import { TrendingUp, Download, Activity, AlertCircle, Clock, DollarSign, ShieldAlert } from 'lucide-react';
 
 type DashboardHistoryEntry = MonthlyPerformance;
 
@@ -183,6 +186,12 @@ export default function DashboardPage() {
     }
   };
 
+  const cbsIbsImpact = data?.overview.totalRevenue ? calcularCbsIbs(data.overview.totalRevenue) : null;
+  const effectiveTaxRate =
+    data?.overview.totalRevenue && data.overview.totalRevenue > 0
+      ? data.overview.estimatedTax / data.overview.totalRevenue
+      : 0.11;
+
   return (
     <div className="w-full space-y-8 pb-10">
       {/* Título da Rota e Ações */}
@@ -266,6 +275,40 @@ export default function DashboardPage() {
               badgeColor="bg-emerald-500/10 text-emerald-400"
             />
           </div>
+
+          <CbsIbsAlertBanner
+            estimatedMonthlyRevenue={data?.overview.totalRevenue || 0}
+            dismissible={false}
+          />
+
+          {cbsIbsImpact && (
+            <div className="bg-[#090d16] border border-amber-500/20 rounded-[2rem] p-6 space-y-5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <ShieldAlert size={18} className="text-amber-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-white uppercase tracking-wider">
+                    Preparacao CBS/IBS por faturamento
+                  </h3>
+                  <p className="text-[10px] text-slate-500 mt-0.5">
+                    {CBS_IBS_TRANSITION.phaseLabel} · percentuais de teste sobre a base atual
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <ImpactCard label="Base atual" value={cbsIbsImpact.baseValue} helper="faturamento do ciclo" />
+                <ImpactCard label="CBS 0,9%" value={cbsIbsImpact.cbs} helper="destaque federal" color="text-amber-400" />
+                <ImpactCard label="IBS 0,1%" value={cbsIbsImpact.ibs} helper="destaque estadual/municipal" color="text-orange-400" />
+                <ImpactCard label="Teste total 1%" value={cbsIbsImpact.total} helper="CBS + IBS" color="text-red-400" />
+              </div>
+            </div>
+          )}
+
+          <SplitPaymentProjector
+            faturamentoMensal={data?.overview.totalRevenue || 150000}
+            aliquotaEfetiva={effectiveTaxRate}
+          />
 
           {/* Gráfico do Histórico */}
           <div className="bg-[#090d16] border border-white/5 p-8 rounded-[2.5rem] shadow-[0_4px_30px_rgba(0,0,0,0.4)] relative overflow-hidden">
@@ -358,6 +401,27 @@ function KPICard({
           ? Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
           : value}
       </h4>
+    </div>
+  );
+}
+
+interface ImpactCardProps {
+  label: string;
+  value: number;
+  helper: string;
+  color?: string;
+}
+
+function ImpactCard({ label, value, helper, color = 'text-white' }: ImpactCardProps) {
+  return (
+    <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-4">
+      <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2">
+        {label}
+      </p>
+      <p className={`text-base font-black ${color}`}>
+        {value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+      </p>
+      <p className="text-[9px] text-slate-500 mt-1">{helper}</p>
     </div>
   );
 }

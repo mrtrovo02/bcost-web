@@ -1,7 +1,8 @@
 ﻿'use client';
 
 import { useState, useMemo } from 'react';
-import { AlertTriangle, TrendingDown, Wallet, Calculator, ChevronDown, ChevronUp, Info } from 'lucide-react';
+import { AlertTriangle, TrendingDown, Calculator, ChevronDown, ChevronUp, Info } from 'lucide-react';
+import { SPLIT_PAYMENT_ASSUMPTIONS } from '@/lib/tax-reform/official-data';
 
 // ---------------------------------------------------------------------------
 // Tipos
@@ -31,11 +32,11 @@ export interface SplitPaymentConfig {
 // ---------------------------------------------------------------------------
 
 const FASES_SPLIT: Record<number, { pix: number; cartao: number; boleto: number; descricao: string }> = {
-  2026: { pix: 0.01, cartao: 0.01, boleto: 0.00, descricao: 'Fase piloto (2026) -- PIX e cartao' },
-  2027: { pix: 0.25, cartao: 0.25, boleto: 0.10, descricao: 'Fase 1 (2027) -- expansao gradual' },
-  2028: { pix: 0.50, cartao: 0.50, boleto: 0.30, descricao: 'Fase 2 (2028) -- metade dos pagamentos' },
-  2029: { pix: 1.00, cartao: 1.00, boleto: 0.75, descricao: 'Fase 3 (2029) -- quase pleno' },
-  2030: { pix: 1.00, cartao: 1.00, boleto: 1.00, descricao: 'Fase plena (2030+) -- todos os meios' },
+  2026: { pix: 0.01, cartao: 0.01, boleto: 0.00, descricao: 'Premissa bCost 2026 -- teste de sensibilidade' },
+  2027: { pix: 0.25, cartao: 0.25, boleto: 0.10, descricao: 'Premissa bCost 2027 -- expansao gradual' },
+  2028: { pix: 0.50, cartao: 0.50, boleto: 0.30, descricao: 'Premissa bCost 2028 -- metade dos recebimentos' },
+  2029: { pix: 1.00, cartao: 1.00, boleto: 0.75, descricao: 'Premissa bCost 2029 -- quase pleno' },
+  2030: { pix: 1.00, cartao: 1.00, boleto: 1.00, descricao: 'Premissa bCost 2030+ -- todos os meios' },
 };
 
 export function calcularSplitPayment(config: SplitPaymentConfig, ano: number): SplitPaymentProjecao[] {
@@ -133,18 +134,18 @@ export default function SplitPaymentProjector({
                 <TrendingDown size={14} className="text-rose-400" />
               </div>
               <span className="text-[10px] font-black uppercase text-rose-400 tracking-widest">
-                Split Payment -- Reforma Tributaria 2026
+                Split Payment -- {SPLIT_PAYMENT_ASSUMPTIONS.phaseLabel}
               </span>
             </div>
             <h2 className="text-2xl font-black text-white tracking-tight">
               Projetor de Impacto no Fluxo de Caixa
             </h2>
             <p className="text-sm text-slate-400 mt-2 max-w-xl">
-              O Split Payment desconta o imposto automaticamente no momento do recebimento via PIX, cartao e boleto.
-              Simule o impacto real no seu caixa mes a mes.
+              Simule quanto do imposto poderia ser retido no momento do recebimento via PIX, cartao e boleto.
+              Use como planejamento de caixa enquanto a regulamentacao operacional avanca.
             </p>
             <div className="mt-3 text-xs text-slate-500 bg-white/5 border border-white/10 rounded-xl px-3 py-2 inline-block">
-              {fase?.descricao}
+              {fase?.descricao}. {SPLIT_PAYMENT_ASSUMPTIONS.caveat}
             </div>
           </div>
 
@@ -254,7 +255,7 @@ export default function SplitPaymentProjector({
         <div className="flex items-center gap-2 mb-5">
           <Info size={12} className="text-slate-400" />
           <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
-            Imposto retido automaticamente por mes -- {anoSelecionado}
+            Projecao gerencial de imposto retido por mes -- {anoSelecionado}
           </p>
         </div>
         <div className="grid grid-cols-6 md:grid-cols-12 gap-2">
@@ -323,8 +324,8 @@ export default function SplitPaymentProjector({
             Acao recomendada pelo bCost
           </p>
           <p className="text-xs text-amber-700 leading-relaxed">
-            Com o Split Payment, voce nao vai receber o valor integral das vendas. Em {anoSelecionado},
-            o impacto estimado e de <strong>{fmt(totalImposto)}</strong> retidos automaticamente.
+            Em um cenario com Split Payment, parte do imposto pode deixar de entrar no caixa no momento da venda.
+            Para {anoSelecionado}, esta premissa estima <strong>{fmt(totalImposto)}</strong> de retencao gerencial.
             Ajuste seu capital de giro e negocie prazos de pagamento com fornecedores antes de {anoSelecionado}.
           </p>
         </div>

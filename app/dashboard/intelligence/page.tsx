@@ -7,7 +7,9 @@ import { getDemoFiscalData } from '@/services/demo-data';
 import { useCompany } from '@/app/context/CompanyContext';
 import TaxEvolutionChart from '@/components/TaxEvolutionChart';
 import CbsIbsAlertBanner, { calcularCbsIbs } from '@/components/alerts/CbsIbsAlertBanner';
+import TaxReformScenarioStack from '@/components/tax-reform/TaxReformScenarioStack';
 import { MonthlyPerformance } from '@/lib/types/fiscal';
+import { CBS_IBS_TRANSITION } from '@/lib/tax-reform/official-data';
 import { FiscalModuleFactory } from '@/shared/factories/fiscal-factory.shared';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -18,7 +20,6 @@ import {
   AlertCircle,
   Clock,
   DollarSign,
-  Receipt,
   ShieldAlert,
 } from 'lucide-react';
 
@@ -148,6 +149,12 @@ export default function DashboardPage() {
   const cbsIbsImpact = data?.overview.totalRevenue
     ? calcularCbsIbs(data.overview.totalRevenue)
     : null;
+  const annualizedRevenue = data?.overview.totalRevenue
+    ? data.overview.totalRevenue * 12
+    : 0;
+  const annualizedTax = data?.overview.estimatedTax
+    ? data.overview.estimatedTax * 12
+    : 0;
 
   return (
     <div className="w-full space-y-8 pb-10">
@@ -245,7 +252,7 @@ export default function DashboardPage() {
                     Impacto CBS/IBS no seu Faturamento
                   </h3>
                   <p className="text-[10px] text-slate-500 mt-0.5">
-                    Obrigatório em NF-e a partir de 01/08/2026 • Reforma Tributária EC 132/2023
+                    {CBS_IBS_TRANSITION.phaseLabel} a partir de {CBS_IBS_TRANSITION.displayStartDate} • Reforma Tributária EC 132/2023
                   </p>
                 </div>
               </div>
@@ -293,7 +300,7 @@ export default function DashboardPage() {
 
                 <div className="bg-red-500/[0.06] border border-red-500/20 rounded-2xl p-4">
                   <p className="text-[9px] font-black uppercase text-red-500/70 tracking-widest mb-2">
-                    Impacto Total — 1%
+                    Teste Total — 1%
                   </p>
                   <p className="text-base font-black text-red-400">
                     {cbsIbsImpact.total.toLocaleString('pt-BR', {
@@ -301,7 +308,7 @@ export default function DashboardPage() {
                       currency: 'BRL',
                     })}
                   </p>
-                  <p className="text-[9px] text-slate-500 mt-1">CBS + IBS por ciclo</p>
+                  <p className="text-[9px] text-slate-500 mt-1">CBS + IBS como destaque</p>
                 </div>
               </div>
 
@@ -312,6 +319,13 @@ export default function DashboardPage() {
                 compact
               />
             </div>
+          )}
+
+          {annualizedRevenue > 0 && (
+            <TaxReformScenarioStack
+              annualRevenue={annualizedRevenue}
+              currentTax={annualizedTax}
+            />
           )}
 
           {/* Gráfico do Histórico */}
