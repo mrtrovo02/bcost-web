@@ -77,7 +77,7 @@ function buildGenericRecords(module: BcostSchemaModule): EnterpriseModuleRecord[
   });
 }
 
-function buildAutomationRecords(module: BcostSchemaModule): EnterpriseModuleRecord[] {
+function buildAutomationRecords(): EnterpriseModuleRecord[] {
   return [
     {
       id: 'job-001',
@@ -126,7 +126,7 @@ function buildAutomationRecords(module: BcostSchemaModule): EnterpriseModuleReco
 
 function buildRecords(module: BcostSchemaModule): EnterpriseModuleRecord[] {
   if (module.slug === 'automation-jobs') {
-    return buildAutomationRecords(module);
+    return buildAutomationRecords();
   }
 
   if (module.slug === 'accounting-entries') {
@@ -210,16 +210,16 @@ export function createDemoEnterpriseResponse(
   companyId = DEMO_COMPANY_ID,
   params?: DemoParams,
 ): EnterpriseModuleResponse {
-  const module = moduleInfo(slug);
-  const allRecords = filterRecords(buildRecords(module), params?.search);
+  const schemaModule = moduleInfo(slug);
+  const allRecords = filterRecords(buildRecords(schemaModule), params?.search);
   const offset = params?.offset ?? 0;
   const limit = params?.limit ?? 100;
   const items = allRecords.slice(offset, offset + limit);
 
   return {
     slug,
-    model: module.model,
-    label: module.title,
+    model: schemaModule.model,
+    label: schemaModule.title,
     companyId,
     status: 'OK_WITH_FALLBACK',
     items,
@@ -227,30 +227,30 @@ export function createDemoEnterpriseResponse(
     limit,
     offset,
     hasMore: offset + limit < allRecords.length,
-    summary: summarize(allRecords, module),
+    summary: summarize(allRecords, schemaModule),
     generatedAt: new Date().toISOString(),
   };
 }
 
 export function createDemoEnterprisePayload(
-  module: BcostSchemaModule,
+  schemaModule: BcostSchemaModule,
   endpoint: string | null,
-  status: BcostModuleStatus = module.status,
+  status: BcostModuleStatus = schemaModule.status,
 ): EnterpriseModulePayload {
-  const records = buildRecords(module);
+  const records = buildRecords(schemaModule);
 
   return {
-    slug: module.slug,
-    title: module.title,
+    slug: schemaModule.slug,
+    title: schemaModule.title,
     status,
     endpoint,
     connected: false,
     records,
-    summary: summarize(records, module),
+    summary: summarize(records, schemaModule),
     raw: {
       fallback: true,
       records,
-      summary: summarize(records, module),
+      summary: summarize(records, schemaModule),
     },
     message:
       'Módulo operacional em modo demonstração. Conecte o endpoint backend para substituir estes dados por dados reais.',

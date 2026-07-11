@@ -458,15 +458,15 @@ export default function PayrollPage() {
                   </td>
                   <td className="p-6">
                     <p className="text-[11px] font-bold text-slate-900 uppercase truncate max-w-[200px]">
-                      {(record as any)?.role ?? 'Não Informado'}
+                      {record.role ?? 'Não Informado'}
                     </p>
                     <p className="text-[9px] font-bold text-slate-400 uppercase">
-                      {(record as any)?.department ?? 'Sem Departamento'}
+                      {record.department ?? 'Sem Departamento'}
                     </p>
                   </td>
                   <td className="p-6 text-right">
                     <p className="text-[13px] font-black text-slate-900">
-                      {formatCurrency((record as any)?.netPay ?? record?.amount ?? 0)}
+                      {formatCurrency(record.netPay ?? record.amount ?? 0)}
                     </p>
                   </td>
                   <td className="p-6">

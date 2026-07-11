@@ -21,8 +21,12 @@ export default function OpenFinanceWidget({ companyId }: OpenFinanceWidgetProps)
       const useCase = OpenFinanceModuleFactory.makeSyncBankAccountsUseCase();
       const data = await useCase.execute({ companyId });
       setAccounts(data);
-    } catch (err: any) {
-      setError(err.message || 'Falha ao sincronizar dados bancários do Open Finance.');
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Falha ao sincronizar dados bancários do Open Finance.',
+      );
     } finally {
       setLoading(false);
     }
@@ -37,7 +41,7 @@ export default function OpenFinanceWidget({ companyId }: OpenFinanceWidgetProps)
           </h3>
           <p className="text-slate-400 text-xs mt-1">Sincronize suas contas PJ em tempo real.</p>
         </div>
-        
+
         <button
           onClick={handleSync}
           disabled={loading}
@@ -58,18 +62,25 @@ export default function OpenFinanceWidget({ companyId }: OpenFinanceWidgetProps)
       {accounts.length === 0 ? (
         <div className="border border-dashed border-white/5 rounded-2xl p-8 text-center bg-white/[0.01]">
           <Link2 className="w-8 h-8 text-slate-600 mx-auto mb-2" />
-          <p className="text-slate-400 text-xs">Nenhuma instituição financeira integrada via Open Finance.</p>
+          <p className="text-slate-400 text-xs">
+            Nenhuma instituição financeira integrada via Open Finance.
+          </p>
         </div>
       ) : (
         <div className="space-y-3">
           {accounts.map((account) => (
-            <div 
-              key={account.id} 
+            <div
+              key={account.id}
               className="flex items-center justify-between p-4 bg-white/[0.02] border border-white/5 rounded-2xl hover:border-white/10 transition-all"
             >
               <div className="flex items-center gap-3">
                 {account.logoUrl ? (
-                  <img src={account.logoUrl} alt={account.bankName} className="w-9 h-9 rounded-xl object-contain bg-white/5 p-1" />
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={account.logoUrl}
+                    alt={account.bankName}
+                    className="w-9 h-9 rounded-xl object-contain bg-white/5 p-1"
+                  />
                 ) : (
                   <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center text-slate-400 font-bold text-xs">
                     {account.bankName.substring(0, 2).toUpperCase()}
@@ -77,12 +88,17 @@ export default function OpenFinanceWidget({ companyId }: OpenFinanceWidgetProps)
                 )}
                 <div>
                   <p className="text-white text-sm font-semibold">{account.name}</p>
-                  <p className="text-slate-500 text-xs font-medium uppercase tracking-wider">{account.bankName} • {account.type}</p>
+                  <p className="text-slate-500 text-xs font-medium uppercase tracking-wider">
+                    {account.bankName} • {account.type}
+                  </p>
                 </div>
               </div>
               <div className="text-right">
                 <p className="text-white text-sm font-bold">
-                  {account.balance.toLocaleString('pt-BR', { style: 'currency', currency: account.currency })}
+                  {account.balance.toLocaleString('pt-BR', {
+                    style: 'currency',
+                    currency: account.currency,
+                  })}
                 </p>
                 <p className="text-emerald-500 text-xs flex items-center gap-1 justify-end mt-0.5 font-medium">
                   <CheckCircle className="w-2.5 h-2.5" /> Sincronizado
@@ -95,4 +111,3 @@ export default function OpenFinanceWidget({ companyId }: OpenFinanceWidgetProps)
     </div>
   );
 }
-

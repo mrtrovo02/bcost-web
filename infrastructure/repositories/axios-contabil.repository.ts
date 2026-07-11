@@ -3,14 +3,17 @@
  * Repositório contábil usando o cliente api do projeto (com interceptors de auth).
  */
 import { api } from '@/services/api';
-import { IContabilRepository } from '@/application/use-cases/generate-dre.usecase';
+import {
+  IContabilRepository,
+  LancamentoContabil,
+} from '@/application/use-cases/generate-dre.usecase';
 
 export class AxiosContabilRepository implements IContabilRepository {
   public async getLancamentosPeriodo(
     companyId: string,
     dataInicio: string,
     dataFim: string,
-  ): Promise<any[]> {
+  ): Promise<LancamentoContabil[]> {
     try {
       const response = await api.get('/accounting/enterprise/entries/' + companyId, {
         params: { from: dataInicio, to: dataFim, limit: 1000 },

@@ -4,8 +4,29 @@
  */
 import { DemonstrativoFinanceiroResult } from '@/domain/contabil/contabil.contracts';
 
+export interface LancamentoContabil {
+  date?: string;
+  dataLancamento?: string;
+  description?: string;
+  historico?: string;
+  origin?: string;
+  origem?: string;
+  amount?: number;
+  accountName?: string;
+  debitCode?: string;
+  debitAccountName?: string;
+  debito?: string;
+  creditCode?: string;
+  creditAccountName?: string;
+  credito?: string;
+}
+
 export interface IContabilRepository {
-  getLancamentosPeriodo(companyId: string, dataInicio: string, dataFim: string): Promise<any[]>;
+  getLancamentosPeriodo(
+    companyId: string,
+    dataInicio: string,
+    dataFim: string,
+  ): Promise<LancamentoContabil[]>;
 }
 
 export interface GenerateDreInput {

@@ -1,18 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  BarChart3,
-  BookOpen,
-  ChevronDown,
-  Download,
-  FileSpreadsheet,
-  Layers3,
-  Loader2,
-  RefreshCw,
-  Scale,
-  TrendingUp,
-} from 'lucide-react';
+import { BookOpen, Layers3, Loader2, RefreshCw, Scale, TrendingUp } from 'lucide-react';
 import { ContabilModuleFactory } from '@/shared/factories/contabil-factory.shared';
 import type {
   BalancoPatrimonialResult,
@@ -124,11 +113,46 @@ function getDemoBalancete(mes: number, ano: number): BalanceteResult {
   return {
     periodo: `${String(mes).padStart(2, '0')}/${ano}`,
     contas: [
-      { codigo: '1.1.1', nome: 'Caixa', saldoAnterior: 0, debitos: 280000, creditos: 120000, saldoAtual: 160000 },
-      { codigo: '1.1.3', nome: 'Contas a Receber', saldoAnterior: 0, debitos: 145000, creditos: 80000, saldoAtual: 65000 },
-      { codigo: '2.1.1', nome: 'Fornecedores', saldoAnterior: 0, debitos: 40000, creditos: 65000, saldoAtual: -25000 },
-      { codigo: '3.1', nome: 'Receitas de Serviços', saldoAnterior: 0, debitos: 0, creditos: 150000, saldoAtual: -150000 },
-      { codigo: '6.1', nome: 'Despesas Administrativas', saldoAnterior: 0, debitos: 45000, creditos: 0, saldoAtual: 45000 },
+      {
+        codigo: '1.1.1',
+        nome: 'Caixa',
+        saldoAnterior: 0,
+        debitos: 280000,
+        creditos: 120000,
+        saldoAtual: 160000,
+      },
+      {
+        codigo: '1.1.3',
+        nome: 'Contas a Receber',
+        saldoAnterior: 0,
+        debitos: 145000,
+        creditos: 80000,
+        saldoAtual: 65000,
+      },
+      {
+        codigo: '2.1.1',
+        nome: 'Fornecedores',
+        saldoAnterior: 0,
+        debitos: 40000,
+        creditos: 65000,
+        saldoAtual: -25000,
+      },
+      {
+        codigo: '3.1',
+        nome: 'Receitas de Serviços',
+        saldoAnterior: 0,
+        debitos: 0,
+        creditos: 150000,
+        saldoAtual: -150000,
+      },
+      {
+        codigo: '6.1',
+        nome: 'Despesas Administrativas',
+        saldoAnterior: 0,
+        debitos: 45000,
+        creditos: 0,
+        saldoAtual: 45000,
+      },
     ],
     totalDebitos: 510000,
     totalCreditos: 415000,
@@ -141,11 +165,41 @@ function getDemoRazao(): RazaoContabilResult {
     nomeConta: 'Caixa e Equivalentes',
     periodo: `01/${ANO_ATUAL} a 06/${ANO_ATUAL}`,
     lancamentos: [
-      { data: `${ANO_ATUAL}-01-05`, historico: 'Recebimento NF-001', debito: 45000, credito: 0, saldo: 45000 },
-      { data: `${ANO_ATUAL}-01-10`, historico: 'Pagamento Fornecedor', debito: 0, credito: 12000, saldo: 33000 },
-      { data: `${ANO_ATUAL}-02-03`, historico: 'Recebimento NF-002', debito: 38000, credito: 0, saldo: 71000 },
-      { data: `${ANO_ATUAL}-02-15`, historico: 'Despesa Operacional', debito: 0, credito: 8500, saldo: 62500 },
-      { data: `${ANO_ATUAL}-03-08`, historico: 'Recebimento NF-003', debito: 62000, credito: 0, saldo: 124500 },
+      {
+        data: `${ANO_ATUAL}-01-05`,
+        historico: 'Recebimento NF-001',
+        debito: 45000,
+        credito: 0,
+        saldo: 45000,
+      },
+      {
+        data: `${ANO_ATUAL}-01-10`,
+        historico: 'Pagamento Fornecedor',
+        debito: 0,
+        credito: 12000,
+        saldo: 33000,
+      },
+      {
+        data: `${ANO_ATUAL}-02-03`,
+        historico: 'Recebimento NF-002',
+        debito: 38000,
+        credito: 0,
+        saldo: 71000,
+      },
+      {
+        data: `${ANO_ATUAL}-02-15`,
+        historico: 'Despesa Operacional',
+        debito: 0,
+        credito: 8500,
+        saldo: 62500,
+      },
+      {
+        data: `${ANO_ATUAL}-03-08`,
+        historico: 'Recebimento NF-003',
+        debito: 62000,
+        credito: 0,
+        saldo: 124500,
+      },
     ],
     saldoFinal: 124500,
   };
@@ -198,20 +252,8 @@ function KpiCard({
   );
 }
 
-function SectionHeader({ title, subtitle }: { title: string; subtitle: string }) {
-  return (
-    <div className="mb-6">
-      <h3 className="text-lg font-black text-slate-900 uppercase tracking-wide">{title}</h3>
-      <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>
-    </div>
-  );
-}
-
 // DRE
 function DREView({ data }: { data: DemonstrativoFinanceiroResult }) {
-  const isPositive = (codigo: string) =>
-    !codigo.startsWith('3.1') && !codigo.startsWith('5') && !codigo.startsWith('6');
-
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -237,21 +279,30 @@ function DREView({ data }: { data: DemonstrativoFinanceiroResult }) {
         <table className="w-full">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-100">
-              <th className="p-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest">Código</th>
-              <th className="p-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest">Descrição</th>
-              <th className="p-4 text-right text-[10px] font-black uppercase text-slate-400 tracking-widest">Valor (R$)</th>
+              <th className="p-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                Código
+              </th>
+              <th className="p-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                Descrição
+              </th>
+              <th className="p-4 text-right text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                Valor (R$)
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
             {data.linhas.map((linha) => {
-              const isTotal = linha.codigo === '7' || linha.codigo === '5.1' || linha.codigo === '3.2';
+              const isTotal =
+                linha.codigo === '7' || linha.codigo === '5.1' || linha.codigo === '3.2';
               return (
                 <tr
                   key={linha.codigo}
                   className={isTotal ? 'bg-slate-50' : 'hover:bg-slate-50/50 transition-colors'}
                 >
                   <td className="p-4 text-xs font-mono text-slate-400">{linha.codigo}</td>
-                  <td className={`p-4 text-sm ${isTotal ? 'font-black text-slate-900' : 'font-medium text-slate-700'}`}>
+                  <td
+                    className={`p-4 text-sm ${isTotal ? 'font-black text-slate-900' : 'font-medium text-slate-700'}`}
+                  >
                     {linha.descricao}
                   </td>
                   <td
@@ -273,7 +324,10 @@ function DREView({ data }: { data: DemonstrativoFinanceiroResult }) {
           </tbody>
           <tfoot>
             <tr className="bg-blue-600">
-              <td colSpan={2} className="p-4 text-sm font-black text-white uppercase tracking-wider">
+              <td
+                colSpan={2}
+                className="p-4 text-sm font-black text-white uppercase tracking-wider"
+              >
                 RESULTADO LÍQUIDO DO EXERCÍCIO — {data.periodo}
               </td>
               <td className="p-4 text-right text-sm font-black text-white">
@@ -313,26 +367,42 @@ function BalancoView({ data }: { data: BalancoPatrimonialResult }) {
           </div>
           <div className="p-4 space-y-4">
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Circulante</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                Circulante
+              </p>
               {data.ativo.circulante.map((item) => (
-                <div key={item.descricao} className="flex justify-between py-2 border-b border-slate-50 last:border-0">
+                <div
+                  key={item.descricao}
+                  className="flex justify-between py-2 border-b border-slate-50 last:border-0"
+                >
                   <span className="text-sm text-slate-600">{item.descricao}</span>
-                  <span className="text-sm font-black text-slate-900">{formatCurrency(item.valor)}</span>
+                  <span className="text-sm font-black text-slate-900">
+                    {formatCurrency(item.valor)}
+                  </span>
                 </div>
               ))}
             </div>
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Não Circulante</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                Não Circulante
+              </p>
               {data.ativo.naoCirculante.map((item) => (
-                <div key={item.descricao} className="flex justify-between py-2 border-b border-slate-50 last:border-0">
+                <div
+                  key={item.descricao}
+                  className="flex justify-between py-2 border-b border-slate-50 last:border-0"
+                >
                   <span className="text-sm text-slate-600">{item.descricao}</span>
-                  <span className="text-sm font-black text-slate-900">{formatCurrency(item.valor)}</span>
+                  <span className="text-sm font-black text-slate-900">
+                    {formatCurrency(item.valor)}
+                  </span>
                 </div>
               ))}
             </div>
             <div className="flex justify-between pt-3 border-t-2 border-blue-600">
               <span className="text-sm font-black text-slate-900 uppercase">Total Ativo</span>
-              <span className="text-sm font-black text-blue-600">{formatCurrency(data.ativo.totalAtivo)}</span>
+              <span className="text-sm font-black text-blue-600">
+                {formatCurrency(data.ativo.totalAtivo)}
+              </span>
             </div>
           </div>
         </div>
@@ -340,39 +410,66 @@ function BalancoView({ data }: { data: BalancoPatrimonialResult }) {
         {/* PASSIVO + PL */}
         <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
           <div className="bg-emerald-600 p-4">
-            <p className="text-xs font-black text-white uppercase tracking-widest">PASSIVO + PATRIMÔNIO LÍQUIDO</p>
+            <p className="text-xs font-black text-white uppercase tracking-widest">
+              PASSIVO + PATRIMÔNIO LÍQUIDO
+            </p>
           </div>
           <div className="p-4 space-y-4">
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Circulante</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                Circulante
+              </p>
               {data.passivo.circulante.map((item) => (
-                <div key={item.descricao} className="flex justify-between py-2 border-b border-slate-50 last:border-0">
+                <div
+                  key={item.descricao}
+                  className="flex justify-between py-2 border-b border-slate-50 last:border-0"
+                >
                   <span className="text-sm text-slate-600">{item.descricao}</span>
-                  <span className="text-sm font-black text-slate-900">{formatCurrency(item.valor)}</span>
+                  <span className="text-sm font-black text-slate-900">
+                    {formatCurrency(item.valor)}
+                  </span>
                 </div>
               ))}
             </div>
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Não Circulante</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                Não Circulante
+              </p>
               {data.passivo.naoCirculante.map((item) => (
-                <div key={item.descricao} className="flex justify-between py-2 border-b border-slate-50 last:border-0">
+                <div
+                  key={item.descricao}
+                  className="flex justify-between py-2 border-b border-slate-50 last:border-0"
+                >
                   <span className="text-sm text-slate-600">{item.descricao}</span>
-                  <span className="text-sm font-black text-slate-900">{formatCurrency(item.valor)}</span>
+                  <span className="text-sm font-black text-slate-900">
+                    {formatCurrency(item.valor)}
+                  </span>
                 </div>
               ))}
             </div>
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Patrimônio Líquido</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                Patrimônio Líquido
+              </p>
               {data.passivo.patrimonioLiquido.map((item) => (
-                <div key={item.descricao} className="flex justify-between py-2 border-b border-slate-50 last:border-0">
+                <div
+                  key={item.descricao}
+                  className="flex justify-between py-2 border-b border-slate-50 last:border-0"
+                >
                   <span className="text-sm text-slate-600">{item.descricao}</span>
-                  <span className="text-sm font-black text-emerald-600">{formatCurrency(item.valor)}</span>
+                  <span className="text-sm font-black text-emerald-600">
+                    {formatCurrency(item.valor)}
+                  </span>
                 </div>
               ))}
             </div>
             <div className="flex justify-between pt-3 border-t-2 border-emerald-600">
-              <span className="text-sm font-black text-slate-900 uppercase">Total Passivo + PL</span>
-              <span className="text-sm font-black text-emerald-600">{formatCurrency(data.passivo.totalPassivoEPL)}</span>
+              <span className="text-sm font-black text-slate-900 uppercase">
+                Total Passivo + PL
+              </span>
+              <span className="text-sm font-black text-emerald-600">
+                {formatCurrency(data.passivo.totalPassivoEPL)}
+              </span>
             </div>
           </div>
         </div>
@@ -404,7 +501,11 @@ function BalanceteView({ data }: { data: BalanceteResult }) {
         <KpiCard
           label="Diferença"
           value={Math.abs(data.totalDebitos - data.totalCreditos)}
-          color={Math.abs(data.totalDebitos - data.totalCreditos) < 1 ? 'text-emerald-600' : 'text-rose-600'}
+          color={
+            Math.abs(data.totalDebitos - data.totalCreditos) < 1
+              ? 'text-emerald-600'
+              : 'text-rose-600'
+          }
         />
       </div>
 
@@ -412,11 +513,21 @@ function BalanceteView({ data }: { data: BalanceteResult }) {
         <table className="w-full">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-100">
-              <th className="p-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest">Código</th>
-              <th className="p-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest">Conta</th>
-              <th className="p-4 text-right text-[10px] font-black uppercase text-slate-400 tracking-widest">Débitos</th>
-              <th className="p-4 text-right text-[10px] font-black uppercase text-slate-400 tracking-widest">Créditos</th>
-              <th className="p-4 text-right text-[10px] font-black uppercase text-slate-400 tracking-widest">Saldo</th>
+              <th className="p-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                Código
+              </th>
+              <th className="p-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                Conta
+              </th>
+              <th className="p-4 text-right text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                Débitos
+              </th>
+              <th className="p-4 text-right text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                Créditos
+              </th>
+              <th className="p-4 text-right text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                Saldo
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
@@ -424,9 +535,15 @@ function BalanceteView({ data }: { data: BalanceteResult }) {
               <tr key={conta.codigo} className="hover:bg-slate-50/50 transition-colors">
                 <td className="p-4 text-xs font-mono text-slate-400">{conta.codigo}</td>
                 <td className="p-4 text-sm text-slate-700">{conta.nome}</td>
-                <td className="p-4 text-sm text-right text-blue-600 font-bold">{formatCurrency(conta.debitos)}</td>
-                <td className="p-4 text-sm text-right text-rose-600 font-bold">{formatCurrency(conta.creditos)}</td>
-                <td className={`p-4 text-sm text-right font-black ${conta.saldoAtual >= 0 ? 'text-slate-900' : 'text-rose-600'}`}>
+                <td className="p-4 text-sm text-right text-blue-600 font-bold">
+                  {formatCurrency(conta.debitos)}
+                </td>
+                <td className="p-4 text-sm text-right text-rose-600 font-bold">
+                  {formatCurrency(conta.creditos)}
+                </td>
+                <td
+                  className={`p-4 text-sm text-right font-black ${conta.saldoAtual >= 0 ? 'text-slate-900' : 'text-rose-600'}`}
+                >
                   {formatCurrency(Math.abs(conta.saldoAtual))}
                   {conta.saldoAtual < 0 && ' C'}
                 </td>
@@ -435,9 +552,18 @@ function BalanceteView({ data }: { data: BalanceteResult }) {
           </tbody>
           <tfoot>
             <tr className="bg-slate-900">
-              <td colSpan={2} className="p-4 text-xs font-black text-white uppercase tracking-widest">TOTAIS</td>
-              <td className="p-4 text-right text-sm font-black text-blue-300">{formatCurrency(data.totalDebitos)}</td>
-              <td className="p-4 text-right text-sm font-black text-rose-300">{formatCurrency(data.totalCreditos)}</td>
+              <td
+                colSpan={2}
+                className="p-4 text-xs font-black text-white uppercase tracking-widest"
+              >
+                TOTAIS
+              </td>
+              <td className="p-4 text-right text-sm font-black text-blue-300">
+                {formatCurrency(data.totalDebitos)}
+              </td>
+              <td className="p-4 text-right text-sm font-black text-rose-300">
+                {formatCurrency(data.totalCreditos)}
+              </td>
               <td className="p-4 text-right text-sm font-black text-white">
                 {formatCurrency(Math.abs(data.totalDebitos - data.totalCreditos))}
               </td>
@@ -456,8 +582,12 @@ function RazaoView({ data }: { data: RazaoContabilResult }) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard label="Conta" value={0} />
         <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm col-span-2">
-          <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-2">Conta Analisada</p>
-          <p className="text-xl font-black text-slate-900">{data.conta} — {data.nomeConta}</p>
+          <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-2">
+            Conta Analisada
+          </p>
+          <p className="text-xl font-black text-slate-900">
+            {data.conta} — {data.nomeConta}
+          </p>
           <p className="text-xs text-slate-400 mt-1">{data.periodo}</p>
         </div>
         <KpiCard
@@ -471,11 +601,21 @@ function RazaoView({ data }: { data: RazaoContabilResult }) {
         <table className="w-full">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-100">
-              <th className="p-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest">Data</th>
-              <th className="p-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest">Histórico</th>
-              <th className="p-4 text-right text-[10px] font-black uppercase text-slate-400 tracking-widest">Débito</th>
-              <th className="p-4 text-right text-[10px] font-black uppercase text-slate-400 tracking-widest">Crédito</th>
-              <th className="p-4 text-right text-[10px] font-black uppercase text-slate-400 tracking-widest">Saldo</th>
+              <th className="p-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                Data
+              </th>
+              <th className="p-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                Histórico
+              </th>
+              <th className="p-4 text-right text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                Débito
+              </th>
+              <th className="p-4 text-right text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                Crédito
+              </th>
+              <th className="p-4 text-right text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                Saldo
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
@@ -491,7 +631,9 @@ function RazaoView({ data }: { data: RazaoContabilResult }) {
                 <td className="p-4 text-sm text-right text-rose-600 font-bold">
                   {l.credito > 0 ? formatCurrency(l.credito) : '—'}
                 </td>
-                <td className={`p-4 text-sm text-right font-black ${l.saldo >= 0 ? 'text-slate-900' : 'text-rose-600'}`}>
+                <td
+                  className={`p-4 text-sm text-right font-black ${l.saldo >= 0 ? 'text-slate-900' : 'text-rose-600'}`}
+                >
                   {formatCurrency(Math.abs(l.saldo))}
                   {l.saldo < 0 && ' C'}
                 </td>
@@ -500,10 +642,15 @@ function RazaoView({ data }: { data: RazaoContabilResult }) {
           </tbody>
           <tfoot>
             <tr className="bg-slate-900">
-              <td colSpan={4} className="p-4 text-xs font-black text-white uppercase tracking-widest">
+              <td
+                colSpan={4}
+                className="p-4 text-xs font-black text-white uppercase tracking-widest"
+              >
                 SALDO FINAL — {data.conta}
               </td>
-              <td className={`p-4 text-right text-sm font-black ${data.saldoFinal >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+              <td
+                className={`p-4 text-right text-sm font-black ${data.saldoFinal >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}
+              >
                 {formatCurrency(Math.abs(data.saldoFinal))}
               </td>
             </tr>
@@ -611,7 +758,9 @@ export default function ReportsPage() {
       {/* Filtros */}
       <div className="bg-[#090d16] border border-white/5 rounded-2xl p-5 flex flex-wrap gap-4 items-end">
         <div className="flex flex-col gap-1.5">
-          <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Ano</label>
+          <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">
+            Ano
+          </label>
           <select
             value={ano}
             onChange={(e) => setAno(Number(e.target.value))}
@@ -626,7 +775,9 @@ export default function ReportsPage() {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Mês</label>
+          <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">
+            Mês
+          </label>
           <select
             value={mes}
             onChange={(e) => setMes(Number(e.target.value))}
@@ -642,7 +793,9 @@ export default function ReportsPage() {
 
         {tab === 'razao' && (
           <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Conta</label>
+            <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">
+              Conta
+            </label>
             <input
               value={contaCodigo}
               onChange={(e) => setContaCodigo(e.target.value)}
@@ -654,7 +807,9 @@ export default function ReportsPage() {
 
         {(isDemoSession() || !companyId) && (
           <div className="flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-            <span className="text-amber-400 text-xs font-black uppercase tracking-widest">Demo Mode</span>
+            <span className="text-amber-400 text-xs font-black uppercase tracking-widest">
+              Demo Mode
+            </span>
           </div>
         )}
       </div>

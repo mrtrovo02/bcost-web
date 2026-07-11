@@ -53,14 +53,11 @@ interface CbsIbsAlertBannerProps {
 
 export default function CbsIbsAlertBanner({ estimatedMonthlyRevenue = 0, dismissible = true, compact = false }: CbsIbsAlertBannerProps) {
   const days = useDaysRemaining();
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return sessionStorage.getItem('bcost_cbs_ibs_dismissed') === 'true';
+  });
   const [expanded, setExpanded] = useState(false);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setDismissed(sessionStorage.getItem('bcost_cbs_ibs_dismissed') === 'true');
-    }
-  }, []);
 
   const handleDismiss = () => {
     sessionStorage.setItem('bcost_cbs_ibs_dismissed', 'true');

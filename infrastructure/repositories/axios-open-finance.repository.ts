@@ -43,16 +43,16 @@ interface ApiTransactionSchema {
 
 export class AxiosOpenFinanceRepository implements OpenFinanceRepository {
   public async getAccounts(companyId: string): Promise<BankAccountEntity[]> {
-    const response = await api.get<ApiBankAccountSchema[] | { items?: ApiBankAccountSchema[]; accounts?: ApiBankAccountSchema[] }>(
-      `/open-finance/accounts?company_id=${encodeURIComponent(companyId)}`,
-    );
+    const response = await api.get<
+      ApiBankAccountSchema[] | { items?: ApiBankAccountSchema[]; accounts?: ApiBankAccountSchema[] }
+    >(`/open-finance/accounts?company_id=${encodeURIComponent(companyId)}`);
     const raw = response.data;
     const list: ApiBankAccountSchema[] = Array.isArray(raw)
       ? raw
-      : Array.isArray((raw as any)?.items)
-        ? (raw as any).items
-        : Array.isArray((raw as any)?.accounts)
-          ? (raw as any).accounts
+      : Array.isArray(raw.items)
+        ? raw.items
+        : Array.isArray(raw.accounts)
+          ? raw.accounts
           : [];
 
     return list.map(
@@ -77,8 +77,8 @@ export class AxiosOpenFinanceRepository implements OpenFinanceRepository {
     const raw = response.data;
     const list: ApiTransactionSchema[] = Array.isArray(raw)
       ? raw
-      : Array.isArray((raw as any)?.items)
-        ? (raw as any).items
+      : Array.isArray(raw.items)
+        ? raw.items
         : [];
 
     return list.map(

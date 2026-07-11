@@ -1,7 +1,14 @@
 ﻿'use client';
 
 import { useState, useMemo } from 'react';
-import { AlertTriangle, TrendingDown, Calculator, ChevronDown, ChevronUp, Info } from 'lucide-react';
+import {
+  AlertTriangle,
+  TrendingDown,
+  Calculator,
+  ChevronDown,
+  ChevronUp,
+  Info,
+} from 'lucide-react';
 import { SPLIT_PAYMENT_ASSUMPTIONS } from '@/lib/tax-reform/official-data';
 
 // ---------------------------------------------------------------------------
@@ -31,34 +38,68 @@ export interface SplitPaymentConfig {
 // Motor de calculo Split Payment
 // ---------------------------------------------------------------------------
 
-const FASES_SPLIT: Record<number, { pix: number; cartao: number; boleto: number; descricao: string }> = {
-  2026: { pix: 0.01, cartao: 0.01, boleto: 0.00, descricao: 'Premissa bCost 2026 -- teste de sensibilidade' },
-  2027: { pix: 0.25, cartao: 0.25, boleto: 0.10, descricao: 'Premissa bCost 2027 -- expansao gradual' },
-  2028: { pix: 0.50, cartao: 0.50, boleto: 0.30, descricao: 'Premissa bCost 2028 -- metade dos recebimentos' },
-  2029: { pix: 1.00, cartao: 1.00, boleto: 0.75, descricao: 'Premissa bCost 2029 -- quase pleno' },
-  2030: { pix: 1.00, cartao: 1.00, boleto: 1.00, descricao: 'Premissa bCost 2030+ -- todos os meios' },
+const FASES_SPLIT: Record<
+  number,
+  { pix: number; cartao: number; boleto: number; descricao: string }
+> = {
+  2026: {
+    pix: 0.01,
+    cartao: 0.01,
+    boleto: 0.0,
+    descricao: 'Premissa bCost 2026 -- teste de sensibilidade',
+  },
+  2027: {
+    pix: 0.25,
+    cartao: 0.25,
+    boleto: 0.1,
+    descricao: 'Premissa bCost 2027 -- expansao gradual',
+  },
+  2028: {
+    pix: 0.5,
+    cartao: 0.5,
+    boleto: 0.3,
+    descricao: 'Premissa bCost 2028 -- metade dos recebimentos',
+  },
+  2029: { pix: 1.0, cartao: 1.0, boleto: 0.75, descricao: 'Premissa bCost 2029 -- quase pleno' },
+  2030: { pix: 1.0, cartao: 1.0, boleto: 1.0, descricao: 'Premissa bCost 2030+ -- todos os meios' },
 };
 
-export function calcularSplitPayment(config: SplitPaymentConfig, ano: number): SplitPaymentProjecao[] {
+export function calcularSplitPayment(
+  config: SplitPaymentConfig,
+  ano: number,
+): SplitPaymentProjecao[] {
   const fase = FASES_SPLIT[Math.min(ano, 2030)] ?? FASES_SPLIT[2030];
-  const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  const meses = [
+    'Jan',
+    'Fev',
+    'Mar',
+    'Abr',
+    'Mai',
+    'Jun',
+    'Jul',
+    'Ago',
+    'Set',
+    'Out',
+    'Nov',
+    'Dez',
+  ];
 
   let saldoAnterior = config.faturamentoMensal;
 
   return meses.map((mes, i) => {
-    const crescimento = 1 + (i * 0.005);
+    const crescimento = 1 + i * 0.005;
     const faturamentoBruto = Math.round(config.faturamentoMensal * crescimento);
 
     const recebidoPix = faturamentoBruto * (config.meiosPagamento.pix / 100);
     const recebidoCartao = faturamentoBruto * (config.meiosPagamento.cartao / 100);
     const recebidoBoleto = faturamentoBruto * (config.meiosPagamento.boleto / 100);
-    const recebidoOutros = faturamentoBruto * (config.meiosPagamento.outros / 100);
 
     const impostoRetidoPix = recebidoPix * config.aliquotaEfetiva * fase.pix;
     const impostoRetidoCartao = recebidoCartao * config.aliquotaEfetiva * fase.cartao;
     const impostoRetidoBoleto = recebidoBoleto * config.aliquotaEfetiva * fase.boleto;
 
-    const impostoSplit = Math.round((impostoRetidoPix + impostoRetidoCartao + impostoRetidoBoleto) * 100) / 100;
+    const impostoSplit =
+      Math.round((impostoRetidoPix + impostoRetidoCartao + impostoRetidoBoleto) * 100) / 100;
     const valorRecebido = faturamentoBruto - impostoSplit;
     const diferencaCaixaVsAnterior = valorRecebido - saldoAnterior;
 
@@ -73,29 +114,16 @@ export function calcularSplitPayment(config: SplitPaymentConfig, ano: number): S
 // ---------------------------------------------------------------------------
 
 function fmt(v: number): string {
-  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+  return v.toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    maximumFractionDigits: 0,
+  });
 }
 
 function pct(v: number): string {
   return v.toFixed(1).replace('.', ',') + '%';
 }
-
-// ---------------------------------------------------------------------------
-// Barra de progresso
-// ---------------------------------------------------------------------------
-
-function ProgressBar({ value, max, color }: { value: number; max: number; color: string }) {
-  const width = Math.max(2, Math.min(100, (value / max) * 100));
-  return (
-    <div className="h-1.5 bg-white/5 rounded-full overflow-hidden mt-2">
-      <div className={`h-full rounded-full ${color}`} style={{ width: `${width}%` }} />
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Componente principal
-// ---------------------------------------------------------------------------
 
 interface SplitPaymentProjectorProps {
   faturamentoMensal?: number;
@@ -114,7 +142,10 @@ export default function SplitPaymentProjector({
     meiosPagamento: { pix: 60, cartao: 25, boleto: 10, outros: 5 },
   });
 
-  const projecao = useMemo(() => calcularSplitPayment(config, anoSelecionado), [config, anoSelecionado]);
+  const projecao = useMemo(
+    () => calcularSplitPayment(config, anoSelecionado),
+    [config, anoSelecionado],
+  );
 
   const totalImposto = projecao.reduce((s, m) => s + m.impostoSplit, 0);
   const totalRecebido = projecao.reduce((s, m) => s + m.valorRecebido, 0);
@@ -141,8 +172,8 @@ export default function SplitPaymentProjector({
               Projetor de Impacto no Fluxo de Caixa
             </h2>
             <p className="text-sm text-slate-400 mt-2 max-w-xl">
-              Simule quanto do imposto poderia ser retido no momento do recebimento via PIX, cartao e boleto.
-              Use como planejamento de caixa enquanto a regulamentacao operacional avanca.
+              Simule quanto do imposto poderia ser retido no momento do recebimento via PIX, cartao
+              e boleto. Use como planejamento de caixa enquanto a regulamentacao operacional avanca.
             </p>
             <div className="mt-3 text-xs text-slate-500 bg-white/5 border border-white/10 rounded-xl px-3 py-2 inline-block">
               {fase?.descricao}. {SPLIT_PAYMENT_ASSUMPTIONS.caveat}
@@ -152,11 +183,15 @@ export default function SplitPaymentProjector({
           {/* KPIs principais */}
           <div className="flex flex-col gap-3 flex-shrink-0">
             <div className="bg-rose-500/10 border border-rose-500/20 rounded-2xl px-5 py-4 text-right">
-              <p className="text-[9px] font-black uppercase text-rose-400/70 tracking-widest">Imposto retido no ano</p>
+              <p className="text-[9px] font-black uppercase text-rose-400/70 tracking-widest">
+                Imposto retido no ano
+              </p>
               <p className="text-xl font-black text-rose-400 mt-1">{fmt(totalImposto)}</p>
             </div>
             <div className="bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-right">
-              <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest">Impacto no caixa</p>
+              <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest">
+                Impacto no caixa
+              </p>
               <p className="text-xl font-black text-amber-400 mt-1">{pct(impactoPercentual)}</p>
             </div>
           </div>
@@ -192,7 +227,11 @@ export default function SplitPaymentProjector({
               Configurar simulacao
             </span>
           </div>
-          {expanded ? <ChevronUp size={14} className="text-slate-400" /> : <ChevronDown size={14} className="text-slate-400" />}
+          {expanded ? (
+            <ChevronUp size={14} className="text-slate-400" />
+          ) : (
+            <ChevronDown size={14} className="text-slate-400" />
+          )}
         </button>
 
         {expanded && (
@@ -204,7 +243,9 @@ export default function SplitPaymentProjector({
               <input
                 type="number"
                 value={config.faturamentoMensal}
-                onChange={(e) => setConfig((c) => ({ ...c, faturamentoMensal: Number(e.target.value) }))}
+                onChange={(e) =>
+                  setConfig((c) => ({ ...c, faturamentoMensal: Number(e.target.value) }))
+                }
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:border-blue-500 transition-colors"
               />
             </div>
@@ -216,7 +257,9 @@ export default function SplitPaymentProjector({
                 type="number"
                 step="0.001"
                 value={config.aliquotaEfetiva}
-                onChange={(e) => setConfig((c) => ({ ...c, aliquotaEfetiva: Number(e.target.value) }))}
+                onChange={(e) =>
+                  setConfig((c) => ({ ...c, aliquotaEfetiva: Number(e.target.value) }))
+                }
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:border-blue-500 transition-colors"
               />
             </div>
@@ -227,7 +270,9 @@ export default function SplitPaymentProjector({
               <div className="grid grid-cols-2 gap-2">
                 {(['pix', 'cartao', 'boleto', 'outros'] as const).map((meio) => (
                   <div key={meio} className="flex items-center gap-2">
-                    <span className="text-[10px] font-black text-slate-500 uppercase w-14">{meio}</span>
+                    <span className="text-[10px] font-black text-slate-500 uppercase w-14">
+                      {meio}
+                    </span>
                     <input
                       type="number"
                       min="0"
@@ -280,23 +325,42 @@ export default function SplitPaymentProjector({
         <table className="w-full text-left">
           <thead>
             <tr className="bg-slate-50 border-t border-b border-slate-100">
-              <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Mes</th>
-              <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Faturamento</th>
-              <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Imposto Retido</th>
-              <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Valor Recebido</th>
-              <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Variacao Caixa</th>
+              <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                Mes
+              </th>
+              <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">
+                Faturamento
+              </th>
+              <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">
+                Imposto Retido
+              </th>
+              <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">
+                Valor Recebido
+              </th>
+              <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">
+                Variacao Caixa
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
             {projecao.map((m) => (
               <tr key={m.mes} className="hover:bg-slate-50/50 transition-colors">
                 <td className="p-4 text-xs font-black text-slate-700 uppercase">{m.mes}</td>
-                <td className="p-4 text-xs font-bold text-slate-600 text-right">{fmt(m.faturamentoBruto)}</td>
-                <td className="p-4 text-xs font-black text-rose-600 text-right">{fmt(m.impostoSplit)}</td>
-                <td className="p-4 text-xs font-black text-slate-900 text-right">{fmt(m.valorRecebido)}</td>
+                <td className="p-4 text-xs font-bold text-slate-600 text-right">
+                  {fmt(m.faturamentoBruto)}
+                </td>
+                <td className="p-4 text-xs font-black text-rose-600 text-right">
+                  {fmt(m.impostoSplit)}
+                </td>
+                <td className="p-4 text-xs font-black text-slate-900 text-right">
+                  {fmt(m.valorRecebido)}
+                </td>
                 <td className="p-4 text-right">
-                  <span className={`text-xs font-black ${m.diferencaCaixaVsAnterior >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                    {m.diferencaCaixaVsAnterior >= 0 ? '+' : ''}{fmt(m.diferencaCaixaVsAnterior)}
+                  <span
+                    className={`text-xs font-black ${m.diferencaCaixaVsAnterior >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}
+                  >
+                    {m.diferencaCaixaVsAnterior >= 0 ? '+' : ''}
+                    {fmt(m.diferencaCaixaVsAnterior)}
                   </span>
                 </td>
               </tr>
@@ -304,10 +368,18 @@ export default function SplitPaymentProjector({
           </tbody>
           <tfoot>
             <tr className="bg-slate-900">
-              <td className="p-4 text-[10px] font-black text-white uppercase tracking-widest">TOTAL {anoSelecionado}</td>
-              <td className="p-4 text-xs font-black text-slate-300 text-right">{fmt(totalBruto)}</td>
-              <td className="p-4 text-xs font-black text-rose-400 text-right">{fmt(totalImposto)}</td>
-              <td className="p-4 text-xs font-black text-emerald-400 text-right">{fmt(totalRecebido)}</td>
+              <td className="p-4 text-[10px] font-black text-white uppercase tracking-widest">
+                TOTAL {anoSelecionado}
+              </td>
+              <td className="p-4 text-xs font-black text-slate-300 text-right">
+                {fmt(totalBruto)}
+              </td>
+              <td className="p-4 text-xs font-black text-rose-400 text-right">
+                {fmt(totalImposto)}
+              </td>
+              <td className="p-4 text-xs font-black text-emerald-400 text-right">
+                {fmt(totalRecebido)}
+              </td>
               <td className="p-4 text-xs font-black text-amber-400 text-right">
                 -{pct(impactoPercentual)} do caixa
               </td>
@@ -324,9 +396,10 @@ export default function SplitPaymentProjector({
             Acao recomendada pelo bCost
           </p>
           <p className="text-xs text-amber-700 leading-relaxed">
-            Em um cenario com Split Payment, parte do imposto pode deixar de entrar no caixa no momento da venda.
-            Para {anoSelecionado}, esta premissa estima <strong>{fmt(totalImposto)}</strong> de retencao gerencial.
-            Ajuste seu capital de giro e negocie prazos de pagamento com fornecedores antes de {anoSelecionado}.
+            Em um cenario com Split Payment, parte do imposto pode deixar de entrar no caixa no
+            momento da venda. Para {anoSelecionado}, esta premissa estima{' '}
+            <strong>{fmt(totalImposto)}</strong> de retencao gerencial. Ajuste seu capital de giro e
+            negocie prazos de pagamento com fornecedores antes de {anoSelecionado}.
           </p>
         </div>
       </div>

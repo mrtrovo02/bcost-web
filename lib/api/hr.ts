@@ -44,10 +44,10 @@ export const hrApi = {
    * Placeholder para futuras integrações de RH (ex: gestão de benefícios, férias)
    * Atualmente não há implementação correspondente no payrollEnterpriseApi.
    */
-  getEmployeeMetrics: async (): Promise<any | null> => {
+  getEmployeeMetrics: async (): Promise<Record<string, unknown> | null> => {
     console.warn('⚠️ [bCost HR API]: getEmployeeMetrics não implementado na API de payroll enterprise.');
     return null;
-  }
+  },
 };
 
 // Re-exportação dos tipos para garantir consistência em toda a aplicação

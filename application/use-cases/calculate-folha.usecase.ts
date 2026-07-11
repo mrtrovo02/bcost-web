@@ -4,8 +4,18 @@
  */
 import { FolhaPagamentoResult } from '@/domain/folha/folha.contracts';
 
+export interface ColaboradorFolha {
+  id: string;
+  nome?: string;
+  name?: string;
+  salarioBase?: number;
+  salary?: number;
+  numeroDependentes?: number;
+  dependents?: number;
+}
+
 export interface IDepartamentoPessoalRepository {
-  getColaboradoresByCompany(companyId: string): Promise<any[]>;
+  getColaboradoresByCompany(companyId: string): Promise<ColaboradorFolha[]>;
 }
 
 export interface CalculateFolhaInput {
@@ -35,7 +45,7 @@ const DEDUCAO_DEPENDENTE_IRRF = 189.59;
 
 function calcularINSSProgressivo(salarioBruto: number): number {
   let inss = 0;
-  let baseRestante = salarioBruto;
+  const baseRestante = salarioBruto;
   let faixaAnterior = 0;
 
   for (const faixa of FAIXAS_INSS_2024) {

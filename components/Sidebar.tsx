@@ -15,6 +15,8 @@ import {
   Users,
   Activity,
   Layers,
+  Landmark,
+  ShieldAlert,
 } from 'lucide-react';
 import { useCompany, type Company } from '@/app/context/CompanyContext';
 import { api, deleteCookie } from '@/services/api';
@@ -110,6 +112,18 @@ export default function Sidebar() {
         label: 'Documentos XML',
         href: '/dashboard/invoices',
         desc: 'Auditoria Fiscal',
+      },
+      {
+        icon: ShieldAlert,
+        label: 'Reforma Tributária',
+        href: '/dashboard/compliance',
+        desc: 'CBS/IBS Readiness',
+      },
+      {
+        icon: Landmark,
+        label: 'Receita & Caixa',
+        href: '/dashboard/revenue',
+        desc: 'Split Payment',
       },
       { icon: Users, label: 'Folha de Pagto', href: '/dashboard/payroll', desc: 'Encargos RH' },
       { icon: PieChart, label: 'Relatórios', href: '/dashboard/reports', desc: 'Exportação' },

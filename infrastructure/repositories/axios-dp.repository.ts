@@ -3,10 +3,13 @@
  * Repositório de Departamento Pessoal usando o cliente api do projeto.
  */
 import { api } from '@/services/api';
-import { IDepartamentoPessoalRepository } from '@/application/use-cases/calculate-folha.usecase';
+import {
+  ColaboradorFolha,
+  IDepartamentoPessoalRepository,
+} from '@/application/use-cases/calculate-folha.usecase';
 
 export class AxiosDepartamentoPessoalRepository implements IDepartamentoPessoalRepository {
-  public async getColaboradoresByCompany(companyId: string): Promise<any[]> {
+  public async getColaboradoresByCompany(companyId: string): Promise<ColaboradorFolha[]> {
     try {
       const response = await api.get('/payroll/enterprise/employees/' + companyId, {
         params: { limit: 500 },

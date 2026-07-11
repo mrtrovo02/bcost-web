@@ -7,10 +7,9 @@ vi.mock('@/services/api', () => ({
   isDemoSession: vi.fn(),
 }));
 
-const { apiGet, apiPost, isDemoSession } = await import('@/services/api');
+const { apiGet, isDemoSession } = await import('@/services/api');
 
 const apiGetMock = vi.mocked(apiGet);
-const apiPostMock = vi.mocked(apiPost);
 const isDemoSessionMock = vi.mocked(isDemoSession);
 
 describe('AxiosFiscalRepository', () => {
