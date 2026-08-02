@@ -1,6 +1,8 @@
 export const TAX_REFORM_OFFICIAL_SOURCES = {
   constitutionalAmendment132:
     'https://www.planalto.gov.br/ccivil_03/constituicao/emendas/emc/emc132.htm',
+  complementaryLaw214:
+    'https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp214compilado.htm',
   revenueTaxReform:
     'https://www.gov.br/receitafederal/pt-br/acesso-a-informacao/acoes-e-programas/reforma-tributaria',
 } as const;
@@ -14,9 +16,9 @@ export const CBS_IBS_TRANSITION = {
   referenceVatRate: 0.265,
   phaseLabel: 'Fase de teste 2026',
   officialBasis:
-    'EC 132/2023 e regulamentação da Reforma Tributária: transição do modelo atual para CBS e IBS entre 2026 e 2033.',
+    'LC 214/2025: em 2026, CBS de 0,9% e IBS estadual de 0,1% para a transição da Reforma Tributária.',
   operationalNote:
-    'Em 2026, CBS e IBS devem ser tratados como destaque/simulação operacional para adaptação dos documentos e sistemas fiscais.',
+    'Em 2026, CBS e IBS devem ser tratados como apuração transitória de adaptação dos documentos e sistemas fiscais.',
 } as const;
 
 export const SPLIT_PAYMENT_ASSUMPTIONS = {

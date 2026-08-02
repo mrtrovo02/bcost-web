@@ -28,8 +28,9 @@ describe('Sidebar', () => {
   it('renders the main navigation and company name', () => {
     render(<Sidebar />);
 
-    expect(screen.getByText('Empresa Demo')).toBeInTheDocument();
-    expect(screen.getByText('Performance')).toBeInTheDocument();
+    expect(screen.getAllByText('Empresa Demo').length).toBeGreaterThan(0);
+    expect(screen.getByText('Visão Geral')).toBeInTheDocument();
+    expect(screen.getByText('Intelligence')).toBeInTheDocument();
     expect(screen.getByText('Documentos XML')).toBeInTheDocument();
   });
 });

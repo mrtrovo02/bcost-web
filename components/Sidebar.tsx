@@ -3,20 +3,21 @@
 import { useEffect, useMemo, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  LayoutDashboard,
-  FileText,
-  PieChart,
-  Settings,
-  LogOut,
-  PlusCircle,
-  Building2,
-  ChevronRight,
-  ShieldCheck,
-  Users,
   Activity,
-  Layers,
+  BarChart3,
+  Building2,
+  ChevronDown,
+  CircleDot,
+  FileText,
+  Gauge,
   Landmark,
+  LogOut,
+  ReceiptText,
+  Settings,
+  ShieldCheck,
   ShieldAlert,
+  Users,
+  WalletCards,
 } from 'lucide-react';
 import { useCompany, type Company } from '@/app/context/CompanyContext';
 import { api, deleteCookie } from '@/services/api';
@@ -24,25 +25,25 @@ import { DEMO_COMPANIES, type DemoCompany } from '@/services/demo-data';
 
 type SidebarCompany = Company & Partial<Pick<DemoCompany, 'role' | 'status' | 'plan'>>;
 
+type NavigationItem = {
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  label: string;
+  href: string;
+  desc: string;
+  signal?: 'live' | 'new' | 'core';
+};
+
 export default function Sidebar() {
   const { companies, setCompanies, selectedCompany, setSelectedCompany } = useCompany();
   const pathname = usePathname();
   const router = useRouter();
 
-  /**
-   * 1. Motor de Sincronização de Unidades
-   * Alinhado com o Backend v1 e tratamento de erro profissional
-   */
   const loadCompanies = useCallback(async () => {
     try {
-      // O endpoint no NestJS v1 é /company
       const { data } = await api.get<DemoCompany[]>('/company');
-
-      // Normalização: garante que temos um array
       const companiesList = Array.isArray(data) ? data : [];
       setCompanies(companiesList);
 
-      // Reidratação: Se não houver selecionada, busca no localStorage ou pega a primeira
       if (companiesList.length > 0 && !selectedCompany) {
         const savedId = localStorage.getItem('bcost_active_company');
         const restored =
@@ -53,8 +54,7 @@ export default function Sidebar() {
         localStorage.setItem('bcost_active_company_data', JSON.stringify(restored));
       }
     } catch {
-      // Fallback para dados demo quando a API não está disponível
-      console.warn('⚠️ [bCost Demo]: API indisponível, usando dados de demonstração.');
+      console.warn('[bCost Demo]: API indisponivel, usando dados de demonstracao.');
       const companiesList = DEMO_COMPANIES;
       setCompanies(companiesList);
 
@@ -74,9 +74,6 @@ export default function Sidebar() {
     loadCompanies();
   }, [loadCompanies]);
 
-  /**
-   * 2. Persistência de Seleção e Troca de Contexto
-   */
   const handleCompanyChange = (company: SidebarCompany) => {
     setSelectedCompany(company);
     localStorage.setItem('bcost_active_company', company.id);
@@ -84,9 +81,6 @@ export default function Sidebar() {
     window.dispatchEvent(new Event('storage'));
   };
 
-  /**
-   * 3. Logoff de Segurança (Cleanup Total)
-   */
   const handleLogout = () => {
     deleteCookie('bcost_token');
     deleteCookie('bcost_access_token');
@@ -96,203 +90,314 @@ export default function Sidebar() {
     router.replace('/login');
   };
 
-  /**
-   * 4. Schema de Navegação BI-Driven
-   */
-  const menuItems = useMemo(
+  const commandItems = useMemo<NavigationItem[]>(
     () => [
       {
-        icon: LayoutDashboard,
-        label: 'Performance',
+        icon: Gauge,
+        label: 'Visão Geral',
+        href: '/dashboard',
+        desc: 'Painel executivo',
+        signal: 'core',
+      },
+      {
+        icon: Activity,
+        label: 'Intelligence',
         href: '/dashboard/intelligence',
-        desc: 'BI & Analytics',
+        desc: 'Fator R e cenários',
+        signal: 'live',
       },
       {
         icon: FileText,
         label: 'Documentos XML',
-        href: '/dashboard/invoices',
-        desc: 'Auditoria Fiscal',
+        href: '/dashboard/xml',
+        desc: 'Upload e validação',
       },
       {
-        icon: ShieldAlert,
-        label: 'Reforma Tributária',
-        href: '/dashboard/compliance',
-        desc: 'CBS/IBS Readiness',
+        icon: ReceiptText,
+        label: 'Invoices',
+        href: '/dashboard/invoices',
+        desc: 'Notas fiscais',
+      },
+      {
+        icon: WalletCards,
+        label: 'Revenue',
+        href: '/dashboard/revenue',
+        desc: 'Receita e split',
+        signal: 'new',
       },
       {
         icon: Landmark,
-        label: 'Receita & Caixa',
-        href: '/dashboard/revenue',
-        desc: 'Split Payment',
-      },
-      { icon: Users, label: 'Folha de Pagto', href: '/dashboard/payroll', desc: 'Encargos RH' },
-      { icon: PieChart, label: 'Relatórios', href: '/dashboard/reports', desc: 'Exportação' },
-      { icon: Activity, label: 'Conciliação', href: '/dashboard/banking', desc: 'Cash Flow' },
-      {
-        icon: Layers,
-        label: 'Módulos Pro',
-        href: '/dashboard/enterprise',
-        desc: 'Coverage 360',
+        label: 'Banking',
+        href: '/dashboard/banking',
+        desc: 'Conciliação',
       },
       {
-        icon: Settings,
-        label: 'Configurações',
-        href: '/dashboard/settings',
-        desc: 'System Params',
+        icon: Users,
+        label: 'Payroll',
+        href: '/dashboard/payroll',
+        desc: 'Folha e pró-labore',
+      },
+      {
+        icon: ShieldAlert,
+        label: 'Compliance',
+        href: '/dashboard/compliance',
+        desc: 'CBS/IBS readiness',
+        signal: 'new',
       },
     ],
     [],
   );
 
+  const systemItems = useMemo<NavigationItem[]>(
+    () => [
+      {
+        icon: Building2,
+        label: 'Empresas',
+        href: '/dashboard/companies',
+        desc: 'Unidades e CNPJs',
+      },
+      {
+        icon: BarChart3,
+        label: 'Relatórios',
+        href: '/dashboard/reports',
+        desc: 'PDF executivo',
+      },
+      {
+        icon: Settings,
+        label: 'Configurações',
+        href: '/dashboard/settings',
+        desc: 'Conta e sistema',
+      },
+    ],
+    [],
+  );
+
+  const isActiveRoute = (href: string) => {
+    if (href === '/dashboard') return pathname === href;
+    return pathname === href || pathname.startsWith(`${href}/`);
+  };
+
   return (
-    <aside className="w-72 bg-[#050810] border-r border-white/5 flex flex-col h-screen sticky top-0 z-50 font-sans shadow-[20px_0_50px_rgba(0,0,0,0.5)]">
-      {/* BRANDING */}
-      <div className="p-8 pb-10">
-        <div
-          className="flex items-center gap-3 group cursor-pointer"
-          onClick={() => router.push('/dashboard/intelligence')}
-        >
-          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(37,99,235,0.4)] transition-all group-hover:rotate-12 group-hover:scale-110">
-            <ShieldCheck size={22} className="text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-black text-white tracking-tighter leading-none">
-              bCost<span className="text-blue-500">.</span>
-            </h1>
-            <p className="text-[8px] font-black text-slate-600 uppercase tracking-[0.3em] mt-1">
-              v7.0 Enterprise
-            </p>
-          </div>
-        </div>
-      </div>
+    <aside className="w-[19.25rem] shrink-0 bg-[#030713] border-r border-blue-400/10 flex flex-col h-screen sticky top-0 z-50 font-sans shadow-[24px_0_70px_rgba(0,0,0,0.45)] relative overflow-hidden">
+      <div className="absolute inset-y-0 right-0 w-px bg-gradient-to-b from-transparent via-blue-400/40 to-transparent" />
+      <div className="absolute -top-28 left-8 h-56 w-56 rounded-full bg-blue-600/10 blur-3xl" />
+      <div className="absolute bottom-20 -left-20 h-52 w-52 rounded-full bg-cyan-500/5 blur-3xl" />
 
-      <div className="flex-1 px-4 flex flex-col gap-10 overflow-y-auto custom-scrollbar scrollbar-hide">
-        {/* SEÇÃO: INSTÂNCIAS (Contexto de Operação) */}
-        <section>
-          <header className="flex justify-between items-center mb-4 px-2">
-            <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">
-              Instâncias Ativas
-            </p>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[8px] text-green-500 font-bold uppercase">Sync</span>
-              <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-            </div>
-          </header>
-
-          <div className="space-y-2">
-            {companies.length === 0 ? (
-              <div className="p-6 rounded-2xl border border-dashed border-white/5 text-center bg-white/[0.02]">
-                <p className="text-[10px] text-slate-600 font-bold uppercase leading-relaxed">
-                  Aguardando
-                  <br />
-                  provisionamento...
-                </p>
-              </div>
-            ) : (
-              companies.map((company) => {
-                const isSelected = selectedCompany?.id === company.id;
-                return (
-                  <button
-                    key={company.id}
-                    onClick={() => handleCompanyChange(company)}
-                    className={`w-full p-4 rounded-2xl text-left transition-all duration-300 flex items-center gap-3 border ${
-                      isSelected
-                        ? 'bg-blue-600/10 border-blue-500/40 text-white shadow-[0_10px_30px_-10px_rgba(37,99,235,0.3)]'
-                        : 'bg-transparent border-transparent text-slate-500 hover:bg-white/5 hover:text-slate-300'
-                    }`}
-                  >
-                    <div
-                      className={`p-2.5 rounded-xl transition-all ${isSelected ? 'bg-blue-600 text-white shadow-lg' : 'bg-white/5 text-slate-600'}`}
-                    >
-                      <Building2 size={16} />
-                    </div>
-                    <div className="flex-1 truncate">
-                      <p className="font-black text-[11px] uppercase tracking-tight truncate">
-                        {company.name}
-                      </p>
-                      <p
-                        className={`text-[9px] font-bold tracking-wider ${isSelected ? 'text-blue-400/80' : 'text-slate-700'}`}
-                      >
-                        {company.cnpj}
-                      </p>
-                    </div>
-                    {isSelected && (
-                      <ChevronRight
-                        size={12}
-                        className="text-blue-500 animate-in fade-in slide-in-from-left-2"
-                      />
-                    )}
-                  </button>
-                );
-              })
-            )}
-          </div>
-        </section>
-
-        {/* SEÇÃO: NAVEGAÇÃO (Core Engine) */}
-        <section>
-          <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4 px-2">
-            Sistema de Comando
-          </p>
-          <nav className="space-y-1">
-            {menuItems.map((item) => {
-              const isActive = pathname === item.href;
-              return (
-                <button
-                  key={item.href}
-                  onClick={() => router.push(item.href)}
-                  className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 group relative ${
-                    isActive
-                      ? 'bg-white/[0.04] text-white'
-                      : 'text-slate-500 hover:text-slate-200 hover:bg-white/5'
-                  }`}
-                >
-                  <item.icon
-                    size={18}
-                    className={`${isActive ? 'text-blue-500' : 'text-slate-600 group-hover:text-slate-400'} transition-colors`}
-                  />
-                  <div className="text-left">
-                    <p className="text-[11px] font-black uppercase tracking-widest leading-none">
-                      {item.label}
-                    </p>
-                    <p className="text-[8px] font-bold text-slate-700 uppercase mt-0.5">
-                      {item.desc}
-                    </p>
-                  </div>
-                  {isActive && (
-                    <div className="ml-auto w-1 h-4 rounded-full bg-blue-500 shadow-[0_0_15px_#3b82f6]" />
-                  )}
-                </button>
-              );
-            })}
-          </nav>
-        </section>
-      </div>
-
-      {/* FOOTER: SYSTEM ACTIONS */}
-      <div className="p-6 border-t border-white/5 bg-[#070b14]/80 backdrop-blur-md">
-        <div className="space-y-3">
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <div className="px-7 pb-5 pt-8">
           <button
             type="button"
-            onClick={() => router.push('/dashboard/companies')}
-            className="group flex items-center justify-center gap-2 w-full py-4 bg-blue-600/5 hover:bg-blue-600 text-blue-500 hover:text-white rounded-2xl font-black text-[10px] transition-all border border-blue-500/10 uppercase tracking-[0.2em] shadow-lg"
+            className="group flex w-full items-center gap-3 text-left"
+            onClick={() => router.push('/dashboard')}
           >
-            <PlusCircle size={14} className="group-hover:rotate-90 transition-transform" />
-            Nova Unidade
+            <div className="relative flex h-14 w-14 items-center justify-center rounded-[1.15rem] bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-[0_18px_35px_rgba(37,99,235,0.35)] ring-1 ring-white/15 transition-transform duration-300 group-hover:-translate-y-0.5">
+              <ShieldCheck size={27} />
+              <span className="absolute -right-1 -top-1 h-4 w-4 rounded-full border-2 border-[#030713] bg-emerald-400 shadow-[0_0_16px_rgba(52,211,153,0.75)]" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-[1.7rem] font-black leading-none tracking-tight text-white">
+                bCost<span className="text-blue-400">.</span>
+              </h1>
+              <p className="mt-1.5 text-[10px] font-black uppercase tracking-[0.28em] text-blue-300/60">
+                v7.2 Enterprise
+              </p>
+            </div>
           </button>
+        </div>
+
+        <div className="mx-5 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+
+        <div className="relative flex-1 overflow-y-auto px-4 py-6 scrollbar-hide">
+          <section>
+            <SectionTitle label="Instâncias Ativas" meta="online" />
+            <div className="mt-3 space-y-2">
+              {companies.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.025] p-5 text-center">
+                  <p className="text-[10px] font-black uppercase leading-relaxed tracking-[0.18em] text-slate-600">
+                    Aguardando provisionamento
+                  </p>
+                </div>
+              ) : (
+                companies.map((company) => {
+                  const isSelected = selectedCompany?.id === company.id;
+                  return (
+                    <button
+                      key={company.id}
+                      onClick={() => handleCompanyChange(company)}
+                      className={`group relative flex w-full items-center gap-3 overflow-hidden rounded-2xl border px-4 py-3.5 text-left transition-all duration-300 ${
+                        isSelected
+                          ? 'border-blue-400/45 bg-blue-500/[0.12] text-white shadow-[0_16px_32px_rgba(29,78,216,0.18)]'
+                          : 'border-white/5 bg-white/[0.025] text-slate-400 hover:border-blue-400/25 hover:bg-blue-500/[0.07] hover:text-white'
+                      }`}
+                    >
+                      {isSelected && (
+                        <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-blue-400 shadow-[0_0_18px_rgba(96,165,250,0.9)]" />
+                      )}
+                      <div
+                        className={`flex h-9 w-9 items-center justify-center rounded-xl transition-all ${
+                          isSelected
+                            ? 'bg-blue-500 text-white shadow-[0_10px_22px_rgba(37,99,235,0.35)]'
+                            : 'bg-white/[0.06] text-slate-500 group-hover:text-blue-300'
+                        }`}
+                      >
+                        <Building2 size={16} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[12px] font-black tracking-tight">
+                          {company.name}
+                        </p>
+                        <p
+                          className={`mt-0.5 truncate text-[9px] font-bold uppercase tracking-[0.16em] ${
+                            isSelected ? 'text-blue-200/70' : 'text-slate-600'
+                          }`}
+                        >
+                          {company.cnpj || 'CNPJ sincronizado'}
+                        </p>
+                      </div>
+                      <ChevronDown
+                        size={14}
+                        className={`transition-transform ${isSelected ? 'text-blue-300' : 'text-slate-600 group-hover:text-blue-300'}`}
+                      />
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </section>
+
+          <NavigationSection
+            title="Sistema de Comando"
+            items={commandItems}
+            isActiveRoute={isActiveRoute}
+            onNavigate={(href) => router.push(href)}
+          />
+
+          <NavigationSection
+            title="Controladoria & Sistema"
+            items={systemItems}
+            isActiveRoute={isActiveRoute}
+            onNavigate={(href) => router.push(href)}
+          />
+        </div>
+
+        <div className="relative border-t border-white/10 bg-[#050a18]/85 p-4 backdrop-blur-xl">
+          <div className="mb-3 rounded-2xl border border-white/8 bg-white/[0.03] p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-500">
+                  Sessão Segura
+                </p>
+                <p className="mt-1 truncate text-[11px] font-bold text-slate-300">
+                  {selectedCompany?.name || 'Nenhuma instância selecionada'}
+                </p>
+              </div>
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-300 ring-1 ring-emerald-400/20">
+                <CircleDot size={16} />
+              </div>
+            </div>
+          </div>
 
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 px-4 py-3.5 w-full rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:text-red-500 hover:bg-red-500/5 transition-all group"
+            className="group flex w-full items-center justify-center gap-2.5 rounded-2xl border border-rose-500/30 bg-rose-500/[0.04] px-4 py-3.5 text-[11px] font-black uppercase tracking-[0.16em] text-rose-300 transition-all duration-300 hover:border-rose-400/60 hover:bg-rose-500/10 hover:text-rose-200"
           >
             <LogOut
               size={16}
-              className="text-slate-700 group-hover:text-red-500 group-hover:translate-x-1 transition-all"
+              className="transition-transform duration-300 group-hover:-translate-x-0.5"
             />
             Sair do Terminal
           </button>
         </div>
       </div>
     </aside>
+  );
+}
+
+function SectionTitle({ label, meta }: { label: string; meta?: string }) {
+  return (
+    <div className="flex items-center justify-between px-3">
+      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-200/55">{label}</p>
+      {meta ? (
+        <div className="flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
+          <span className="text-[8px] font-black uppercase tracking-[0.16em] text-emerald-300/70">
+            {meta}
+          </span>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function NavigationSection({
+  title,
+  items,
+  isActiveRoute,
+  onNavigate,
+}: {
+  title: string;
+  items: NavigationItem[];
+  isActiveRoute: (href: string) => boolean;
+  onNavigate: (href: string) => void;
+}) {
+  return (
+    <section className="mt-8">
+      <SectionTitle label={title} />
+      <nav className="mt-3 space-y-1.5">
+        {items.map((item) => {
+          const isActive = isActiveRoute(item.href);
+          return (
+            <button
+              key={item.href}
+              onClick={() => onNavigate(item.href)}
+              className={`group relative flex w-full items-center gap-3.5 overflow-hidden rounded-2xl px-3.5 py-3 text-left transition-all duration-300 ${
+                isActive
+                  ? 'bg-gradient-to-r from-blue-500/18 via-blue-500/9 to-transparent text-white shadow-[inset_0_0_0_1px_rgba(96,165,250,0.25)]'
+                  : 'text-slate-400 hover:bg-white/[0.045] hover:text-white'
+              }`}
+            >
+              {isActive && (
+                <>
+                  <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-blue-400 shadow-[0_0_18px_rgba(96,165,250,0.9)]" />
+                  <span className="absolute inset-0 bg-[radial-gradient(circle_at_20%_50%,rgba(59,130,246,0.16),transparent_42%)]" />
+                </>
+              )}
+              <span
+                className={`relative flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-300 ${
+                  isActive
+                    ? 'bg-blue-500 text-white shadow-[0_12px_24px_rgba(37,99,235,0.32)]'
+                    : 'bg-white/[0.035] text-slate-500 group-hover:bg-blue-500/10 group-hover:text-blue-200'
+                }`}
+              >
+                <item.icon size={17} />
+              </span>
+              <span className="relative min-w-0 flex-1">
+                <span className="block truncate text-[13px] font-bold leading-none">
+                  {item.label}
+                </span>
+                <span
+                  className={`mt-1 block truncate text-[9px] font-black uppercase tracking-[0.14em] ${
+                    isActive ? 'text-blue-200/70' : 'text-slate-600 group-hover:text-slate-500'
+                  }`}
+                >
+                  {item.desc}
+                </span>
+              </span>
+              {item.signal ? (
+                <span
+                  className={`relative h-2 w-2 rounded-full ${
+                    item.signal === 'live'
+                      ? 'bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)]'
+                      : item.signal === 'new'
+                        ? 'bg-amber-300 shadow-[0_0_12px_rgba(252,211,77,0.75)]'
+                        : 'bg-blue-400 shadow-[0_0_12px_rgba(96,165,250,0.75)]'
+                  }`}
+                />
+              ) : null}
+            </button>
+          );
+        })}
+      </nav>
+    </section>
   );
 }
