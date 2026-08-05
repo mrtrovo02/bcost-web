@@ -93,7 +93,7 @@ export default function TaxEvolutionChart({
     });
 
     const optimized = sorted.map((h) => Number(h.imposto || 0));
-    const standard = sorted.map((h) => Number(h.faturamento || 0) * 0.155); // Alíquota padrão Simples Nacional Anexo V
+    const standard = sorted.map((h) => Number(h.faturamento || 0) * 0.155); // Anexo V - faixa inicial
 
     const savings = standard.reduce((acc, curr, i) => acc + (curr - (optimized[i] || 0)), 0);
 
@@ -123,7 +123,7 @@ export default function TaxEvolutionChart({
           },
         },
         {
-          label: 'CENÁRIO SEM GESTÃO (15.5%)',
+          label: 'CENÁRIO ANEXO V - FAIXA INICIAL (15.5%)',
           data: standard,
           borderColor: '#334155',
           borderDash: [6, 6],
@@ -218,7 +218,11 @@ export default function TaxEvolutionChart({
               Sincronizando Engine bCost...
             </p>
           </div>
-        ) : Array.isArray(apiData) && apiData.length > 0 && Array.isArray(chartConfig.labels) && chartConfig.labels.length > 0 && chartConfig.datasets.length > 0 ? (
+        ) : Array.isArray(apiData) &&
+          apiData.length > 0 &&
+          Array.isArray(chartConfig.labels) &&
+          chartConfig.labels.length > 0 &&
+          chartConfig.datasets.length > 0 ? (
           <div className="w-full h-full">
             <Line ref={chartRef} options={options} data={chartConfig} />
           </div>

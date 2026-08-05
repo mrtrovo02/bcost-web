@@ -132,7 +132,7 @@ interface SplitPaymentProjectorProps {
 
 export default function SplitPaymentProjector({
   faturamentoMensal = 150000,
-  aliquotaEfetiva = 0.11,
+  aliquotaEfetiva = 0.01,
 }: SplitPaymentProjectorProps) {
   const [anoSelecionado, setAnoSelecionado] = useState(2026);
   const [expanded, setExpanded] = useState(false);
@@ -251,7 +251,7 @@ export default function SplitPaymentProjector({
             </div>
             <div>
               <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest block mb-2">
-                Aliquota efetiva (ex: 0.11 para 11%)
+                Aliquota efetiva (ex: 0.01 para 1%)
               </label>
               <input
                 type="number"

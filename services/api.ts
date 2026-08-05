@@ -399,7 +399,9 @@ export function isAuthMissingError(error: unknown): error is AuthMissingError {
 }
 
 // Instancia Axios unificada
-const API_BASE = '/api/v1';
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL ||
+  (process.env.NODE_ENV === 'development' ? 'http://localhost:5000/api/v1' : '/api/v1');
 
 export const api: AxiosInstance = axios.create({
   baseURL: API_BASE,

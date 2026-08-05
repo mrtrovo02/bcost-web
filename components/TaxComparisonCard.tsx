@@ -79,7 +79,7 @@ export default function TaxComparisonCard({ data, loading }: TaxComparisonCardPr
             <div className="relative">
               <Info size={12} className="text-slate-300 cursor-help" />
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/info:block w-48 p-2 bg-slate-800 text-white text-[10px] rounded-lg shadow-xl z-50 text-center leading-tight">
-                Cálculo baseado na alíquota padrão do Anexo V sem benefício de Fator R.
+                Estimativa pela faixa inicial do Anexo V, sem benefício de Fator R.
               </div>
             </div>
           </div>
@@ -91,7 +91,7 @@ export default function TaxComparisonCard({ data, loading }: TaxComparisonCardPr
         <div className="mt-8 pt-4 border-t border-slate-50 flex items-center gap-2">
           <AlertCircle size={14} className="text-amber-500" />
           <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-            Alíquota Efetiva: 15.50%
+            Anexo V: faixa inicial 15.50%
           </span>
         </div>
       </div>
@@ -132,7 +132,7 @@ export default function TaxComparisonCard({ data, loading }: TaxComparisonCardPr
               Fator R Aplicado
             </span>
           </div>
-          <span className="text-[10px] text-blue-100 font-bold">6.0%</span>
+          <span className="text-[10px] text-blue-100 font-bold">faixa inicial 6.0%</span>
         </div>
       </div>
 
