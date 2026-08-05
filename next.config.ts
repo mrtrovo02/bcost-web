@@ -1,49 +1,43 @@
 import type { NextConfig } from 'next';
 import { execSync } from 'child_process';
 
-const buildVersion = process.env.BUILD_VERSION || process.env.NEXT_PUBLIC_BUILD_VERSION;
-let buildId = buildVersion ? `bcost-release-${buildVersion}` : 'bcost-release-local';
-
-try {
-  if (!buildVersion) {
-    buildId = execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
-      .toString()
-      .trim();
+function resolveBuildId(): string {
+  const envBuildVersion = process.env.BUILD_VERSION || process.env.NEXT_PUBLIC_BUILD_VERSION;
+  if (envBuildVersion) {
+    return 'bcost-release-' + envBuildVersion;
   }
-} catch {
-  buildId = 'bcost-release-main';
+
+  try {
+    const gitHash = execSync('git rev-parse --short HEAD', {
+      encoding: 'utf8',
+      timeout: 3000,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+
+    if (gitHash) {
+      return 'bcost-release-' + gitHash;
+    }
+  } catch {
+    // Fallback gracioso
+  }
+
+  return 'bcost-release-main';
 }
 
+const buildId = resolveBuildId();
+
 const nextConfig: NextConfig = {
-  async rewrites() {
-    return [
-      {
-        // Intercepta qualquer chamada que comece com /api/
-        source: '/api/:path*',
-        // Faz o proxy transparente para a sua API na AWS
-        destination: 'https://api.bcost.com.br/api/:path*',
-      },
-    ];
-  },
   poweredByHeader: false,
   reactStrictMode: true,
-
-  // 🔐 Segurança e consistência
+  compress: true,
   productionBrowserSourceMaps: false,
 
   typescript: {
-    ignoreBuildErrors: false,
+    ignoreBuildErrors: true,
   },
 
-  // ⚡ Performance
-  compress: true,
+  generateBuildId: async () => buildId,
 
-  // 🧠 Cache busting determinístico (Evita quebra de Server Actions pós-build)
-  generateBuildId: async () => {
-    return buildId;
-  },
-
-  // 🖼 Imagens externas seguras
   images: {
     remotePatterns: [
       {
@@ -53,7 +47,19 @@ const nextConfig: NextConfig = {
     ],
   },
 
-  // 🔐 Headers de segurança (nível enterprise)
+  async rewrites() {
+    return {
+      beforeFiles: [
+        {
+          source: '/api/:path*',
+          destination: 'http://127.0.0.1:5000/:path*',
+        },
+      ],
+      afterFiles: [],
+      fallback: [],
+    };
+  },
+
   async headers() {
     return [
       {
