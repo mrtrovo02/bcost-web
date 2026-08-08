@@ -197,7 +197,9 @@ export default function CbsIbsAlertBanner({
 
           <div className="flex flex-wrap gap-3">
             
-              href={TAX_REFORM_OFFICIAL_SOURCES.revenueTaxReform}
+              <a
+            
+                href={TAX_REFORM_OFFICIAL_SOURCES.revenueTaxReform}
               target="_blank"
               rel="noopener noreferrer"
               className={LINK_CLASS}
@@ -206,7 +208,9 @@ export default function CbsIbsAlertBanner({
               Receita Federal — Reforma Tributária
             </a>
             
-              href={TAX_REFORM_OFFICIAL_SOURCES.complementaryLaw214}
+              <a
+            
+                href={TAX_REFORM_OFFICIAL_SOURCES.complementaryLaw214}
               target="_blank"
               rel="noopener noreferrer"
               className={LINK_CLASS}
@@ -215,7 +219,9 @@ export default function CbsIbsAlertBanner({
               LC 214/2025 — Lei Complementar
             </a>
             
-              href={TAX_REFORM_OFFICIAL_SOURCES.constitutionalAmendment132}
+              <a
+            
+                href={TAX_REFORM_OFFICIAL_SOURCES.constitutionalAmendment132}
               target="_blank"
               rel="noopener noreferrer"
               className={LINK_CLASS}
@@ -229,3 +235,4 @@ export default function CbsIbsAlertBanner({
     </div>
   );
 }
+
