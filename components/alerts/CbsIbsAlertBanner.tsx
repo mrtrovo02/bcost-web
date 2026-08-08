@@ -1,11 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { AlertTriangle, Info, X, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
-import {
-  CBS_IBS_TRANSITION,
-  TAX_REFORM_OFFICIAL_SOURCES,
-} from '@/lib/tax-reform/official-data';
+import { CBS_IBS_TRANSITION, TAX_REFORM_OFFICIAL_SOURCES } from '@/lib/tax-reform/official-data';
 
 /**
  * Banner informativo de calibração CBS/IBS.
@@ -76,15 +73,15 @@ export default function CbsIbsAlertBanner({
       <div className={`rounded-2xl border px-4 py-3 flex items-center gap-3 ${toneClass}`}>
         <Info size={14} className={iconClass} />
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-black text-white">
-            CBS/IBS — {CBS_IBS_TRANSITION.phaseLabel}
-          </p>
+          <p className="text-xs font-black text-white">CBS/IBS — {CBS_IBS_TRANSITION.phaseLabel}</p>
           <p className="text-[10px] text-slate-400 mt-0.5">
             Destaque informativo (CBS {(CBS_RATE * 100).toFixed(1)}% + IBS{' '}
             {(IBS_RATE * 100).toFixed(1)}%) — sem recolhimento exigido em 2026.
           </p>
         </div>
-        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black flex-shrink-0 ${badgeClass}`}>
+        <span
+          className={`px-2.5 py-1 rounded-full text-[10px] font-black flex-shrink-0 ${badgeClass}`}
+        >
           Info
         </span>
       </div>
@@ -94,7 +91,9 @@ export default function CbsIbsAlertBanner({
   return (
     <div className={`rounded-2xl border transition-all duration-300 overflow-hidden ${toneClass}`}>
       <div className="flex items-start gap-4 p-5">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 border ${toneClass}`}>
+        <div
+          className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 border ${toneClass}`}
+        >
           <AlertTriangle size={18} className={iconClass} />
         </div>
 
@@ -169,7 +168,8 @@ export default function CbsIbsAlertBanner({
               </p>
               <p className="text-xs text-slate-300 leading-relaxed">
                 Contribuição sobre Bens e Serviços — substituirá PIS/COFINS. Percentual de
-                calibração de <span className="text-amber-400 font-bold">{(CBS_RATE * 100).toFixed(1)}%</span>{' '}
+                calibração de{' '}
+                <span className="text-amber-400 font-bold">{(CBS_RATE * 100).toFixed(1)}%</span>{' '}
                 sobre o valor da nota em 2026.
               </p>
             </div>
@@ -178,9 +178,9 @@ export default function CbsIbsAlertBanner({
                 O que é IBS
               </p>
               <p className="text-xs text-slate-300 leading-relaxed">
-                Imposto sobre Bens e Serviços — substituirá ICMS/ISS. Percentual de calibração
-                de <span className="text-orange-400 font-bold">{(IBS_RATE * 100).toFixed(1)}%</span>{' '}
-                na fase inicial (2026).
+                Imposto sobre Bens e Serviços — substituirá ICMS/ISS. Percentual de calibração de{' '}
+                <span className="text-orange-400 font-bold">{(IBS_RATE * 100).toFixed(1)}%</span> na
+                fase inicial (2026).
               </p>
             </div>
             <div className="bg-white/5 border border-white/10 rounded-xl p-4">
@@ -196,10 +196,8 @@ export default function CbsIbsAlertBanner({
           </div>
 
           <div className="flex flex-wrap gap-3">
-            
-              <a
-            
-                href={TAX_REFORM_OFFICIAL_SOURCES.revenueTaxReform}
+            <a
+              href={TAX_REFORM_OFFICIAL_SOURCES.revenueTaxReform}
               target="_blank"
               rel="noopener noreferrer"
               className={LINK_CLASS}
@@ -207,10 +205,8 @@ export default function CbsIbsAlertBanner({
               <ExternalLink size={12} />
               Receita Federal — Reforma Tributária
             </a>
-            
-              <a
-            
-                href={TAX_REFORM_OFFICIAL_SOURCES.complementaryLaw214}
+            <a
+              href={TAX_REFORM_OFFICIAL_SOURCES.complementaryLaw214}
               target="_blank"
               rel="noopener noreferrer"
               className={LINK_CLASS}
@@ -218,10 +214,8 @@ export default function CbsIbsAlertBanner({
               <ExternalLink size={12} />
               LC 214/2025 — Lei Complementar
             </a>
-            
-              <a
-            
-                href={TAX_REFORM_OFFICIAL_SOURCES.constitutionalAmendment132}
+            <a
+              href={TAX_REFORM_OFFICIAL_SOURCES.constitutionalAmendment132}
               target="_blank"
               rel="noopener noreferrer"
               className={LINK_CLASS}
@@ -235,4 +229,3 @@ export default function CbsIbsAlertBanner({
     </div>
   );
 }
-

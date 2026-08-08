@@ -158,6 +158,13 @@ export default function Sidebar() {
       },
       {
         icon: BarChart3,
+        label: 'Controladoria',
+        href: '/dashboard/operations',
+        desc: 'DRE, caixa e orçamento',
+        signal: 'core',
+      },
+      {
+        icon: FileText,
         label: 'Relatórios',
         href: '/dashboard/reports',
         desc: 'PDF executivo',
