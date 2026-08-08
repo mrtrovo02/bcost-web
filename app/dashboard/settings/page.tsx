@@ -12,57 +12,22 @@ import {
   Loader2,
   ChevronRight,
 } from 'lucide-react';
-import { api, isDemoSession } from '@/services/api';
+import { isDemoSession } from '@/services/api';
 import { useCompany } from '@/app/context/CompanyContext';
+import {
+  billingApi,
+  DEMO_BILLING_PLANS,
+  getDemoBillingEntitlements,
+  type BillingEntitlementsResponse,
+  type BillingFeature,
+  type BillingPlan,
+  type PlanLevel,
+} from '@/lib/api/billing';
 
 type ApiErrorLike = {
   response?: { data?: { message?: string } };
   message?: string;
 };
-
-// ─────────────────────────────────────────────────────────────────────────
-// Tipos
-// ─────────────────────────────────────────────────────────────────────────
-
-type PlanLevel = 'FREE' | 'PRO' | 'ENTERPRISE';
-
-interface PlanDefinition {
-  level: PlanLevel;
-  label: string;
-  description: string;
-  limits: {
-    companies: number;
-    users: number;
-    invoicesPerMonth: number;
-    bankTransactionsPerMonth: number;
-    automationJobsPerMonth: number;
-    auditRetentionDays: number;
-    aiQuestionsPerMonth: number;
-  };
-}
-
-interface FeatureDefinition {
-  key: string;
-  label: string;
-  description: string;
-  minPlan: PlanLevel;
-  enabled?: boolean;
-  locked?: boolean;
-}
-
-interface Entitlements {
-  companyId: string;
-  company: { id: string; name: string; cnpj: string; taxRegime: string; active: boolean };
-  plan: PlanDefinition;
-  planLevel: PlanLevel;
-  features: FeatureDefinition[];
-  limits: PlanDefinition['limits'];
-  commercial: {
-    canUpgrade: boolean;
-    recommendedPlan: PlanLevel | null;
-    upgradeReasons: string[];
-  };
-}
 
 type SectionKey = 'profile' | 'company' | 'users' | 'billing';
 
@@ -87,8 +52,8 @@ function formatLimit(value: number): string {
 
 function BillingSection() {
   const { selectedCompany } = useCompany();
-  const [plans, setPlans] = useState<PlanDefinition[]>([]);
-  const [entitlements, setEntitlements] = useState<Entitlements | null>(null);
+  const [plans, setPlans] = useState<BillingPlan[]>([]);
+  const [entitlements, setEntitlements] = useState<BillingEntitlementsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<PlanLevel | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -99,19 +64,29 @@ function BillingSection() {
     setLoading(true);
     setError(null);
     try {
+      if (isDemoSession()) {
+        setPlans(DEMO_BILLING_PLANS);
+        setEntitlements(getDemoBillingEntitlements(selectedCompany));
+        return;
+      }
+
       const [plansRes, entitlementsRes] = await Promise.all([
-        api.get('/billing/plans'),
-        api.get(`/billing/entitlements/${selectedCompany.id}`),
+        billingApi.plans(),
+        billingApi.entitlements(selectedCompany.id),
       ]);
-      setPlans(plansRes.data?.plans ?? []);
-      setEntitlements(entitlementsRes.data ?? null);
+      setPlans(plansRes.plans ?? []);
+      setEntitlements(entitlementsRes ?? null);
     } catch (err) {
       console.error('[Settings/Billing] load failed:', err);
-      setError('Não foi possível carregar as informações de plano.');
+      setPlans(DEMO_BILLING_PLANS);
+      setEntitlements(getDemoBillingEntitlements(selectedCompany));
+      setError(
+        'Não foi possível carregar o plano em tempo real. Exibindo a configuração local de assinatura.',
+      );
     } finally {
       setLoading(false);
     }
-  }, [selectedCompany?.id]);
+  }, [selectedCompany]);
 
   useEffect(() => {
     load();
@@ -125,11 +100,12 @@ function BillingSection() {
     setError(null);
     setFeedback(null);
     try {
-      const response = await api.patch(`/billing/plan/${selectedCompany.id}`, {
+      const response = await billingApi.updatePlan(
+        selectedCompany.id,
         planLevel,
-        reason: 'Alteração via painel de Configurações',
-      });
-      setFeedback(response.data?.message ?? 'Plano atualizado com sucesso.');
+        'Alteração via painel de Configurações',
+      );
+      setFeedback(response.message ?? 'Plano atualizado com sucesso.');
       await load();
     } catch (err: unknown) {
       const apiError = err as ApiErrorLike;
@@ -210,7 +186,7 @@ function BillingSection() {
             const isCurrent = entitlements?.planLevel === plan.level;
             const isRecommended = entitlements?.commercial.recommendedPlan === plan.level;
             const planFeatures =
-              entitlements?.features.filter((f) => f.minPlan === plan.level) ?? [];
+              entitlements?.features.filter((f: BillingFeature) => f.minPlan === plan.level) ?? [];
 
             return (
               <div
@@ -231,21 +207,13 @@ function BillingSection() {
                   {plan.level}
                 </p>
                 <p className="text-xl font-black text-white mt-1">{plan.label}</p>
-                <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-                  {plan.description}
-                </p>
+                <p className="text-xs text-slate-400 mt-2 leading-relaxed">{plan.description}</p>
 
                 <div className="mt-5 space-y-2 text-xs text-slate-300">
-                  <FeatureRow
-                    label={`${formatLimit(plan.limits.companies)} empresa(s)`}
-                  />
+                  <FeatureRow label={`${formatLimit(plan.limits.companies)} empresa(s)`} />
                   <FeatureRow label={`${formatLimit(plan.limits.users)} usuário(s)`} />
-                  <FeatureRow
-                    label={`${formatLimit(plan.limits.invoicesPerMonth)} notas/mês`}
-                  />
-                  <FeatureRow
-                    label={`Auditoria: ${plan.limits.auditRetentionDays} dias`}
-                  />
+                  <FeatureRow label={`${formatLimit(plan.limits.invoicesPerMonth)} notas/mês`} />
+                  <FeatureRow label={`Auditoria: ${plan.limits.auditRetentionDays} dias`} />
                   {planFeatures.map((f) => (
                     <FeatureRow key={f.key} label={f.label} />
                   ))}

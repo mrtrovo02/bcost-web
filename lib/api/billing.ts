@@ -84,6 +84,130 @@ export type BillingUpdatePlanResponse = BillingEntitlementsResponse & {
   };
 };
 
+export const DEMO_BILLING_PLANS: BillingPlan[] = [
+  {
+    level: 'FREE',
+    label: 'Free',
+    description: 'Plano inicial para validação do produto.',
+    limits: {
+      companies: 1,
+      users: 2,
+      invoicesPerMonth: 30,
+      bankTransactionsPerMonth: 100,
+      automationJobsPerMonth: 20,
+      auditRetentionDays: 30,
+      aiQuestionsPerMonth: 0,
+    },
+  },
+  {
+    level: 'PRO',
+    label: 'Pro',
+    description: 'Plano profissional para operação fiscal/financeira recorrente.',
+    limits: {
+      companies: 3,
+      users: 10,
+      invoicesPerMonth: 500,
+      bankTransactionsPerMonth: 2000,
+      automationJobsPerMonth: 300,
+      auditRetentionDays: 180,
+      aiQuestionsPerMonth: 500,
+    },
+  },
+  {
+    level: 'ENTERPRISE',
+    label: 'Enterprise',
+    description: 'Plano enterprise multiusuário, auditável e com automação avançada.',
+    limits: {
+      companies: 999,
+      users: 999,
+      invoicesPerMonth: 999999,
+      bankTransactionsPerMonth: 999999,
+      automationJobsPerMonth: 999999,
+      auditRetentionDays: 3650,
+      aiQuestionsPerMonth: 999999,
+    },
+  },
+];
+
+export const DEMO_BILLING_FEATURES: BillingFeature[] = [
+  {
+    key: 'dashboard.enterprise',
+    label: 'Dashboard Enterprise',
+    description: 'Visão executiva consolidada com indicadores operacionais.',
+    minPlan: 'FREE',
+  },
+  {
+    key: 'fiscal.diagnostics',
+    label: 'Diagnóstico fiscal',
+    description: 'Análise fiscal, saúde tributária e indicadores do Simples.',
+    minPlan: 'FREE',
+  },
+  {
+    key: 'banking.reconciliation',
+    label: 'Conciliação bancária',
+    description: 'Motor de conciliação automática entre banco e documentos fiscais.',
+    minPlan: 'PRO',
+  },
+  {
+    key: 'accounting.entries',
+    label: 'Lançamentos contábeis',
+    description: 'Base contábil para fechamento e classificação.',
+    minPlan: 'PRO',
+  },
+  {
+    key: 'digital.certificates',
+    label: 'Certificados digitais',
+    description: 'Gestão de certificados e alertas de vencimento.',
+    minPlan: 'ENTERPRISE',
+  },
+  {
+    key: 'ai.copilot',
+    label: 'Copilot fiscal',
+    description: 'Assistente fiscal/financeiro com IA e contexto da empresa.',
+    minPlan: 'ENTERPRISE',
+  },
+];
+
+export function getDemoBillingEntitlements(
+  company?: { id?: string; name?: string; cnpj?: string } | null,
+  planLevel: PlanLevel = 'ENTERPRISE',
+): BillingEntitlementsResponse {
+  const plan = DEMO_BILLING_PLANS.find((item) => item.level === planLevel) ?? DEMO_BILLING_PLANS[0];
+  const planOrder: Record<PlanLevel, number> = { FREE: 1, PRO: 2, ENTERPRISE: 3 };
+  const features = DEMO_BILLING_FEATURES.map((feature) => {
+    const enabled = planOrder[planLevel] >= planOrder[feature.minPlan];
+
+    return {
+      ...feature,
+      enabled,
+      locked: !enabled,
+    };
+  });
+
+  return {
+    status: 'OK_DEMO',
+    companyId: company?.id ?? 'demo-001',
+    company: {
+      id: company?.id ?? 'demo-001',
+      name: company?.name ?? 'Empresa Demo',
+      cnpj: company?.cnpj ?? '00.000.000/0001-91',
+      active: true,
+    },
+    plan,
+    planLevel,
+    features,
+    enabledFeatures: features.filter((feature) => feature.enabled).map((feature) => feature.key),
+    lockedFeatures: features.filter((feature) => feature.locked).map((feature) => feature.key),
+    limits: plan.limits,
+    commercial: {
+      canUpgrade: false,
+      recommendedPlan: null,
+      upgradeReasons: [],
+    },
+    generatedAt: new Date().toISOString(),
+  };
+}
+
 export const billingApi = {
   plans: async (): Promise<BillingPlansResponse> => {
     const response = await api.get<BillingPlansResponse>('/billing/plans');
