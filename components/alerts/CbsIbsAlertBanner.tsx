@@ -1,27 +1,20 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
-import { AlertTriangle, X, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
+import { AlertTriangle, Info, X, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
 import {
   CBS_IBS_TRANSITION,
   TAX_REFORM_OFFICIAL_SOURCES,
 } from '@/lib/tax-reform/official-data';
 
-const DEADLINE = new Date(`${CBS_IBS_TRANSITION.testStartDate}T00:00:00-03:00`);
-
-function useDaysRemaining(): number {
-  const [days, setDays] = useState(0);
-  useEffect(() => {
-    const calc = () => {
-      const diff = DEADLINE.getTime() - Date.now();
-      setDays(Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24))));
-    };
-    calc();
-    const id = setInterval(calc, 60_000);
-    return () => clearInterval(id);
-  }, []);
-  return days;
-}
+/**
+ * Banner informativo de calibração CBS/IBS.
+ *
+ * CORRIGIDO: o período de 2026 tem recolhimento DISPENSADO (apuração
+ * meramente informativa), conforme Decreto Federal 12.955/2026, Livro I,
+ * art. 464. Este componente NÃO deve comunicar urgência de "prazo/multa" —
+ * usa tom informativo (azul/âmbar neutro), nunca vermelho de alerta crítico.
+ */
 
 const CBS_RATE = CBS_IBS_TRANSITION.cbsRate;
 const IBS_RATE = CBS_IBS_TRANSITION.ibsRate;
@@ -43,7 +36,8 @@ function formatBRL(value: number): string {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-const LINK_CLASS = 'flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-white/10 transition-colors';
+const LINK_CLASS =
+  'flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-white/10 transition-colors';
 
 interface CbsIbsAlertBannerProps {
   estimatedMonthlyRevenue?: number;
@@ -51,8 +45,11 @@ interface CbsIbsAlertBannerProps {
   compact?: boolean;
 }
 
-export default function CbsIbsAlertBanner({ estimatedMonthlyRevenue = 0, dismissible = true, compact = false }: CbsIbsAlertBannerProps) {
-  const days = useDaysRemaining();
+export default function CbsIbsAlertBanner({
+  estimatedMonthlyRevenue = 0,
+  dismissible = true,
+  compact = false,
+}: CbsIbsAlertBannerProps) {
   const [dismissed, setDismissed] = useState(() => {
     if (typeof window === 'undefined') return false;
     return sessionStorage.getItem('bcost_cbs_ibs_dismissed') === 'true';
@@ -68,36 +65,43 @@ export default function CbsIbsAlertBanner({ estimatedMonthlyRevenue = 0, dismiss
 
   const impact = estimatedMonthlyRevenue > 0 ? calcularCbsIbs(estimatedMonthlyRevenue) : null;
 
-  const urgencyColor = days <= 7 ? 'border-red-500/40 bg-red-500/10' : days <= 21 ? 'border-orange-500/40 bg-orange-500/10' : 'border-amber-500/40 bg-amber-500/10';
-  const badgeColor = days <= 7 ? 'bg-red-500 text-white' : days <= 21 ? 'bg-orange-500 text-white' : 'bg-amber-500 text-white';
-  const iconColor = days <= 7 ? 'text-red-400' : days <= 21 ? 'text-orange-400' : 'text-amber-400';
+  // Tom sempre informativo (âmbar/azul) — nunca vermelho de "risco iminente",
+  // já que o recolhimento é dispensado em 2026 (apuração informativa).
+  const toneClass = 'border-blue-500/30 bg-blue-500/10';
+  const badgeClass = 'bg-blue-500 text-white';
+  const iconClass = 'text-blue-400';
 
   if (compact) {
     return (
-      <div className={`rounded-2xl border px-4 py-3 flex items-center gap-3 ${urgencyColor}`}>
-        <AlertTriangle size={14} className={iconColor} />
+      <div className={`rounded-2xl border px-4 py-3 flex items-center gap-3 ${toneClass}`}>
+        <Info size={14} className={iconClass} />
         <div className="flex-1 min-w-0">
           <p className="text-xs font-black text-white">
-            CBS/IBS em fase de teste a partir de {CBS_IBS_TRANSITION.displayStartDate}
+            CBS/IBS — {CBS_IBS_TRANSITION.phaseLabel}
           </p>
-          <p className="text-[10px] text-slate-400 mt-0.5">CBS 0,9% + IBS 0,1% como destaque operacional</p>
+          <p className="text-[10px] text-slate-400 mt-0.5">
+            Destaque informativo (CBS {(CBS_RATE * 100).toFixed(1)}% + IBS{' '}
+            {(IBS_RATE * 100).toFixed(1)}%) — sem recolhimento exigido em 2026.
+          </p>
         </div>
-        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black flex-shrink-0 ${badgeColor}`}>{days}d</span>
+        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black flex-shrink-0 ${badgeClass}`}>
+          Info
+        </span>
       </div>
     );
   }
 
   return (
-    <div className={`rounded-2xl border transition-all duration-300 overflow-hidden ${urgencyColor}`}>
+    <div className={`rounded-2xl border transition-all duration-300 overflow-hidden ${toneClass}`}>
       <div className="flex items-start gap-4 p-5">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 border ${urgencyColor}`}>
-          <AlertTriangle size={18} className={iconColor} />
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 border ${toneClass}`}>
+          <AlertTriangle size={18} className={iconClass} />
         </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-1.5">
-            <span className={`px-2.5 py-1 rounded-full text-[10px] font-black ${badgeColor}`}>
-              ATENCAO -- {days} dia{days !== 1 ? 's' : ''} restante{days !== 1 ? 's' : ''}
+            <span className={`px-2.5 py-1 rounded-full text-[10px] font-black ${badgeClass}`}>
+              INFORMATIVO
             </span>
             <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-white/5 text-slate-300 border border-white/10">
               {CBS_IBS_TRANSITION.phaseLabel}
@@ -105,40 +109,51 @@ export default function CbsIbsAlertBanner({ estimatedMonthlyRevenue = 0, dismiss
           </div>
 
           <h3 className="text-sm font-black text-white">
-            CBS/IBS em NF-e a partir de {CBS_IBS_TRANSITION.displayStartDate}
+            CBS/IBS na NF-e a partir de {CBS_IBS_TRANSITION.displayStartDate}
           </h3>
 
           <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-            A partir de {CBS_IBS_TRANSITION.displayStartDate}, prepare a operacao para destacar{' '}
-            <span className="text-white font-bold">CBS (0,9%)</span> e{' '}
-            <span className="text-white font-bold">IBS (0,1%)</span> nos documentos fiscais. Em 2026,
-            trate os valores como teste de adaptacao, sem confundir com recolhimento definitivo.
+            {CBS_IBS_TRANSITION.operationalNote}
           </p>
 
           {impact && (
             <div className="flex flex-wrap gap-3 mt-3">
               <div className="bg-white/5 border border-white/10 rounded-xl px-3 py-2">
-                <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest">CBS (0,9%)</p>
-                <p className="text-sm font-black text-amber-400">{formatBRL(impact.cbs)}/mes</p>
+                <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest">
+                  CBS ({(CBS_RATE * 100).toFixed(1)}%)
+                </p>
+                <p className="text-sm font-black text-amber-400">{formatBRL(impact.cbs)}/mês</p>
               </div>
               <div className="bg-white/5 border border-white/10 rounded-xl px-3 py-2">
-                <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest">IBS (0,1%)</p>
-                <p className="text-sm font-black text-orange-400">{formatBRL(impact.ibs)}/mes</p>
+                <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest">
+                  IBS ({(IBS_RATE * 100).toFixed(1)}%)
+                </p>
+                <p className="text-sm font-black text-orange-400">{formatBRL(impact.ibs)}/mês</p>
               </div>
               <div className="bg-white/5 border border-white/10 rounded-xl px-3 py-2">
-                <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest">Teste Total</p>
-                <p className="text-sm font-black text-red-400">{formatBRL(impact.total)}/mes</p>
+                <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest">
+                  Destaque total (informativo)
+                </p>
+                <p className="text-sm font-black text-blue-300">{formatBRL(impact.total)}/mês</p>
               </div>
             </div>
           )}
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
-          <button onClick={() => setExpanded((v) => !v)} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors">
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+            aria-label={expanded ? 'Recolher detalhes' : 'Expandir detalhes'}
+          >
             {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
           {dismissible && (
-            <button onClick={handleDismiss} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors">
+            <button
+              onClick={handleDismiss}
+              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+              aria-label="Fechar aviso"
+            >
               <X size={14} />
             </button>
           )}
@@ -149,35 +164,64 @@ export default function CbsIbsAlertBanner({ estimatedMonthlyRevenue = 0, dismiss
         <div className="border-t border-white/5 px-5 pb-5 pt-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-              <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2">O que e CBS</p>
+              <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2">
+                O que é CBS
+              </p>
               <p className="text-xs text-slate-300 leading-relaxed">
-                Contribuicao sobre Bens e Servicos -- substituira PIS/COFINS. Percentual de teste de{' '}
-                <span className="text-amber-400 font-bold">0,9%</span> sobre o valor da nota.
+                Contribuição sobre Bens e Serviços — substituirá PIS/COFINS. Percentual de
+                calibração de <span className="text-amber-400 font-bold">{(CBS_RATE * 100).toFixed(1)}%</span>{' '}
+                sobre o valor da nota em 2026.
               </p>
             </div>
             <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-              <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2">O que e IBS</p>
+              <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2">
+                O que é IBS
+              </p>
               <p className="text-xs text-slate-300 leading-relaxed">
-                Imposto sobre Bens e Servicos -- substituira ICMS/ISS. Percentual de teste de{' '}
-                <span className="text-orange-400 font-bold">0,1%</span> na fase inicial.
+                Imposto sobre Bens e Serviços — substituirá ICMS/ISS. Percentual de calibração
+                de <span className="text-orange-400 font-bold">{(IBS_RATE * 100).toFixed(1)}%</span>{' '}
+                na fase inicial (2026).
               </p>
             </div>
             <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-              <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2">Leitura juridica</p>
+              <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest mb-2">
+                Leitura jurídica
+              </p>
               <p className="text-xs text-slate-300 leading-relaxed">
-                {CBS_IBS_TRANSITION.operationalNote}
+                {CBS_IBS_TRANSITION.legalCitation}. Recolhimento dispensado no período de{' '}
+                {CBS_IBS_TRANSITION.dispensedFrom.split('-').reverse().join('/')} a{' '}
+                {CBS_IBS_TRANSITION.dispensedTo.split('-').reverse().join('/')}.
               </p>
             </div>
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <a href={TAX_REFORM_OFFICIAL_SOURCES.revenueTaxReform} target="_blank" rel="noopener noreferrer" className={LINK_CLASS}>
+            
+              href={TAX_REFORM_OFFICIAL_SOURCES.revenueTaxReform}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={LINK_CLASS}
+            >
               <ExternalLink size={12} />
-              Receita Federal -- Reforma Tributaria
+              Receita Federal — Reforma Tributária
             </a>
-            <a href={TAX_REFORM_OFFICIAL_SOURCES.constitutionalAmendment132} target="_blank" rel="noopener noreferrer" className={LINK_CLASS}>
+            
+              href={TAX_REFORM_OFFICIAL_SOURCES.complementaryLaw214}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={LINK_CLASS}
+            >
               <ExternalLink size={12} />
-              EC 132/2023 -- Emenda Constitucional
+              LC 214/2025 — Lei Complementar
+            </a>
+            
+              href={TAX_REFORM_OFFICIAL_SOURCES.constitutionalAmendment132}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={LINK_CLASS}
+            >
+              <ExternalLink size={12} />
+              EC 132/2023 — Emenda Constitucional
             </a>
           </div>
         </div>
