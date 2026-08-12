@@ -72,6 +72,171 @@ export interface Invoice {
   date: string;
   type: XmlDocumentType;
   status: 'VALID' | 'INVALID' | 'PENDING';
+  finNFe?: string;
+  issuePurpose?:
+    | 'NORMAL'
+    | 'COMPLEMENTARY'
+    | 'ADJUSTMENT'
+    | 'RETURN'
+    | 'DEBIT_NOTE'
+    | 'CREDIT_NOTE';
+  cstCode?: string;
+  cClassTribCode?: string;
+  destinationStateIbge?: string;
+  destinationMunicipalityIbge?: string;
+  hasLegacyTaxes?: boolean;
+  taxReformPayload?: TaxReformPayload;
+}
+
+export interface TaxReformPayload {
+  group: 'UB';
+  cbsValue: number;
+  ibsValue: number;
+  selectiveTaxValue: number;
+  raw?: unknown;
+}
+
+export type TaxReformTaxType = 'CBS' | 'IBS' | 'IS';
+export type NFeIssuePurpose =
+  | 'NORMAL'
+  | 'COMPLEMENTARY'
+  | 'ADJUSTMENT'
+  | 'RETURN'
+  | 'DEBIT_NOTE'
+  | 'CREDIT_NOTE';
+
+export interface TaxReformDestination {
+  stateIbgeCode: string;
+  municipalityIbgeCode?: string;
+}
+
+export interface TaxReformItemInput {
+  itemId: string;
+  description?: string;
+  baseAmount: number;
+  cstCode?: string;
+  cClassTribCode?: string;
+  ncm?: string;
+  isNationalBasicBasket?: boolean;
+  reductionRate?: number;
+  legacyTaxAmount?: number;
+  selectiveTaxCstCode?: string;
+  selectiveTaxClassCode?: string;
+  selectiveTaxBaseAmount?: number;
+  selectiveTaxUnit?: string;
+  selectiveTaxQuantity?: number;
+  selectiveTaxAdRemRate?: number;
+}
+
+export interface TaxCreditInput {
+  taxType: TaxReformTaxType;
+  amount: number;
+  documentKey?: string;
+}
+
+export interface TaxReformSimulationInput {
+  issuePurpose?: NFeIssuePurpose;
+  destination?: TaxReformDestination;
+  items: TaxReformItemInput[];
+  credits?: TaxCreditInput[];
+  rates?: Partial<Record<TaxReformTaxType, number>>;
+}
+
+export interface TaxReformResolvedSimulationInput extends TaxReformSimulationInput {
+  companyId?: string;
+  operationDate?: string;
+}
+
+export interface TaxReformItemCalculation {
+  itemId: string;
+  baseAmount: number;
+  taxableBaseAmount: number;
+  cstCode?: string;
+  cClassTribCode?: string;
+  cbsValue: number;
+  ibsValue: number;
+  ibsStateValue: number;
+  ibsMunicipalValue: number;
+  selectiveTaxValue: number;
+  total: number;
+  applied: {
+    cbsRate: number;
+    ibsRate: number;
+    ibsStateRate: number;
+    ibsMunicipalRate: number;
+    selectiveTaxRate: number;
+    selectiveTaxAdRemRate: number;
+    selectiveTaxQuantity: number;
+    reductionRate: number;
+    zeroRate: boolean;
+  };
+}
+
+export interface TaxCalculationResult {
+  regime: 'LEGACY' | 'REFORM_2026';
+  sourceVersion: string;
+  xmlSchema: string;
+  xmlGroup: 'UB' | 'LEGACY';
+  issuePurpose: NFeIssuePurpose;
+  destination?: TaxReformDestination;
+  totals: {
+    baseAmount: number;
+    taxableBaseAmount: number;
+    cbsValue: number;
+    ibsValue: number;
+    selectiveTaxValue: number;
+    grossTax: number;
+    creditsApplied: number;
+    netTax: number;
+  };
+  items: TaxReformItemCalculation[];
+  credits: TaxCreditInput[];
+  validations: string[];
+}
+
+export interface TaxReformXmlBuildResult {
+  schema: 'DFeTiposBasicos_v1.00.xsd';
+  group: 'UB';
+  xml: string;
+  calculation: TaxCalculationResult;
+  validations: string[];
+}
+
+export interface TaxReformResolvedParameters {
+  sourceVersion: string;
+  operationDate: string;
+  classification?: {
+    cstCode: string;
+    cClassTribCode: string;
+    description: string;
+    taxType: TaxReformTaxType;
+    isZeroRate: boolean;
+    reductionRate: number;
+    creditAllowed: boolean;
+    legalBasis?: string | null;
+  };
+  destinationRule?: {
+    destinationStateIbge: string;
+    destinationMunicipalityIbge?: string | null;
+    appliesIbs: boolean;
+    appliesCbs: boolean;
+    appliesSelectiveTax: boolean;
+    priority: number;
+  };
+  rates: Record<TaxReformTaxType, number>;
+  fallbackApplied: boolean;
+}
+
+export interface CbsIbsSimulationResult {
+  revenue: number;
+  cbsValue: number;
+  ibsValue: number;
+  totalTransitionalTax: number;
+  netRevenue: number;
+  splitPaymentEstimate: {
+    retentionAtSource: number;
+    effectiveNetCashflow: number;
+  };
 }
 
 /**

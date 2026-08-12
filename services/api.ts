@@ -17,6 +17,9 @@ const isProductionHost = (): boolean =>
   isBrowser() &&
   !window.location.hostname.includes('localhost') &&
   !window.location.hostname.includes('127.0.0.1');
+const isLocalBrowserHost = (): boolean =>
+  isBrowser() &&
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
 const isValidValue = (v: unknown): v is string =>
   v !== undefined && v !== null && v !== '' && v !== 'null' && v !== 'undefined';
@@ -399,9 +402,18 @@ export function isAuthMissingError(error: unknown): error is AuthMissingError {
 }
 
 // Instancia Axios unificada
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL ||
-  (process.env.NODE_ENV === 'development' ? 'http://localhost:5000/api/v1' : '/api/v1');
+function resolveApiBase(): string {
+  if (isLocalBrowserHost()) {
+    return 'http://localhost:5000/api/v1';
+  }
+
+  return (
+    process.env.NEXT_PUBLIC_API_URL ||
+    (process.env.NODE_ENV === 'development' ? 'http://localhost:5000/api/v1' : '/api/v1')
+  );
+}
+
+const API_BASE = resolveApiBase();
 
 export const api: AxiosInstance = axios.create({
   baseURL: API_BASE,

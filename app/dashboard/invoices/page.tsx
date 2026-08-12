@@ -7,7 +7,39 @@ import UploadModal from '../../../components/UploadModal';
 import { getDemoInvoices } from '@/services/demo-data';
 import { isDemoSession } from '@/services/api';
 import { calcularCbsIbs } from '@/components/alerts/CbsIbsAlertBanner';
-import { Search, Filter, FileSpreadsheet, AlertCircle, CheckCircle2, Clock, ShieldAlert } from 'lucide-react';
+import {
+  Search,
+  Filter,
+  FileSpreadsheet,
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  ShieldAlert,
+} from 'lucide-react';
+
+function getInvoiceTaxImpact(invoice: Invoice) {
+  const payload = invoice.taxReformPayload;
+  if (payload?.group === 'UB') {
+    const cbs = payload.cbsValue ?? 0;
+    const ibs = payload.ibsValue ?? 0;
+    const selectiveTax = payload.selectiveTaxValue ?? 0;
+
+    return {
+      baseValue: invoice.value ?? 0,
+      cbs,
+      ibs,
+      selectiveTax,
+      total: cbs + ibs + selectiveTax,
+      source: 'xml' as const,
+    };
+  }
+
+  return {
+    ...calcularCbsIbs(invoice.value ?? 0),
+    selectiveTax: 0,
+    source: 'estimated' as const,
+  };
+}
 
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -61,8 +93,20 @@ export default function InvoicesPage() {
 
   // Totalizadores CBS/IBS do lote exibido
   const totaisCbsIbs = useMemo(() => {
-    const totalValor = filteredInvoices.reduce((s, nf) => s + (nf?.value ?? 0), 0);
-    return calcularCbsIbs(totalValor);
+    return filteredInvoices.reduce(
+      (acc, nf) => {
+        const impact = getInvoiceTaxImpact(nf);
+        return {
+          baseValue: acc.baseValue + impact.baseValue,
+          cbs: acc.cbs + impact.cbs,
+          ibs: acc.ibs + impact.ibs,
+          selectiveTax: acc.selectiveTax + impact.selectiveTax,
+          total: acc.total + impact.total,
+          audited: acc.audited + (impact.source === 'xml' ? 1 : 0),
+        };
+      },
+      { baseValue: 0, cbs: 0, ibs: 0, selectiveTax: 0, total: 0, audited: 0 },
+    );
   }, [filteredInvoices]);
 
   return (
@@ -94,24 +138,36 @@ export default function InvoicesPage() {
               <ShieldAlert size={16} className="text-amber-500" />
             </div>
             <div>
-              <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">CBS/IBS</p>
-              <p className="text-xs font-black text-slate-700">Impacto do lote</p>
+              <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
+                CBS/IBS
+              </p>
+              <p className="text-xs font-black text-slate-700">
+                {totaisCbsIbs.audited > 0
+                  ? `${totaisCbsIbs.audited} XML com Grupo UB`
+                  : 'Impacto estimado do lote'}
+              </p>
             </div>
           </div>
           <div>
-            <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1">CBS (0,9%)</p>
+            <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1">
+              CBS (0,9%)
+            </p>
             <p className="text-sm font-black text-amber-600">
               {totaisCbsIbs.cbs.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </p>
           </div>
           <div>
-            <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1">IBS (0,1%)</p>
+            <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1">
+              IBS (0,1%)
+            </p>
             <p className="text-sm font-black text-orange-600">
               {totaisCbsIbs.ibs.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </p>
           </div>
           <div>
-            <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1">Total CBS+IBS</p>
+            <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1">
+              Total CBS+IBS+IS
+            </p>
             <p className="text-sm font-black text-red-600">
               {totaisCbsIbs.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </p>
@@ -190,7 +246,7 @@ export default function InvoicesPage() {
               </tr>
             ) : (
               filteredInvoices.map((nf) => {
-                const impact = calcularCbsIbs(nf?.value ?? 0);
+                const impact = getInvoiceTaxImpact(nf);
                 return (
                   <tr
                     key={nf?.id}
@@ -203,7 +259,7 @@ export default function InvoicesPage() {
                         </div>
                         <div>
                           <p className="text-[12px] font-black text-slate-900 tracking-tighter uppercase">
-                            {(nf?.type ?? 'NFe')} #{nf?.number ?? 'S/N'}
+                            {nf?.type ?? 'NFe'} #{nf?.number ?? 'S/N'}
                           </p>
                           <p className="text-[9px] font-bold text-slate-400 uppercase">
                             Auditado em{' '}
@@ -245,6 +301,21 @@ export default function InvoicesPage() {
                           style: 'currency',
                           currency: 'BRL',
                         })}
+                        {impact.selectiveTax > 0 ? (
+                          <>
+                            {' '}
+                            + IS{' '}
+                            {impact.selectiveTax.toLocaleString('pt-BR', {
+                              style: 'currency',
+                              currency: 'BRL',
+                            })}
+                          </>
+                        ) : null}
+                      </p>
+                      <p className="text-[9px] text-slate-400 mt-1">
+                        {impact.source === 'xml'
+                          ? 'Valor auditado no Grupo UB'
+                          : 'Estimativa 2026 sobre valor da nota'}
                       </p>
                     </td>
                     <td className="p-6">
@@ -279,7 +350,10 @@ export default function InvoicesPage() {
           {filteredInvoices.length > 0 && (
             <tfoot>
               <tr className="bg-slate-900">
-                <td colSpan={2} className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                <td
+                  colSpan={2}
+                  className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest"
+                >
                   TOTAL DO LOTE — {filteredInvoices.length} documentos
                 </td>
                 <td className="p-5 text-right text-sm font-black text-white">

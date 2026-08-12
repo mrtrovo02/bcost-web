@@ -25,6 +25,12 @@ function resolveBuildId(): string {
 }
 
 const buildId = resolveBuildId();
+const isDevelopment = process.env.NODE_ENV !== 'production';
+const connectSources = [
+  "'self'",
+  'https://api.bcost.com.br',
+  ...(isDevelopment ? ['http://localhost:5000', 'http://127.0.0.1:5000'] : []),
+].join(' ');
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
@@ -91,7 +97,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://api.bcost.com.br; frame-ancestors 'self'; base-uri 'self'; form-action 'self'",
+            value: `default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src ${connectSources}; frame-ancestors 'self'; base-uri 'self'; form-action 'self'`,
           },
         ],
       },

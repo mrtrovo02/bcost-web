@@ -33,6 +33,17 @@ function shouldUseLocalDemo() {
   );
 }
 
+function resolveApiBase() {
+  if (
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  ) {
+    return 'http://localhost:5000/api/v1';
+  }
+
+  return process.env.NEXT_PUBLIC_API_URL || 'https://api.bcost.com.br/api/v1';
+}
+
 function readLocalStorage(keys: string[]): string | null {
   if (typeof window === 'undefined') return null;
 
@@ -154,7 +165,7 @@ function companyContextAlreadyExists() {
 }
 
 async function fetchAuthMe(token: string) {
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://api.bcost.com.br';
+  const apiBase = resolveApiBase();
 
   // Alinha a chamada removendo o prefixo /api/v1 redundante caso a URL base mude
   const endpoint = apiBase.endsWith('/') ? `${apiBase}auth/me` : `${apiBase}/auth/me`;
