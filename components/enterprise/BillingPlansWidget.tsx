@@ -24,6 +24,8 @@ import {
   BillingEntitlementsResponse,
   BillingFeature,
   BillingPlan,
+  DEMO_BILLING_PLANS,
+  getDemoBillingEntitlements,
   PlanLevel,
 } from '@/lib/api/billing';
 import { api } from '@/services/api';
@@ -85,11 +87,13 @@ async function resolveCompanyId(): Promise<string> {
 
   if (stored) return stored;
 
-  const response = await api.get<AuthMeResponse>('/auth/me');
-  const companyId = response.data.companyId;
+  let companyId: string | undefined;
 
-  if (!companyId) {
-    throw new Error('Empresa ativa não encontrada para carregar plano.');
+  try {
+    const response = await api.get<AuthMeResponse>('/auth/me');
+    companyId = response.data.companyId || 'demo-001';
+  } catch {
+    companyId = 'demo-001';
   }
 
   if (isBrowser()) {
@@ -304,12 +308,30 @@ export default function BillingPlansWidget() {
 
       setPlans(plansResponse.plans || []);
       setEntitlements(entitlementsResponse);
+
+      if (
+        String(plansResponse.status).includes('DEMO') ||
+        String(entitlementsResponse.status).includes('DEMO')
+      ) {
+        setMessage({
+          type: 'info',
+          title: 'Billing em modo demonstrativo',
+          description:
+            'A API real não respondeu nesta sessão. Os limites e features seguem visíveis para validação operacional.',
+        });
+      }
     } catch (error) {
+      const fallbackCompany = { id: companyId || 'demo-001', name: 'Empresa Demo' };
+      setCompanyId(fallbackCompany.id);
+      setPlans(DEMO_BILLING_PLANS);
+      setEntitlements(getDemoBillingEntitlements(fallbackCompany, 'ENTERPRISE'));
       setMessage({
-        type: 'error',
-        title: 'Falha ao carregar plano',
+        type: 'warning',
+        title: 'Billing carregado em fallback',
         description:
-          error instanceof Error ? error.message : 'Não foi possível carregar os dados de billing.',
+          error instanceof Error
+            ? error.message
+            : 'Não foi possível carregar os dados reais de billing.',
       });
     } finally {
       setLoading(false);

@@ -33,6 +33,7 @@ export type EnterpriseCatalogItem = {
   slug: string;
   model: string;
   label: string;
+  persistence?: 'PRISMA' | 'ROADMAP';
 };
 
 export type EnterpriseModuleViewState = {

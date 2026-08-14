@@ -22,6 +22,18 @@ function priorityClass(priority: string) {
   return 'bg-slate-50 text-slate-500';
 }
 
+function operationLabel(status: string) {
+  if (status === 'ACTIVE') return 'API real';
+  if (status === 'INTEGRATING') return 'Operação assistida';
+  return 'Fallback controlado';
+}
+
+function operationClass(status: string) {
+  if (status === 'ACTIVE') return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+  if (status === 'INTEGRATING') return 'bg-indigo-50 text-indigo-700 border-indigo-100';
+  return 'bg-amber-50 text-amber-700 border-amber-100';
+}
+
 export default function EnterpriseModulesPage() {
   const stats = getModuleStats();
 
@@ -42,6 +54,12 @@ export default function EnterpriseModulesPage() {
             é garantir que cada recurso do backend tenha uma experiência clara no frontend: tela,
             serviço, endpoint, métricas, ações e valor comercial.
           </p>
+
+          <div className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-5 text-sm leading-6 text-slate-300">
+            Os módulos com API real usam dados do backend. Módulos ainda em implantação abrem com
+            fallback operacional identificado, para validação de fluxo, navegação, KPIs e layout sem
+            quebrar a experiência.
+          </div>
         </div>
 
         <div className="mt-10 grid grid-cols-2 gap-4 md:grid-cols-5">
@@ -102,6 +120,14 @@ export default function EnterpriseModulesPage() {
                       )}`}
                     >
                       {statusLabel(module.status)}
+                    </span>
+
+                    <span
+                      className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-widest ${operationClass(
+                        module.status,
+                      )}`}
+                    >
+                      {operationLabel(module.status)}
                     </span>
 
                     <span

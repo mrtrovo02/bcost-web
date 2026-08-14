@@ -210,32 +210,63 @@ export function getDemoBillingEntitlements(
 
 export const billingApi = {
   plans: async (): Promise<BillingPlansResponse> => {
-    const response = await api.get<BillingPlansResponse>('/billing/plans');
-    return response.data;
+    try {
+      const response = await api.get<BillingPlansResponse>('/billing/plans');
+      return response.data;
+    } catch {
+      return {
+        status: 'OK_DEMO',
+        plans: DEMO_BILLING_PLANS,
+        features: DEMO_BILLING_FEATURES,
+        generatedAt: new Date().toISOString(),
+      };
+    }
   },
 
   entitlements: async (companyId: string): Promise<BillingEntitlementsResponse> => {
-    const response = await api.get<BillingEntitlementsResponse>(
-      `/billing/entitlements/${companyId}`,
-    );
+    try {
+      const response = await api.get<BillingEntitlementsResponse>(
+        `/billing/entitlements/${companyId}`,
+      );
 
-    return response.data;
+      return response.data;
+    } catch {
+      return getDemoBillingEntitlements({ id: companyId }, 'ENTERPRISE');
+    }
   },
 
   checkFeature: async (
     companyId: string,
     feature: string,
   ): Promise<BillingFeatureCheckResponse> => {
-    const response = await api.get<BillingFeatureCheckResponse>(
-      `/billing/features/${companyId}/check`,
-      {
-        params: {
-          feature,
+    try {
+      const response = await api.get<BillingFeatureCheckResponse>(
+        `/billing/features/${companyId}/check`,
+        {
+          params: {
+            feature,
+          },
         },
-      },
-    );
+      );
 
-    return response.data;
+      return response.data;
+    } catch {
+      const demo = getDemoBillingEntitlements({ id: companyId }, 'ENTERPRISE');
+      const found = demo.features.find((item) => item.key === feature);
+
+      return {
+        status: found ? 'ALLOWED_DEMO' : 'UNKNOWN_FEATURE_DEMO',
+        allowed: Boolean(found),
+        companyId,
+        planLevel: demo.planLevel,
+        featureKey: feature,
+        feature: found,
+        message: found
+          ? 'Feature liberada no modo demonstrativo.'
+          : 'Feature não catalogada no modo demonstrativo.',
+        generatedAt: new Date().toISOString(),
+      };
+    }
   },
 
   updatePlan: async (
@@ -243,11 +274,24 @@ export const billingApi = {
     planLevel: PlanLevel,
     reason?: string,
   ): Promise<BillingUpdatePlanResponse> => {
-    const response = await api.patch<BillingUpdatePlanResponse>(`/billing/plan/${companyId}`, {
-      planLevel,
-      reason: reason || `Alteração de plano solicitada via Dashboard Enterprise para ${planLevel}`,
-    });
+    try {
+      const response = await api.patch<BillingUpdatePlanResponse>(`/billing/plan/${companyId}`, {
+        planLevel,
+        reason: reason || `Alteração de plano solicitada via Dashboard Enterprise para ${planLevel}`,
+      });
 
-    return response.data;
+      return response.data;
+    } catch {
+      return {
+        ...getDemoBillingEntitlements({ id: companyId }, planLevel),
+        message: `Plano simulado como ${planLevel}. Conecte a API para persistir a alteração.`,
+        oldPlan: 'ENTERPRISE',
+        newPlan: planLevel,
+        audit: {
+          recorded: false,
+          error: 'Modo demonstrativo: alteração não persistida.',
+        },
+      };
+    }
   },
 };

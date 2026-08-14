@@ -171,6 +171,50 @@ function statusBadgeClass(status: string | undefined) {
   return 'border-slate-200 bg-slate-50 text-slate-600';
 }
 
+function isFallbackData(data: EnterpriseModuleResponse | null) {
+  if (!data) return false;
+  if (String(data.status).includes('FALLBACK') || String(data.status).includes('DEMO')) {
+    return true;
+  }
+
+  const summary = data.summary as Record<string, unknown> | undefined;
+  return Boolean(summary?.fallback);
+}
+
+function isRoadmapData(data: EnterpriseModuleResponse | null) {
+  if (!data) return false;
+  if (String(data.status).includes('ROADMAP')) return true;
+
+  const summary = data.summary as Record<string, unknown> | undefined;
+  return Boolean(summary?.roadmap);
+}
+
+function FallbackNotice({ data }: { data: EnterpriseModuleResponse | null }) {
+  if (isRoadmapData(data)) {
+    return (
+      <section className="mb-6 rounded-3xl border border-blue-200 bg-blue-50 p-5 text-sm text-blue-900 shadow-sm">
+        <div className="font-black">Módulo em roadmap técnico</div>
+        <p className="mt-1 leading-6">
+          Este domínio já está navegável e padronizado, mas ainda precisa de persistência,
+          endpoints CRUD, auditoria e regras de permissão antes de operar com dados reais.
+        </p>
+      </section>
+    );
+  }
+
+  if (!isFallbackData(data)) return null;
+
+  return (
+    <section className="mb-6 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900 shadow-sm">
+      <div className="font-black">Modo operacional demonstrativo</div>
+      <p className="mt-1 leading-6">
+        A API real deste módulo não respondeu com dados válidos nesta sessão. A tela continua
+        funcional com dados controlados para validar fluxo, campos, KPIs e experiência de uso.
+      </p>
+    </section>
+  );
+}
+
 function summarizeCards(data: EnterpriseModuleResponse | null) {
   if (!data) return [];
 
@@ -349,6 +393,8 @@ function AutomationJobsView({
             </div>
           </section>
         ) : null}
+
+        <FallbackNotice data={data} />
 
         <section className="mb-6 grid gap-4 md:grid-cols-5">
           <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -696,6 +742,8 @@ function UniversalModuleView({
             </div>
           ))}
         </section>
+
+        <FallbackNotice data={data} />
 
         <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">

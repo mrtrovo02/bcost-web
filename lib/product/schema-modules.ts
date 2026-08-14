@@ -159,7 +159,7 @@ export const bcostSchemaModules: BcostSchemaModule[] = [
     status: 'ACTIVE',
     priority: 'CRITICAL',
     commercialValue:
-      'Aproxima o bCost da camada operacional financeira da Conta Azul, com visão enterprise, multi-tenant, auditável e integrada ao fiscal/bancário.',
+      'Aproxima o bCost da camada operacional financeira esperada por PMEs, com visão enterprise, multi-tenant, auditável e integrada ao fiscal/bancário.',
     route: '/dashboard/modules/finance-operations',
     apiBase: '/finance/operations',
     mainActions: [
@@ -249,7 +249,7 @@ export const bcostSchemaModules: BcostSchemaModule[] = [
     status: 'PLANNED',
     priority: 'CRITICAL',
     description: 'SPED, ECD, ECF, DCTF, DEFIS, PGDAS e recibos.',
-    commercialValue: 'Aproxima o bCost de soluções como Domínio, Alterdata e SCI.',
+    commercialValue: 'Aproxima o bCost da rotina fiscal completa exigida por operações contábeis maduras.',
     route: '/dashboard/modules/fiscal-obligations',
     apiBase: '/fiscal-obligations',
     mainActions: ['Gerar obrigação', 'Enviar arquivo', 'Anexar recibo', 'Acompanhar status'],
@@ -319,7 +319,7 @@ export const bcostSchemaModules: BcostSchemaModule[] = [
     status: 'PLANNED',
     priority: 'CRITICAL',
     description: 'Débito/crédito, origem automática/manual e competência.',
-    commercialValue: 'Núcleo contábil para competir com Domínio, SCI e Alterdata.',
+    commercialValue: 'Núcleo contábil para operar com profundidade de suite contábil profissional.',
     route: '/dashboard/modules/accounting-entries',
     apiBase: '/accounting/entries',
     mainActions: ['Criar lançamento', 'Gerar automático', 'Exportar', 'Bloquear competência'],

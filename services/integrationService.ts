@@ -5,7 +5,7 @@ import { api } from './api';
  * bCost Engine 1.0 - Enterprise Edition
  */
 export const integrationService = {
-  // Exporta dados no formato aceito pelo Domínio/Contmatic
+  // Exporta dados em formato compatível com ERPs contábeis de mercado.
   exportToLegacy: async (companyId: string, format: 'DOMINIO' | 'QUESTOR' | 'ALTERDATA') => {
     try {
       const response = await api.get(`/fiscal/export/${companyId}?format=${format}`, {

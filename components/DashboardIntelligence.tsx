@@ -20,7 +20,7 @@ export default function DashboardIntelligence() {
 
   /**
    * 1. Motor de Dados Analíticos (Mock de Performance)
-   * Para competir com Contabilizei, focamos em métricas que o cliente entende rápido.
+   * Foco em metricas que o cliente entende rapido.
    */
   const stats = useMemo(
     () => [

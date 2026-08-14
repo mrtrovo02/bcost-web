@@ -1,5 +1,5 @@
-import ComplianceEnterpriseWorkspace from '@/components/enterprise/ComplianceEnterpriseWorkspace';
+import ServiceCatalogWorkspace from '@/components/enterprise/ServiceCatalogWorkspace';
 
 export default function BusinessRulesEnterprisePage() {
-  return <ComplianceEnterpriseWorkspace mode="business-rules" />;
+  return <ServiceCatalogWorkspace />;
 }

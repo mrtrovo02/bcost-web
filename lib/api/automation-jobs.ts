@@ -1,6 +1,7 @@
 'use strict';
 
 import { api } from '@/services/api';
+import { createDemoEnterpriseResponse } from './enterprise-demo';
 
 export type AutomationJobStatus =
   | 'RUNNING'
@@ -103,6 +104,24 @@ export type AuditLogListResponse = {
   generatedAt: string;
 };
 
+function demoAutomationResponse(companyId: string, params: AutomationJobsQuery = {}) {
+  const demo = createDemoEnterpriseResponse('automation-jobs', companyId, params);
+
+  return {
+    status: demo.status,
+    module: 'automation-jobs',
+    model: 'AutomationJob',
+    companyId,
+    items: demo.items as AutomationJobRecord[],
+    total: demo.total,
+    limit: demo.limit,
+    offset: demo.offset,
+    hasMore: demo.hasMore,
+    summary: demo.summary,
+    generatedAt: demo.generatedAt,
+  } satisfies AutomationJobsListResponse;
+}
+
 function buildQuery(params?: Record<string, unknown>): string {
   const search = new URLSearchParams();
 
@@ -124,19 +143,38 @@ export const automationJobsApi = {
     params: AutomationJobsQuery = {},
   ): Promise<AutomationJobsListResponse> => {
     const query = buildQuery(params);
-    const response = await api.get<AutomationJobsListResponse>(
-      `/automation/jobs/${companyId}${query}`,
-    );
 
-    return response.data;
+    try {
+      const response = await api.get<AutomationJobsListResponse>(
+        `/automation/jobs/${companyId}${query}`,
+      );
+
+      return response.data;
+    } catch {
+      return demoAutomationResponse(companyId, params);
+    }
   },
 
   detail: async (companyId: string, jobId: string): Promise<AutomationJobDetailResponse> => {
-    const response = await api.get<AutomationJobDetailResponse>(
-      `/automation/jobs/${companyId}/${jobId}`,
-    );
+    try {
+      const response = await api.get<AutomationJobDetailResponse>(
+        `/automation/jobs/${companyId}/${jobId}`,
+      );
 
-    return response.data;
+      return response.data;
+    } catch {
+      const demo = demoAutomationResponse(companyId);
+      const job = demo.items.find((item) => item.id === jobId) || demo.items[0];
+
+      return {
+        status: 'OK_DEMO',
+        module: 'automation-jobs',
+        model: 'AutomationJob',
+        companyId,
+        job,
+        generatedAt: new Date().toISOString(),
+      };
+    }
   },
 
   retry: async (jobId: string): Promise<AutomationJobActionResponse> => {
@@ -171,8 +209,18 @@ export const automationJobsApi = {
       ...params,
     });
 
-    const response = await api.get<AuditLogListResponse>(`/audit/${companyId}${query}`);
+    try {
+      const response = await api.get<AuditLogListResponse>(`/audit/${companyId}${query}`);
 
-    return response.data;
+      return response.data;
+    } catch {
+      return {
+        items: [],
+        total: 0,
+        limit: Number(params.limit || 10),
+        offset: 0,
+        generatedAt: new Date().toISOString(),
+      };
+    }
   },
 };
