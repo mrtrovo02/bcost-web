@@ -19,7 +19,13 @@ interface Company {
 }
 
 export default function CompaniesPage() {
-  const { companies, setCompanies, setSelectedCompany } = useCompany();
+  const {
+    companies,
+    setCompanies,
+    setSelectedCompany,
+    isDemoSession,
+    isLoading: isCompanyContextLoading,
+  } = useCompany();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [newCompanyName, setNewCompanyName] = useState<string>('');
@@ -42,6 +48,15 @@ export default function CompaniesPage() {
 
       setActiveId(savedActiveId);
 
+      if (isCompanyContextLoading) {
+        return;
+      }
+
+      // Interrompe requisição à API se estiver em sessão de demonstração
+      if (isDemoSession) {
+        return;
+      }
+
       // Chamada à API bCost Engine
       const { data } = await api.get<Company[]>('/company');
       setCompanies(data);
@@ -52,7 +67,7 @@ export default function CompaniesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [setCompanies]);
+  }, [isCompanyContextLoading, isDemoSession, setCompanies]);
 
   useEffect(() => {
     loadInitialData();
@@ -84,6 +99,29 @@ export default function CompaniesPage() {
 
     if (!newCompanyName.trim() || !newCompanyCnpj.trim()) {
       setCreateError('Nome e CNPJ são obrigatórios para criar uma unidade.');
+      return;
+    }
+
+    // Tratamento para criação local durante Demo Session
+    if (isDemoSession) {
+      const created: Company = {
+        id: `demo-company-${Date.now()}`,
+        name: newCompanyName.trim(),
+        cnpj: newCompanyCnpj.trim(),
+        status: 'active',
+      };
+
+      setCompanies([created, ...companies]);
+      setSelectedCompany(created);
+      setNewCompanyName('');
+      setNewCompanyCnpj('');
+      setActiveId(created.id);
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('bcost_active_company', created.id);
+        localStorage.setItem('bcost_active_company_data', JSON.stringify(created));
+      }
+      router.push('/dashboard/intelligence');
       return;
     }
 

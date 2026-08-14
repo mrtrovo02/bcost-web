@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { api } from '@/services/api';
+import { api, isDemoSession as detectDemoSession } from '@/services/api';
 import {
   safeJsonParse,
   safeLocalStorageGet,
@@ -15,12 +15,13 @@ export interface Company {
   cnpj: string;
 }
 
-interface CompanyContextType {
+export interface CompanyContextType {
   selectedCompany: Company | null;
   setSelectedCompany: (company: Company) => void;
   companies: Company[];
   setCompanies: (companies: Company[]) => void;
   isLoading: boolean;
+  isDemoSession: boolean;
 }
 
 const CompanyContext = createContext<CompanyContextType | undefined>(undefined);
@@ -29,6 +30,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDemoSession, setIsDemoSession] = useState<boolean>(false);
 
   /**
    * 1. Hidratação de Estado:
@@ -41,7 +43,9 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         const saved = safeLocalStorageGet('bcost_active_company_data');
         const savedId = safeLocalStorageGet('bcost_active_company');
         const storedCompanies = safeJsonParse<Company[]>(safeLocalStorageGet('bcost_companies'), []);
-        const isDemo = safeLocalStorageGet('bcost_token') === 'demo-token-local';
+        const isDemo = detectDemoSession();
+
+        setIsDemoSession(isDemo);
 
         if (saved) {
           const parsedCompany = safeJsonParse<Company | null>(saved, null);
@@ -115,6 +119,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         companies,
         setCompanies,
         isLoading,
+        isDemoSession,
       }}
     >
       {children}
