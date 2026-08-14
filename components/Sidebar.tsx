@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useCallback } from 'react';
+import { useEffect, useMemo, useCallback, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Activity,
@@ -13,6 +13,7 @@ import {
   FileText,
   Gauge,
   Landmark,
+  Loader2,
   LogOut,
   ReceiptText,
   Settings,
@@ -36,41 +37,64 @@ type NavigationItem = {
 };
 
 export default function Sidebar() {
-  const { companies, setCompanies, selectedCompany, setSelectedCompany } = useCompany();
+  const { companies, setCompanies, selectedCompany, setSelectedCompany, isDemoSession } = useCompany();
   const pathname = usePathname();
   const router = useRouter();
 
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  // Evita setState após desmontagem (StrictMode / navegação rápida entre rotas).
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  // Referencia estável para o valor atual de selectedCompany, evitando
+  // recriar loadCompanies (e o efeito que a dispara) a cada troca de
+  // empresa — o que gerava chamadas de rede redundantes.
+  const selectedCompanyRef = useRef(selectedCompany);
+  useEffect(() => {
+    selectedCompanyRef.current = selectedCompany;
+  }, [selectedCompany]);
+
+  const applyCompanies = useCallback(
+    (companiesList: SidebarCompany[]) => {
+      if (!isMountedRef.current) return;
+      setCompanies(companiesList);
+
+      if (companiesList.length > 0 && !selectedCompanyRef.current) {
+        const savedId = localStorage.getItem('bcost_active_company');
+        const restored =
+          companiesList.find((c) => c.id === savedId) || companiesList[0];
+
+        setSelectedCompany(restored);
+        localStorage.setItem('bcost_active_company', restored.id);
+        localStorage.setItem('bcost_active_company_data', JSON.stringify(restored));
+      }
+    },
+    [setCompanies, setSelectedCompany],
+  );
+
   const loadCompanies = useCallback(async () => {
+    // Sessão demo nunca deve bater na API real — evita o 401 previsível
+    // (sempre ignorado pelo interceptor) que polui o console em loop.
+    if (isDemoSession) {
+      applyCompanies(DEMO_COMPANIES);
+      return;
+    }
+
     try {
       const { data } = await api.get<DemoCompany[]>('/company');
       const companiesList = Array.isArray(data) ? data : [];
-      setCompanies(companiesList);
-
-      if (companiesList.length > 0 && !selectedCompany) {
-        const savedId = localStorage.getItem('bcost_active_company');
-        const restored =
-          companiesList.find((c: DemoCompany) => c.id === savedId) || companiesList[0];
-
-        setSelectedCompany(restored);
-        localStorage.setItem('bcost_active_company', restored.id);
-        localStorage.setItem('bcost_active_company_data', JSON.stringify(restored));
-      }
+      applyCompanies(companiesList);
     } catch {
-      console.warn('[bCost Demo]: API indisponivel, usando dados de demonstracao.');
-      const companiesList = DEMO_COMPANIES;
-      setCompanies(companiesList);
-
-      if (companiesList.length > 0 && !selectedCompany) {
-        const savedId = localStorage.getItem('bcost_active_company');
-        const restored =
-          companiesList.find((c: DemoCompany) => c.id === savedId) || companiesList[0];
-
-        setSelectedCompany(restored);
-        localStorage.setItem('bcost_active_company', restored.id);
-        localStorage.setItem('bcost_active_company_data', JSON.stringify(restored));
-      }
+      console.warn('[bCost Sidebar]: API indisponível, usando dados de demonstração.');
+      applyCompanies(DEMO_COMPANIES);
     }
-  }, [setCompanies, selectedCompany, setSelectedCompany]);
+  }, [isDemoSession, applyCompanies]);
 
   useEffect(() => {
     loadCompanies();
@@ -83,13 +107,44 @@ export default function Sidebar() {
     window.dispatchEvent(new Event('storage'));
   };
 
-  const handleLogout = () => {
-    deleteCookie('bcost_token');
-    deleteCookie('bcost_access_token');
-    deleteCookie('bcost_company_id');
-    localStorage.clear();
-    sessionStorage.clear();
-    router.replace('/login');
+  const SESSION_COOKIE_NAMES = [
+    'bcost_token',
+    'bcost_access_token',
+    'bcost_company_id',
+    'token',
+    'access_token',
+    'refresh_token',
+  ];
+
+  /**
+   * Logout robusto: tenta avisar o backend (best-effort, timeout curto,
+   * nunca bloqueia a saída), limpa todos os cookies de sessão conhecidos,
+   * purga localStorage/sessionStorage, e força um hard reload para
+   * `/login` — garante que nenhum estado de componente/query cache
+   * sobreviva na memória do processo React após o logout.
+   */
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 800);
+
+      await fetch('/api/v1/auth/logout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+      }).catch(() => {
+        /* best-effort: 401/404/offline/timeout não impedem o logout local */
+      });
+
+      clearTimeout(timeoutId);
+    } finally {
+      SESSION_COOKIE_NAMES.forEach((name) => deleteCookie(name));
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.replace('/login');
+    }
   };
 
   const commandItems = useMemo<NavigationItem[]>(
@@ -322,13 +377,18 @@ export default function Sidebar() {
 
           <button
             onClick={handleLogout}
-            className="group flex w-full items-center justify-center gap-2.5 rounded-2xl border border-rose-500/30 bg-rose-500/[0.04] px-4 py-3.5 text-[11px] font-black uppercase tracking-[0.16em] text-rose-300 transition-all duration-300 hover:border-rose-400/60 hover:bg-rose-500/10 hover:text-rose-200"
+            disabled={isLoggingOut}
+            className="group flex w-full items-center justify-center gap-2.5 rounded-2xl border border-rose-500/30 bg-rose-500/[0.04] px-4 py-3.5 text-[11px] font-black uppercase tracking-[0.16em] text-rose-300 transition-all duration-300 hover:border-rose-400/60 hover:bg-rose-500/10 hover:text-rose-200 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <LogOut
-              size={16}
-              className="transition-transform duration-300 group-hover:-translate-x-0.5"
-            />
-            Sair do Terminal
+            {isLoggingOut ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <LogOut
+                size={16}
+                className="transition-transform duration-300 group-hover:-translate-x-0.5"
+              />
+            )}
+            {isLoggingOut ? 'Saindo...' : 'Sair do Terminal'}
           </button>
         </div>
       </div>
