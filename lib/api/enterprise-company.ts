@@ -1,0 +1,60 @@
+'use strict';
+
+import { getDemoEnterpriseCompanyId } from '@/lib/api/enterprise-demo';
+import { api } from '@/services/api';
+
+type AuthMeResponse = {
+  id: string;
+  email: string;
+  companyId?: string;
+  role?: string;
+};
+
+function isBrowser() {
+  return typeof window !== 'undefined';
+}
+
+export function readStoredEnterpriseCompanyId(): string | null {
+  if (!isBrowser()) return null;
+
+  const keys = ['bcost_active_company', 'bcost_company_id', 'companyId', 'activeCompanyId'];
+
+  for (const key of keys) {
+    const value = localStorage.getItem(key);
+
+    if (value && value !== 'null' && value !== 'undefined' && value !== 'ID_DA_EMPRESA') {
+      return value;
+    }
+  }
+
+  return null;
+}
+
+export async function resolveEnterpriseCompanyIdWithFallback(): Promise<string> {
+  const stored = readStoredEnterpriseCompanyId();
+
+  if (stored) return stored;
+
+  try {
+    const response = await api.get<AuthMeResponse>('/auth/me');
+    const companyId = response.data.companyId;
+
+    if (companyId) {
+      if (isBrowser()) {
+        localStorage.setItem('bcost_active_company', companyId);
+      }
+
+      return companyId;
+    }
+  } catch {
+    // segue para fallback operacional
+  }
+
+  const fallbackCompanyId = getDemoEnterpriseCompanyId();
+
+  if (isBrowser()) {
+    localStorage.setItem('bcost_active_company', fallbackCompanyId);
+  }
+
+  return fallbackCompanyId;
+}

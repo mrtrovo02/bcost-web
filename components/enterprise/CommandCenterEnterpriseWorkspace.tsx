@@ -32,70 +32,13 @@ import {
   ExecutiveStatus,
   commandCenterEnterpriseApi,
 } from '@/lib/api/command-center-enterprise';
-import { getDemoEnterpriseCompanyId } from '@/lib/api/enterprise-demo';
-import { api } from '@/services/api';
-
-type AuthMeResponse = {
-  id: string;
-  email: string;
-  companyId?: string;
-  role?: string;
-};
+import { resolveEnterpriseCompanyIdWithFallback } from '@/lib/api/enterprise-company';
 
 type UiMessage = {
   type: 'success' | 'warning' | 'error' | 'info';
   title: string;
   description?: string;
 };
-
-function isBrowser() {
-  return typeof window !== 'undefined';
-}
-
-function readStoredCompanyId(): string | null {
-  if (!isBrowser()) return null;
-
-  const keys = ['bcost_active_company', 'bcost_company_id', 'companyId', 'activeCompanyId'];
-
-  for (const key of keys) {
-    const value = localStorage.getItem(key);
-
-    if (value && value !== 'null' && value !== 'undefined' && value !== 'ID_DA_EMPRESA') {
-      return value;
-    }
-  }
-
-  return null;
-}
-
-async function resolveCompanyId(): Promise<string> {
-  const stored = readStoredCompanyId();
-
-  if (stored) return stored;
-
-  try {
-    const response = await api.get<AuthMeResponse>('/auth/me');
-    const companyId = response.data.companyId;
-
-    if (companyId) {
-      if (isBrowser()) {
-        localStorage.setItem('bcost_active_company', companyId);
-      }
-
-      return companyId;
-    }
-  } catch {
-    // segue para fallback operacional
-  }
-
-  const fallbackCompanyId = getDemoEnterpriseCompanyId();
-
-  if (isBrowser()) {
-    localStorage.setItem('bcost_active_company', fallbackCompanyId);
-  }
-
-  return fallbackCompanyId;
-}
 
 function formatDate(value?: string | null) {
   if (!value) return '—';
@@ -320,7 +263,7 @@ export default function CommandCenterEnterpriseWorkspace() {
       setLoading(true);
       setMessage(null);
 
-      const resolvedCompanyId = companyId || (await resolveCompanyId());
+      const resolvedCompanyId = companyId || (await resolveEnterpriseCompanyIdWithFallback());
       setCompanyId(resolvedCompanyId);
 
       const response = await commandCenterEnterpriseApi.summary(resolvedCompanyId, {
