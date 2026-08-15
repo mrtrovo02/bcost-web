@@ -97,6 +97,10 @@ function flagLabel(service: MicroServiceDefinition) {
   return flags;
 }
 
+function serviceNotes(service: MicroServiceDefinition) {
+  return service.notes ?? [];
+}
+
 function Metric({
   label,
   value,
@@ -498,7 +502,45 @@ export default function ServiceCatalogWorkspace() {
 
                       {service.notes && service.notes.length > 0 && (
                         <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs leading-5 text-blue-800">
-                          {service.notes[0]}
+                          <div className="grid gap-1">
+                            {serviceNotes(service).map((note) => (
+                              <div key={note}>{note}</div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {service.complianceTags && service.complianceTags.length > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {service.complianceTags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="rounded-lg border border-indigo-100 bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-700"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {service.officialSources && service.officialSources.length > 0 && (
+                        <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+                          <div className="mb-2 font-bold uppercase text-slate-500">
+                            Fontes oficiais
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {service.officialSources.map((source) => (
+                              <a
+                                key={source.url}
+                                href={source.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="rounded-lg border border-slate-200 bg-white px-2 py-1 font-semibold text-slate-700 hover:border-emerald-300 hover:text-emerald-700"
+                              >
+                                {source.label}
+                              </a>
+                            ))}
+                          </div>
                         </div>
                       )}
 
