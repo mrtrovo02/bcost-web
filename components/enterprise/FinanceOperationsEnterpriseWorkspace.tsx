@@ -24,6 +24,7 @@ import {
   FinanceOperationStatus,
   financeOperationsEnterpriseApi,
 } from '@/lib/api/finance-operations-enterprise';
+import { getDemoEnterpriseCompanyId } from '@/lib/api/enterprise-demo';
 import { api } from '@/services/api';
 
 type AuthMeResponse = {
@@ -66,18 +67,28 @@ async function resolveCompanyId(): Promise<string> {
 
   if (stored) return stored;
 
-  const response = await api.get<AuthMeResponse>('/auth/me');
-  const companyId = response.data.companyId;
+  try {
+    const response = await api.get<AuthMeResponse>('/auth/me');
+    const companyId = response.data.companyId;
 
-  if (!companyId) {
-    throw new Error('Empresa ativa não encontrada no token.');
+    if (companyId) {
+      if (isBrowser()) {
+        localStorage.setItem('bcost_active_company', companyId);
+      }
+
+      return companyId;
+    }
+  } catch {
+    // segue para fallback operacional
   }
+
+  const fallbackCompanyId = getDemoEnterpriseCompanyId();
 
   if (isBrowser()) {
-    localStorage.setItem('bcost_active_company', companyId);
+    localStorage.setItem('bcost_active_company', fallbackCompanyId);
   }
 
-  return companyId;
+  return fallbackCompanyId;
 }
 
 function brl(value: number | undefined | null) {
