@@ -27,6 +27,24 @@ export function readStoredEnterpriseCompanyId(): string | null {
     }
   }
 
+  try {
+    const rawUser =
+      localStorage.getItem('bcost_user') ||
+      localStorage.getItem('user') ||
+      localStorage.getItem('auth_user');
+
+    if (rawUser) {
+      const parsed = JSON.parse(rawUser) as Record<string, unknown>;
+      const companyId = parsed.companyId || parsed.activeCompanyId || parsed.company_id;
+
+      if (typeof companyId === 'string' && companyId) {
+        return companyId;
+      }
+    }
+  } catch {
+    return null;
+  }
+
   return null;
 }
 
