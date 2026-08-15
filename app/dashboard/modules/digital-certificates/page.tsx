@@ -25,15 +25,7 @@ import {
   DigitalCertificateRecord,
   DigitalCertificatesListResponse,
 } from '@/lib/api/digital-certificates';
-import { api } from '@/services/api';
-
-type AuthMeResponse = {
-  id: string;
-  email: string;
-  companyId?: string;
-  role?: string;
-  [key: string]: unknown;
-};
+import { resolveEnterpriseCompanyIdWithFallback } from '@/lib/api/enterprise-company';
 
 type UiMessage = {
   type: 'success' | 'warning' | 'error' | 'info';
@@ -58,63 +50,6 @@ const DEFAULT_FORM: CertificateFormState = {
   validTo: '',
   status: 'ACTIVE',
 };
-
-function isBrowser() {
-  return typeof window !== 'undefined';
-}
-
-function readStoredCompanyId(): string | null {
-  if (!isBrowser()) return null;
-
-  const keys = ['bcost_active_company', 'bcost_company_id', 'companyId', 'activeCompanyId'];
-
-  for (const key of keys) {
-    const value = localStorage.getItem(key);
-
-    if (value && value !== 'null' && value !== 'undefined' && value !== 'ID_DA_EMPRESA') {
-      return value;
-    }
-  }
-
-  try {
-    const rawUser =
-      localStorage.getItem('bcost_user') ||
-      localStorage.getItem('user') ||
-      localStorage.getItem('auth_user');
-
-    if (rawUser) {
-      const parsed = JSON.parse(rawUser) as Record<string, unknown>;
-      const companyId = parsed.companyId || parsed.activeCompanyId || parsed.company_id;
-
-      if (typeof companyId === 'string' && companyId) {
-        return companyId;
-      }
-    }
-  } catch {
-    return null;
-  }
-
-  return null;
-}
-
-async function resolveCompanyId(): Promise<string> {
-  const stored = readStoredCompanyId();
-
-  if (stored) return stored;
-
-  const response = await api.get<AuthMeResponse>('/auth/me');
-  const companyId = response.data.companyId;
-
-  if (!companyId) {
-    throw new Error('Empresa ativa não encontrada.');
-  }
-
-  if (isBrowser()) {
-    localStorage.setItem('bcost_active_company', companyId);
-  }
-
-  return companyId;
-}
 
 function toDateInput(value?: string | null) {
   if (!value) return '';
@@ -337,7 +272,7 @@ export default function DigitalCertificatesEnterprisePage() {
         if (!options?.silent) setLoading(true);
         setMessage(null);
 
-        const resolvedCompanyId = companyId || (await resolveCompanyId());
+        const resolvedCompanyId = companyId || (await resolveEnterpriseCompanyIdWithFallback());
         setCompanyId(resolvedCompanyId);
 
         const response = await digitalCertificatesApi.list(resolvedCompanyId, {

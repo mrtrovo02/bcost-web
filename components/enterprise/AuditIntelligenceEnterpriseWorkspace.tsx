@@ -29,14 +29,7 @@ import {
   AuditRecommendation,
   auditIntelligenceEnterpriseApi,
 } from '@/lib/api/audit-intelligence-enterprise';
-import { api } from '@/services/api';
-
-type AuthMeResponse = {
-  id: string;
-  email: string;
-  companyId?: string;
-  role?: string;
-};
+import { resolveEnterpriseCompanyIdWithFallback } from '@/lib/api/enterprise-company';
 
 type UiMessage = {
   type: 'success' | 'warning' | 'error' | 'info';
@@ -45,45 +38,6 @@ type UiMessage = {
 };
 
 type FindingFilter = 'ALL' | 'INFO' | 'WARNING' | 'CRITICAL';
-
-function isBrowser() {
-  return typeof window !== 'undefined';
-}
-
-function readStoredCompanyId(): string | null {
-  if (!isBrowser()) return null;
-
-  const keys = ['bcost_active_company', 'bcost_company_id', 'companyId', 'activeCompanyId'];
-
-  for (const key of keys) {
-    const value = localStorage.getItem(key);
-
-    if (value && value !== 'null' && value !== 'undefined' && value !== 'ID_DA_EMPRESA') {
-      return value;
-    }
-  }
-
-  return null;
-}
-
-async function resolveCompanyId(): Promise<string> {
-  const stored = readStoredCompanyId();
-
-  if (stored) return stored;
-
-  const response = await api.get<AuthMeResponse>('/auth/me');
-  const companyId = response.data.companyId;
-
-  if (!companyId) {
-    throw new Error('Empresa ativa não encontrada no token.');
-  }
-
-  if (isBrowser()) {
-    localStorage.setItem('bcost_active_company', companyId);
-  }
-
-  return companyId;
-}
 
 function formatJson(value: unknown) {
   if (value === undefined || value === null || value === '') return '—';
@@ -401,7 +355,7 @@ export default function AuditIntelligenceEnterpriseWorkspace() {
       setLoading(true);
       setMessage(null);
 
-      const resolvedCompanyId = companyId || (await resolveCompanyId());
+      const resolvedCompanyId = companyId || (await resolveEnterpriseCompanyIdWithFallback());
       setCompanyId(resolvedCompanyId);
 
       const response = await auditIntelligenceEnterpriseApi.executive(resolvedCompanyId, {
