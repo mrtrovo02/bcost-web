@@ -109,7 +109,7 @@ export default function EnterpriseModulesPage() {
             <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
               {modules.map((module) => (
                 <Link
-                  href={`/dashboard/enterprise/modules/${module.slug}`}
+                  href={module.route}
                   key={module.slug}
                   className="group rounded-[2rem] border border-slate-100 bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:border-blue-100 hover:shadow-xl"
                 >

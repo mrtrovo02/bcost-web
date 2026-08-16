@@ -37,4 +37,19 @@ describe('bcostSchemaModules routes', () => {
 
     expect(missingRoutes).toEqual([]);
   });
+
+  it('usa a pagina estatica do modulo quando ela existe', () => {
+    const appDir = path.join(process.cwd(), 'app');
+    const modulesWithStaticPages = bcostSchemaModules
+      .filter((module) =>
+        existsSync(path.join(appDir, 'dashboard', 'modules', module.slug, 'page.tsx')),
+      )
+      .filter((module) => module.route.startsWith('/dashboard/modules/'));
+
+    expect(modulesWithStaticPages.length).toBeGreaterThan(0);
+
+    for (const schemaModule of modulesWithStaticPages) {
+      expect(schemaModule.route).toBe(`/dashboard/modules/${schemaModule.slug}`);
+    }
+  });
 });
