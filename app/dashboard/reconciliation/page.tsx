@@ -1,13 +1,16 @@
 'use client';
 
 import { useReconciliation } from '@/app/hooks/use-reconciliation';
+import { useCompany } from '@/app/context/CompanyContext';
 import { ReconciliationStatus } from '@/components/reconciliation-status';
+import { getToken, isDemoSession } from '@/services/api';
 import { Play, History, Info, AlertTriangle, ChevronRight, ShieldCheck } from 'lucide-react';
 
 export default function ReconciliationPage() {
-  // Integre com seu AuthContext real aqui futuramente
-  const companyId = 'id-da-empresa-aqui';
-  const token = 'jwt-token-aqui';
+  const { selectedCompany, isLoading: companyLoading } = useCompany();
+  const companyId = selectedCompany?.id ?? '';
+  const token = getToken();
+  const canRunReconciliation = Boolean(companyId && (token || isDemoSession()));
 
   const { isProcessing, runAutoMatch, lastResult } = useReconciliation(companyId, token);
 
@@ -63,9 +66,9 @@ export default function ReconciliationPage() {
               <div className="flex flex-col items-center justify-center py-10 border-2 border-dashed border-slate-100 rounded-2xl">
                 <button
                   onClick={runAutoMatch}
-                  disabled={isProcessing}
+                  disabled={isProcessing || !canRunReconciliation || companyLoading}
                   className={`relative group flex items-center gap-3 px-8 py-4 rounded-xl font-bold text-white shadow-lg transition-all transform active:scale-95 ${
-                    isProcessing
+                    isProcessing || !canRunReconciliation || companyLoading
                       ? 'bg-slate-400 cursor-not-allowed'
                       : 'bg-indigo-600 hover:bg-indigo-700 hover:shadow-indigo-200'
                   }`}
@@ -83,7 +86,9 @@ export default function ReconciliationPage() {
                   )}
                 </button>
                 <p className="mt-4 text-xs text-slate-400">
-                  Tempo estimado: 15-40 segundos dependendo do volume.
+                  {selectedCompany
+                    ? `Empresa ativa: ${selectedCompany.name}`
+                    : 'Selecione uma empresa ativa para executar a conciliação.'}
                 </p>
               </div>
 

@@ -23,7 +23,7 @@ function isReconciliationResult(value: unknown): value is ReconciliationResult {
   );
 }
 
-export const useReconciliation = (companyId: string, token: string) => {
+export const useReconciliation = (companyId: string, token?: string | null) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastResult, setLastResult] = useState<ReconciliationResult | null>(null);
 
