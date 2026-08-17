@@ -71,9 +71,9 @@ export function calculateTaxReformScenarios({
       period: '2026',
       taxAmount: money(cbsIbsTestAmount),
       effectiveRate: CBS_IBS_TRANSITION.totalTestRate * 100,
-      cashImpact: money(cbsIbsTestAmount),
+      cashImpact: 0,
       status: 'attention',
-      note: 'Valor de destaque operacional para adaptação de documentos fiscais, sem tratar como recolhimento definitivo.',
+      note: 'Valor de destaque operacional para adaptação de documentos fiscais; recolhimento dispensado em 2026 se cumpridas as obrigações acessórias.',
     },
     {
       id: 'post-reform-reference',

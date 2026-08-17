@@ -232,6 +232,7 @@ export interface CbsIbsSimulationResult {
   cbsValue: number;
   ibsValue: number;
   totalTransitionalTax: number;
+  collectionDispensedIn2026?: boolean;
   netRevenue: number;
   splitPaymentEstimate: {
     retentionAtSource: number;

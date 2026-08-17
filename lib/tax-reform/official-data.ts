@@ -17,12 +17,14 @@ export const TAX_REFORM_OFFICIAL_SOURCES = {
   complementaryLaw214:
     'https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp214compilado.htm',
   revenueTaxReform:
-    'https://www.gov.br/receitafederal/pt-br/acesso-a-informacao/acoes-e-programas/reforma-tributaria',
+    'https://www.gov.br/receitafederal/pt-br/acesso-a-informacao/acoes-e-programas/programas-e-atividades/reforma-tributaria-do-consumo',
+  revenueGuidance2026:
+    'https://www.gov.br/receitafederal/pt-br/acesso-a-informacao/acoes-e-programas/programas-e-atividades/reforma-tributaria-do-consumo/orientacoes-2026',
 } as const;
 
 export const CBS_IBS_TRANSITION = {
-  testStartDate: '2026-08-01',
-  displayStartDate: '01/08/2026',
+  testStartDate: '2026-01-01',
+  displayStartDate: '01/01/2026',
   cbsRate: 0.009,
   ibsRate: 0.001,
   totalTestRate: 0.01,
@@ -52,7 +54,7 @@ export const CBS_IBS_TRANSITION = {
     'é dispensado para quem cumprir as obrigações acessórias (apuração informativa).',
 
   operationalNote:
-    'Em 2026, o destaque de CBS/IBS na nota fiscal serve para calibrar sistemas e ' +
+    'Em 2026, o destaque de CBS/IBS nos documentos fiscais serve para calibrar sistemas e ' +
     'processos. Não há recolhimento exigido nem risco de autuação para quem cumprir ' +
     'as obrigações acessórias no período — trate como teste operacional, não como ' +
     'cobrança real.',

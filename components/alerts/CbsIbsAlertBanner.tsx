@@ -76,7 +76,8 @@ export default function CbsIbsAlertBanner({
           <p className="text-xs font-black text-white">CBS/IBS — {CBS_IBS_TRANSITION.phaseLabel}</p>
           <p className="text-[10px] text-slate-400 mt-0.5">
             Destaque informativo (CBS {(CBS_RATE * 100).toFixed(1)}% + IBS{' '}
-            {(IBS_RATE * 100).toFixed(1)}%) — sem recolhimento exigido em 2026.
+            {(IBS_RATE * 100).toFixed(1)}%) — recolhimento dispensado em 2026 se cumpridas as
+            obrigações acessórias.
           </p>
         </div>
         <span
@@ -108,7 +109,7 @@ export default function CbsIbsAlertBanner({
           </div>
 
           <h3 className="text-sm font-black text-white">
-            CBS/IBS na NF-e a partir de {CBS_IBS_TRANSITION.displayStartDate}
+            CBS/IBS nos documentos fiscais a partir de {CBS_IBS_TRANSITION.displayStartDate}
           </h3>
 
           <p className="text-xs text-slate-400 mt-1 leading-relaxed">
@@ -197,13 +198,13 @@ export default function CbsIbsAlertBanner({
 
           <div className="flex flex-wrap gap-3">
             <a
-              href={TAX_REFORM_OFFICIAL_SOURCES.revenueTaxReform}
+              href={TAX_REFORM_OFFICIAL_SOURCES.revenueGuidance2026}
               target="_blank"
               rel="noopener noreferrer"
               className={LINK_CLASS}
             >
               <ExternalLink size={12} />
-              Receita Federal — Reforma Tributária
+              Receita Federal — Orientações 2026
             </a>
             <a
               href={TAX_REFORM_OFFICIAL_SOURCES.complementaryLaw214}

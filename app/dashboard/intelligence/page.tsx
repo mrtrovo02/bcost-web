@@ -145,7 +145,7 @@ export default function DashboardPage() {
     }
   };
 
-  // Calcula impacto CBS/IBS com base no faturamento atual
+  // Calcula destaque informativo CBS/IBS com base no faturamento atual.
   const cbsIbsImpact = data?.overview.totalRevenue
     ? calcularCbsIbs(data.overview.totalRevenue)
     : null;
@@ -249,7 +249,7 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-black text-white uppercase tracking-wider">
-                    Impacto CBS/IBS no seu Faturamento
+                    Destaque informativo CBS/IBS no faturamento
                   </h3>
                   <p className="text-[10px] text-slate-500 mt-0.5">
                     {CBS_IBS_TRANSITION.phaseLabel} a partir de {CBS_IBS_TRANSITION.displayStartDate} • Reforma Tributária EC 132/2023
