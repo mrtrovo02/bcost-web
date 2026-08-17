@@ -1,6 +1,11 @@
 'use strict';
 
 import { getDemoEnterpriseCompanyId } from '@/lib/api/enterprise-demo';
+import {
+  assertOperationalDemoFallbackEnabled,
+  isDemoEntityId,
+  isOperationalDemoFallbackEnabled,
+} from '@/lib/config/demo-policy';
 import { api } from '@/services/api';
 
 type AuthMeResponse = {
@@ -23,6 +28,10 @@ export function readStoredEnterpriseCompanyId(): string | null {
     const value = localStorage.getItem(key);
 
     if (value && value !== 'null' && value !== 'undefined' && value !== 'ID_DA_EMPRESA') {
+      if (isDemoEntityId(value) && !isOperationalDemoFallbackEnabled()) {
+        continue;
+      }
+
       return value;
     }
   }
@@ -38,6 +47,10 @@ export function readStoredEnterpriseCompanyId(): string | null {
       const companyId = parsed.companyId || parsed.activeCompanyId || parsed.company_id;
 
       if (typeof companyId === 'string' && companyId) {
+        if (isDemoEntityId(companyId) && !isOperationalDemoFallbackEnabled()) {
+          return null;
+        }
+
         return companyId;
       }
     }
@@ -67,6 +80,10 @@ export async function resolveEnterpriseCompanyIdWithFallback(): Promise<string> 
   } catch {
     // segue para fallback operacional
   }
+
+  assertOperationalDemoFallbackEnabled(
+    'Nenhuma empresa real ativa foi encontrada. Cadastre ou selecione uma empresa antes de abrir modulos de producao.',
+  );
 
   const fallbackCompanyId = getDemoEnterpriseCompanyId();
 

@@ -5,9 +5,11 @@ import { api, isDemoSession as detectDemoSession } from '@/services/api';
 import {
   safeJsonParse,
   safeLocalStorageGet,
+  safeLocalStorageRemove,
   safeLocalStorageSet,
 } from '@/lib/utils/runtime-guards';
 import { trackEvent } from '@/lib/utils/telemetry';
+import { isDemoEntityId, isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
 
 export interface Company {
   id: string;
@@ -50,6 +52,13 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         if (saved) {
           const parsedCompany = safeJsonParse<Company | null>(saved, null);
           if (parsedCompany?.id) {
+            if (isDemoEntityId(parsedCompany.id) && !isOperationalDemoFallbackEnabled()) {
+              safeLocalStorageRemove('bcost_active_company_data');
+              safeLocalStorageRemove('bcost_active_company');
+              setIsLoading(false);
+              return;
+            }
+
             setSelectedCompany(parsedCompany);
             api.defaults.headers.common['x-company-id'] = parsedCompany.id;
             trackEvent('company_context_restored', { companyId: parsedCompany.id });
@@ -61,6 +70,12 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
           const restored =
             storedCompanies.find((company: Company) => company.id === savedId) ||
             storedCompanies[0];
+
+          if (isDemoEntityId(restored.id) && !isOperationalDemoFallbackEnabled()) {
+            setIsLoading(false);
+            return;
+          }
+
           setSelectedCompany(restored);
           safeLocalStorageSet('bcost_active_company_data', JSON.stringify(restored));
           if (restored.id) {
@@ -71,7 +86,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         }
 
         // Fallback para dados demo quando há token demo e empresas armazenadas
-        if (!saved && isDemo) {
+        if (!saved && isDemo && isOperationalDemoFallbackEnabled()) {
           if (Array.isArray(storedCompanies) && storedCompanies.length > 0) {
             const demoCompany = storedCompanies[0];
             safeLocalStorageSet('bcost_active_company_data', JSON.stringify(demoCompany));

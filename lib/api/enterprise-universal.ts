@@ -9,6 +9,11 @@ import {
   createDemoEnterpriseResponse,
   getDemoEnterpriseCompanyId,
 } from '@/lib/api/enterprise-demo';
+import {
+  assertOperationalDemoFallbackEnabled,
+  isDemoEntityId,
+  isOperationalDemoFallbackEnabled,
+} from '@/lib/config/demo-policy';
 
 export type EnterpriseModuleStatus = 'OK' | 'OK_WITH_FALLBACK' | 'ERROR' | 'EMPTY' | string;
 
@@ -125,6 +130,10 @@ export function getStoredCompanyId(): string | null {
     const value = safeLocalStorageGet(key);
 
     if (value && value !== 'null' && value !== 'undefined' && value !== 'ID_DA_EMPRESA') {
+      if (isDemoEntityId(value) && !isOperationalDemoFallbackEnabled()) {
+        continue;
+      }
+
       return value;
     }
   }
@@ -163,6 +172,10 @@ export async function resolveEnterpriseCompanyId(): Promise<string | null> {
     // sem fallback disponível
   }
 
+  assertOperationalDemoFallbackEnabled(
+    'Nenhuma empresa real ativa foi encontrada. Cadastre ou selecione uma empresa antes de abrir modulos enterprise.',
+  );
+
   const fallbackCompanyId = getDemoEnterpriseCompanyId();
   setActiveCompanyId?.(fallbackCompanyId);
   return fallbackCompanyId;
@@ -174,6 +187,10 @@ export const enterpriseUniversalApi = {
       const response = await api.get('/enterprise/modules');
       return Array.isArray(response.data) ? response.data : createDemoEnterpriseCatalog();
     } catch (error) {
+      assertOperationalDemoFallbackEnabled(
+        'Catalogo enterprise indisponivel e fallback demonstrativo desabilitado neste ambiente.',
+      );
+
       const status =
         typeof error === 'object' && error !== null && 'response' in error
           ? (error as { response?: { status?: number } }).response?.status
@@ -225,6 +242,10 @@ export const enterpriseUniversalApi = {
         generatedAt: data.generatedAt || new Date().toISOString(),
       };
     } catch (error) {
+      assertOperationalDemoFallbackEnabled(
+        'Modulo enterprise indisponivel e fallback demonstrativo desabilitado neste ambiente.',
+      );
+
       const status =
         typeof error === 'object' && error !== null && 'response' in error
           ? (error as { response?: { status?: number } }).response?.status
@@ -241,6 +262,10 @@ export const enterpriseUniversalApi = {
       const response = await api.get(`/enterprise/modules/${slug}/${companyId}/summary`);
       return response.data;
     } catch {
+      assertOperationalDemoFallbackEnabled(
+        'Resumo enterprise indisponivel e fallback demonstrativo desabilitado neste ambiente.',
+      );
+
       return createDemoEnterpriseResponse(slug, companyId).summary;
     }
   },
@@ -250,6 +275,10 @@ export const enterpriseUniversalApi = {
       const response = await api.get(`/enterprise/modules/${slug}/${companyId}/health`);
       return response.data;
     } catch {
+      assertOperationalDemoFallbackEnabled(
+        'Health enterprise indisponivel e fallback demonstrativo desabilitado neste ambiente.',
+      );
+
       return {
         slug,
         companyId,

@@ -16,6 +16,7 @@ import html2canvas from 'html2canvas';
 import { formatCompactCurrency, formatCurrency, formatPercentage, getAnexoLabel } from '@/lib/formatters';
 import { LoadingShell } from '@/components/ui/LoadingShell';
 import { StatePanel } from '@/components/ui/StatePanel';
+import { isDemoEntityId, isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
 
 interface DashboardChartPoint {
   label?: string;
@@ -84,7 +85,8 @@ export default function DashboardPage() {
         const year = now.getFullYear();
 
         const shouldUseDemoFallback =
-          isDemoSession() || !selectedCompany?.id || selectedCompany.id.toLowerCase().startsWith('demo-');
+          isOperationalDemoFallbackEnabled() &&
+          (isDemoSession() || !selectedCompany?.id || isDemoEntityId(selectedCompany.id));
 
         if (shouldUseDemoFallback) {
           const demoData = getDemoFiscalData(selectedCompany?.name ?? 'Empresa Demo');

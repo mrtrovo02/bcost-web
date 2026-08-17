@@ -1,6 +1,7 @@
 'use strict';
 
 import { api } from '@/services/api';
+import { assertOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
 
 export type PlanLevel = 'FREE' | 'PRO' | 'ENTERPRISE';
 
@@ -214,6 +215,10 @@ export const billingApi = {
       const response = await api.get<BillingPlansResponse>('/billing/plans');
       return response.data;
     } catch {
+      assertOperationalDemoFallbackEnabled(
+        'Planos comerciais indisponiveis e fallback demonstrativo desabilitado neste ambiente.',
+      );
+
       return {
         status: 'OK_DEMO',
         plans: DEMO_BILLING_PLANS,
@@ -231,6 +236,10 @@ export const billingApi = {
 
       return response.data;
     } catch {
+      assertOperationalDemoFallbackEnabled(
+        'Entitlements comerciais indisponiveis e fallback demonstrativo desabilitado neste ambiente.',
+      );
+
       return getDemoBillingEntitlements({ id: companyId }, 'ENTERPRISE');
     }
   },
@@ -251,6 +260,10 @@ export const billingApi = {
 
       return response.data;
     } catch {
+      assertOperationalDemoFallbackEnabled(
+        'Validacao de feature indisponivel e fallback demonstrativo desabilitado neste ambiente.',
+      );
+
       const demo = getDemoBillingEntitlements({ id: companyId }, 'ENTERPRISE');
       const found = demo.features.find((item) => item.key === feature);
 
@@ -282,6 +295,10 @@ export const billingApi = {
 
       return response.data;
     } catch {
+      assertOperationalDemoFallbackEnabled(
+        'Alteracao de plano indisponivel e fallback demonstrativo desabilitado neste ambiente.',
+      );
+
       return {
         ...getDemoBillingEntitlements({ id: companyId }, planLevel),
         message: `Plano simulado como ${planLevel}. Conecte a API para persistir a alteração.`,

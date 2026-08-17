@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import enterpriseUniversalApi from '../enterprise-universal';
 import { api } from '@/services/api';
 
@@ -13,8 +13,19 @@ vi.mock('@/services/api', () => ({
 const apiGetMock = vi.mocked(api.get);
 
 describe('enterpriseUniversalApi', () => {
+  const originalDemoFallback = process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'true';
+  });
+
+  afterEach(() => {
+    if (originalDemoFallback === undefined) {
+      delete process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK;
+    } else {
+      process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = originalDemoFallback;
+    }
   });
 
   it('returns an operational demo fallback when the enterprise module endpoint is unavailable', async () => {
@@ -26,5 +37,14 @@ describe('enterpriseUniversalApi', () => {
     expect(response.items.length).toBeGreaterThan(0);
     expect(response.total).toBeGreaterThan(0);
     expect(response.summary).toMatchObject({ fallback: true, mode: 'DEMO_OPERATIONAL' });
+  });
+
+  it('blocks operational demo fallback when the environment disables it', async () => {
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'false';
+    apiGetMock.mockRejectedValueOnce({ response: { status: 404 } });
+
+    await expect(enterpriseUniversalApi.getModule('users', 'company-123')).rejects.toMatchObject({
+      code: 'DEMO_FALLBACK_DISABLED',
+    });
   });
 });
