@@ -560,8 +560,8 @@ export default function DigitalCertificatesEnterprisePage() {
               </h2>
 
               <p className="mt-1 text-sm text-slate-500">
-                Cadastro de metadados compatível com o schema atual. Upload de PFX/senha será uma
-                fase futura com armazenamento seguro.
+                Cadastro auditável de metadados, validade e status operacional do certificado. Não
+                armazene PFX ou senha nesta tela.
               </p>
 
               <form onSubmit={submit} className="mt-5 grid gap-4">
