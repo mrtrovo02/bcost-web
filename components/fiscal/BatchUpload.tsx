@@ -2,32 +2,27 @@
 
 import { useState } from 'react';
 import { UploadCloud, Loader2 } from 'lucide-react';
+import { fiscalApi } from '@/lib/api/fiscal';
 
 export default function BatchUpload({ companyId }: { companyId: string }) {
   const [isUploading, setIsUploading] = useState(false);
+  const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files) return;
+    if (!files || files.length === 0) return;
 
     setIsUploading(true);
-
-    // Processamento em lote (Batch)
-    const formData = new FormData();
-    Array.from(files).forEach((file) => formData.append('files', file));
-    formData.append('companyId', companyId);
+    setStatus('idle');
 
     try {
-      const response = await fetch('/api/fiscal/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (response.ok) {
-        // Notificação de sucesso
-      }
+      await fiscalApi.uploadXmlBatch(Array.from(files), undefined, companyId);
+      setStatus('success');
+    } catch {
+      setStatus('error');
     } finally {
       setIsUploading(false);
+      e.target.value = '';
     }
   };
 
@@ -67,6 +62,16 @@ export default function BatchUpload({ companyId }: { companyId: string }) {
               style={{ width: '60%' }}
             />
           </div>
+        )}
+
+        {status === 'success' && (
+          <p className="text-xs font-bold text-emerald-600">Arquivos enviados para processamento.</p>
+        )}
+
+        {status === 'error' && (
+          <p className="text-xs font-bold text-rose-600">
+            Não foi possível enviar os XMLs. Verifique a empresa ativa e tente novamente.
+          </p>
         )}
       </div>
     </div>
