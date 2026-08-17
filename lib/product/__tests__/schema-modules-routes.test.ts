@@ -52,4 +52,18 @@ describe('bcostSchemaModules routes', () => {
       expect(schemaModule.route).toBe(`/dashboard/modules/${schemaModule.slug}`);
     }
   });
+
+  it('mantem a rota enterprise legada coberta por redirecionamento', () => {
+    const legacyWrapper = path.join(
+      process.cwd(),
+      'app',
+      'dashboard',
+      'enterprise',
+      'modules',
+      '[slug]',
+      'page.tsx',
+    );
+
+    expect(existsSync(legacyWrapper)).toBe(true);
+  });
 });

@@ -1,4 +1,5 @@
-import EnterpriseModuleClient from '../../../modules/[slug]/EnterpriseModuleClient';
+import { redirect } from 'next/navigation';
+import { getSchemaModuleBySlug } from '@/lib/product/schema-modules';
 
 type PageProps = {
   params: Promise<{
@@ -8,6 +9,7 @@ type PageProps = {
 
 export default async function EnterpriseCoverageModulePage({ params }: PageProps) {
   const resolvedParams = await params;
+  const schemaModule = getSchemaModuleBySlug(resolvedParams.slug);
 
-  return <EnterpriseModuleClient slug={resolvedParams.slug} />;
+  redirect(schemaModule?.route ?? `/dashboard/modules/${resolvedParams.slug}`);
 }
