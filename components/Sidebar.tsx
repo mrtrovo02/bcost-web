@@ -25,6 +25,7 @@ import {
 import { useCompany, type Company } from '@/app/context/CompanyContext';
 import { api, deleteCookie } from '@/services/api';
 import { DEMO_COMPANIES, type DemoCompany } from '@/services/demo-data';
+import { isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
 
 type SidebarCompany = Company & Partial<Pick<DemoCompany, 'role' | 'status' | 'plan'>>;
 
@@ -91,8 +92,14 @@ export default function Sidebar() {
       const companiesList = Array.isArray(data) ? data : [];
       applyCompanies(companiesList);
     } catch {
-      console.warn('[bCost Sidebar]: API indisponível, usando dados de demonstração.');
-      applyCompanies(DEMO_COMPANIES);
+      if (isOperationalDemoFallbackEnabled()) {
+        console.warn('[bCost Sidebar]: API indisponível, usando dados de demonstração.');
+        applyCompanies(DEMO_COMPANIES);
+        return;
+      }
+
+      console.warn('[bCost Sidebar]: API indisponível para carregar empresas da sessão real.');
+      applyCompanies([]);
     }
   }, [isDemoSession, applyCompanies]);
 

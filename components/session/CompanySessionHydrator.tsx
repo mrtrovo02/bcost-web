@@ -22,6 +22,10 @@ const COMPANY_ID_KEYS = [
 const COMPANY_LIST_KEYS = ['bcost_companies', 'companies'];
 const DEMO_TOKEN = 'demo-token-local';
 
+function isDemoCompanyId(value?: string | null) {
+  return typeof value === 'string' && value.toLowerCase().startsWith('demo-');
+}
+
 function shouldUseLocalDemo() {
   if (typeof window === 'undefined') return false;
 
@@ -158,6 +162,18 @@ function persistCompanyContext(companyId: string, companies: CompanyLike[]) {
   );
 }
 
+function clearCompanyContext() {
+  if (typeof window === 'undefined') return;
+
+  for (const key of [
+    ...COMPANY_ID_KEYS,
+    ...COMPANY_LIST_KEYS,
+    'bcost_active_company_data',
+  ]) {
+    window.localStorage.removeItem(key);
+  }
+}
+
 function companyContextAlreadyExists() {
   const companyId = readLocalStorage(COMPANY_ID_KEYS);
   const companies = readCompaniesFromStorage();
@@ -199,10 +215,9 @@ export function CompanySessionHydrator() {
     async function hydrate() {
       if (typeof window === 'undefined') return;
 
-      if (companyContextAlreadyExists()) return;
-
       const token = resolveToken();
       if (!token) {
+        if (companyContextAlreadyExists()) return;
         if (shouldUseLocalDemo()) {
           persistCompanyContext('demo-001', readCompaniesFromStorage());
         }
@@ -222,7 +237,12 @@ export function CompanySessionHydrator() {
 
       const storedCompanies = readCompaniesFromStorage();
 
-      if (jwtCompanyId && storedCompanies.length > 0) {
+      if (
+        jwtCompanyId &&
+        storedCompanies.length > 0 &&
+        storedCompanies.some((company) => company.id === String(jwtCompanyId)) &&
+        !isDemoCompanyId(String(jwtCompanyId))
+      ) {
         persistCompanyContext(String(jwtCompanyId), storedCompanies);
         return;
       }
@@ -244,8 +264,14 @@ export function CompanySessionHydrator() {
       if (!resolvedCompanyId) {
         if (shouldUseLocalDemo()) {
           persistCompanyContext('demo-001', storedCompanies);
+        } else {
+          clearCompanyContext();
         }
         return;
+      }
+
+      if (!isDemoCompanyId(String(resolvedCompanyId))) {
+        clearCompanyContext();
       }
 
       persistCompanyContext(String(resolvedCompanyId), authCompanies);

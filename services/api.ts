@@ -38,6 +38,11 @@ const COMPANY_KEYS = [
   'activeCompanyId',
 ] as const;
 const USER_KEYS = ['bcost_user', 'user'] as const;
+const COMPANY_DATA_KEYS = [
+  'bcost_active_company_data',
+  'bcost_companies',
+  'companies',
+] as const;
 
 const USER_ALLOWED_KEYS = new Set<string>([
   'id',
@@ -189,6 +194,27 @@ function lsRemove(keys: readonly string[]): void {
       /* empty */
     }
   }
+}
+
+function isDemoId(value?: string | null): boolean {
+  return typeof value === 'string' && value.toLowerCase().startsWith('demo-');
+}
+
+function clearStoredCompanyData(): void {
+  lsRemove([...COMPANY_KEYS, ...COMPANY_DATA_KEYS]);
+}
+
+function dispatchCompanyContextUpdated(companyId?: string, companies?: BcostCompany[]): void {
+  if (!isBrowser()) return;
+
+  window.dispatchEvent(
+    new CustomEvent('bcost:company-context-updated', {
+      detail: {
+        companyId,
+        companies: Array.isArray(companies) ? companies : [],
+      },
+    }),
+  );
 }
 
 // User sanitization
@@ -346,7 +372,7 @@ export function clearSession(): void {
   clearToken();
   clearRefreshToken();
   clearStoredUser();
-  clearActiveCompanyId();
+  clearStoredCompanyData();
 }
 
 export const clearStorageSession = clearSession;
@@ -354,6 +380,12 @@ export const clearStorageSession = clearSession;
 export function persistAuthResponse(data: AuthResponse): void {
   const token = data?.access_token ?? data?.accessToken ?? data?.token ?? null;
   const refreshToken = data?.refresh_token ?? data?.refreshToken ?? null;
+  const isRealToken = Boolean(token && token !== DEMO_TOKEN);
+
+  if (isRealToken) {
+    clearStoredCompanyData();
+  }
+
   if (token) setToken(token);
   if (refreshToken) setRefreshToken(refreshToken);
   if (data.user) setStoredUser(data.user);
@@ -373,12 +405,24 @@ export function persistAuthResponse(data: AuthResponse): void {
 
   const companies = data.companies ?? data.user?.companies;
   if (Array.isArray(companies) && companies.length > 0) {
+    const activeCompany =
+      companies.find((company) => company.id === companyId) ?? companies[0];
+
     try {
       window.localStorage.setItem('bcost_companies', JSON.stringify(companies));
       window.localStorage.setItem('companies', JSON.stringify(companies));
+      window.localStorage.setItem('bcost_active_company_data', JSON.stringify(activeCompany));
     } catch {
       /* empty */
     }
+  }
+
+  const hasDemoCompanyAfterLogin = isDemoId(companyId);
+  if (!hasDemoCompanyAfterLogin) {
+    dispatchCompanyContextUpdated(
+      typeof companyId === 'string' ? companyId : undefined,
+      Array.isArray(companies) ? companies : [],
+    );
   }
 }
 

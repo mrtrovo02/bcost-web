@@ -31,6 +31,11 @@ export interface CompanyContextType {
 
 const CompanyContext = createContext<CompanyContextType | undefined>(undefined);
 
+type CompanyContextUpdateEvent = CustomEvent<{
+  companyId?: string;
+  companies?: Company[];
+}>;
+
 export function CompanyProvider({ children }: { children: ReactNode }) {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
@@ -55,6 +60,15 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         if (saved) {
           const parsedCompany = safeJsonParse<Company | null>(saved, null);
           if (parsedCompany?.id) {
+            if (isDemoEntityId(parsedCompany.id) && !isDemo) {
+              safeLocalStorageRemove('bcost_active_company_data');
+              safeLocalStorageRemove('bcost_active_company');
+              safeLocalStorageRemove('bcost_company_id');
+              safeLocalStorageRemove('companyId');
+              setSelectedCompany(null);
+              return;
+            }
+
             if (isDemoEntityId(parsedCompany.id) && !isOperationalDemoFallbackEnabled()) {
               safeLocalStorageRemove('bcost_active_company_data');
               safeLocalStorageRemove('bcost_active_company');
@@ -111,6 +125,32 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     };
 
     hydrate();
+
+    const handleCompanyContextUpdated = (event: Event) => {
+      const { companyId, companies: eventCompanies = [] } =
+        (event as CompanyContextUpdateEvent).detail ?? {};
+      const storedCompanies = safeJsonParse<Company[]>(safeLocalStorageGet('bcost_companies'), []);
+      const nextCompanies = eventCompanies.length > 0 ? eventCompanies : storedCompanies;
+      const nextCompany =
+        nextCompanies.find((company) => company.id === companyId) ?? nextCompanies[0] ?? null;
+
+      setCompanies(nextCompanies);
+      setSelectedCompany(nextCompany);
+      setIsDemoSession(detectDemoSession());
+
+      if (nextCompany?.id) {
+        safeLocalStorageSet('bcost_active_company', nextCompany.id);
+        safeLocalStorageSet('bcost_active_company_data', JSON.stringify(nextCompany));
+        api.defaults.headers.common['x-company-id'] = nextCompany.id;
+        trackEvent('company_context_updated', { companyId: nextCompany.id });
+      }
+    };
+
+    window.addEventListener('bcost:company-context-updated', handleCompanyContextUpdated);
+
+    return () => {
+      window.removeEventListener('bcost:company-context-updated', handleCompanyContextUpdated);
+    };
   }, []);
 
   /**
