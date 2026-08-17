@@ -14,10 +14,17 @@ export interface Company {
   id: string;
   name: string;
   cnpj: string;
+  taxRegime?: 'SIMPLES_NACIONAL' | 'LUCRO_PRESUMIDO' | 'LUCRO_REAL';
   role: 'OWNER' | 'ACCOUNTANT' | 'VIEWER';
   status: 'ACTIVE' | 'SUSPENDED' | 'PENDING';
   plan: 'BASIC' | 'PRO' | 'ENTERPRISE';
   createdAt: string;
+}
+
+export interface CreateCompanyInput {
+  name: string;
+  cnpj: string;
+  taxRegime?: Company['taxRegime'];
 }
 
 /**
@@ -57,7 +64,7 @@ export const companyService = {
   /**
    * 🏗️ Onboarding: Cria uma nova unidade/empresa no ecossistema.
    */
-  async create(companyData: Partial<Company>): Promise<Company> {
+  async create(companyData: CreateCompanyInput): Promise<Company> {
     const { data } = await api.post<Company>('/company', companyData);
     return data;
   },

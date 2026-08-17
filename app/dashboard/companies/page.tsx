@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { api } from '../../../services/api';
 import { companyService } from '../../../services/company.service';
 import { useCompany } from '@/app/context/CompanyContext';
+import { formatCnpj, normalizeCnpj } from '@/lib/utils/cnpj';
+import { getErrorMessage, isRecord } from '@/lib/utils/runtime-guards';
 
 /**
  * Interface de Contrato de Dados (Domain Model)
@@ -15,8 +17,11 @@ interface Company {
   id: string;
   name: string;
   cnpj: string;
+  taxRegime?: TaxRegime;
   status?: string;
 }
+
+type TaxRegime = 'SIMPLES_NACIONAL' | 'LUCRO_PRESUMIDO' | 'LUCRO_REAL';
 
 export default function CompaniesPage() {
   const {
@@ -30,6 +35,8 @@ export default function CompaniesPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [newCompanyName, setNewCompanyName] = useState<string>('');
   const [newCompanyCnpj, setNewCompanyCnpj] = useState<string>('');
+  const [newCompanyTaxRegime, setNewCompanyTaxRegime] =
+    useState<TaxRegime>('SIMPLES_NACIONAL');
   const [isCreating, setIsCreating] = useState<boolean>(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const router = useRouter();
@@ -102,12 +109,20 @@ export default function CompaniesPage() {
       return;
     }
 
+    const normalizedCnpj = normalizeCnpj(newCompanyCnpj);
+
+    if (normalizedCnpj.length !== 14) {
+      setCreateError('Informe um CNPJ com 14 dígitos.');
+      return;
+    }
+
     // Tratamento para criação local durante Demo Session
     if (isDemoSession) {
       const created: Company = {
         id: `demo-company-${Date.now()}`,
         name: newCompanyName.trim(),
-        cnpj: newCompanyCnpj.trim(),
+        cnpj: normalizedCnpj,
+        taxRegime: newCompanyTaxRegime,
         status: 'active',
       };
 
@@ -115,6 +130,7 @@ export default function CompaniesPage() {
       setSelectedCompany(created);
       setNewCompanyName('');
       setNewCompanyCnpj('');
+      setNewCompanyTaxRegime('SIMPLES_NACIONAL');
       setActiveId(created.id);
 
       if (typeof window !== 'undefined') {
@@ -129,21 +145,27 @@ export default function CompaniesPage() {
       setIsCreating(true);
       const created = await companyService.create({
         name: newCompanyName.trim(),
-        cnpj: newCompanyCnpj.trim(),
+        cnpj: normalizedCnpj,
+        taxRegime: newCompanyTaxRegime,
       });
 
       setCompanies([created, ...companies]);
       setSelectedCompany(created);
       setNewCompanyName('');
       setNewCompanyCnpj('');
+      setNewCompanyTaxRegime('SIMPLES_NACIONAL');
       setActiveId(created.id);
       localStorage.setItem('bcost_active_company', created.id);
       localStorage.setItem('bcost_active_company_data', JSON.stringify(created));
       router.push('/dashboard/intelligence');
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
+      const responseData =
+        isRecord(error) && isRecord(error.response) ? error.response.data : undefined;
+      const message = isRecord(responseData)
+        ? getErrorMessage(responseData, 'Falha ao cadastrar a nova unidade.')
+        : getErrorMessage(error, 'Falha ao cadastrar a nova unidade.');
       console.error('🔴 [Companies Create Error]:', message);
-      setCreateError('Falha ao cadastrar a nova unidade. Tente novamente.');
+      setCreateError(message);
     } finally {
       setIsCreating(false);
     }
@@ -176,7 +198,7 @@ export default function CompaniesPage() {
         </div>
 
         <form
-          className="mt-6 grid gap-4 md:grid-cols-[1.3fr_1fr_auto]"
+          className="mt-6 grid gap-4 md:grid-cols-[1.3fr_1fr_1fr_auto]"
           onSubmit={handleCreateCompany}
         >
           <div>
@@ -194,10 +216,25 @@ export default function CompaniesPage() {
             <label className="block text-sm font-semibold text-slate-300 mb-2">CNPJ</label>
             <input
               value={newCompanyCnpj}
-              onChange={(event) => setNewCompanyCnpj(event.target.value)}
+              onChange={(event) => setNewCompanyCnpj(formatCnpj(event.target.value))}
               placeholder="00.000.000/0000-00"
+              inputMode="numeric"
               className="w-full rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
             />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-slate-300 mb-2">
+              Regime tributário
+            </label>
+            <select
+              value={newCompanyTaxRegime}
+              onChange={(event) => setNewCompanyTaxRegime(event.target.value as TaxRegime)}
+              className="w-full rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+            >
+              <option value="SIMPLES_NACIONAL">Simples Nacional</option>
+              <option value="LUCRO_PRESUMIDO">Lucro Presumido</option>
+              <option value="LUCRO_REAL">Lucro Real</option>
+            </select>
           </div>
           <div className="flex items-center">
             <button
@@ -268,7 +305,7 @@ export default function CompaniesPage() {
                           CNPJ
                         </span>
                         <p className="text-[11px] font-bold text-slate-500 tracking-wider">
-                          {company.cnpj || '00.000.000/0000-00'}
+                          {company.cnpj ? formatCnpj(company.cnpj) : '00.000.000/0000-00'}
                         </p>
                       </div>
                     </div>
