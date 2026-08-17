@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Settings as SettingsIcon,
   User,
   Building2,
   Users,
@@ -31,11 +30,11 @@ type ApiErrorLike = {
 
 type SectionKey = 'profile' | 'company' | 'users' | 'billing';
 
-const SECTIONS: { key: SectionKey; label: string; icon: typeof User; ready: boolean }[] = [
-  { key: 'profile', label: 'Perfil', icon: User, ready: false },
-  { key: 'company', label: 'Empresa', icon: Building2, ready: false },
-  { key: 'users', label: 'Usuários', icon: Users, ready: false },
-  { key: 'billing', label: 'Plano e Cobrança', icon: CreditCard, ready: true },
+const SECTIONS: { key: SectionKey; label: string; icon: typeof User }[] = [
+  { key: 'profile', label: 'Perfil', icon: User },
+  { key: 'company', label: 'Empresa', icon: Building2 },
+  { key: 'users', label: 'Usuários', icon: Users },
+  { key: 'billing', label: 'Plano e Cobrança', icon: CreditCard },
 ];
 
 const PLAN_ORDER: Record<PlanLevel, number> = { FREE: 1, PRO: 2, ENTERPRISE: 3 };
@@ -281,19 +280,120 @@ function FeatureRow({ label }: { label: string }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-// Placeholder para seções ainda não implementadas no backend
-// ─────────────────────────────────────────────────────────────────────────
+type StoredUser = {
+  id?: string;
+  name?: string;
+  email?: string;
+  role?: string;
+  companies?: unknown[];
+};
 
-function ComingSoonSection({ title }: { title: string }) {
+function readStoredUser(): StoredUser | null {
+  if (typeof window === 'undefined') return null;
+
+  for (const key of ['bcost_user', 'user', 'auth_user']) {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) continue;
+
+    try {
+      const parsed = JSON.parse(raw) as StoredUser;
+      if (parsed?.email || parsed?.name || parsed?.id) return parsed;
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
+}
+
+function formatTaxRegime(value?: string | null) {
+  if (!value) return 'Não informado';
+
+  const labels: Record<string, string> = {
+    SIMPLES_NACIONAL: 'Simples Nacional',
+    LUCRO_PRESUMIDO: 'Lucro Presumido',
+    LUCRO_REAL: 'Lucro Real',
+  };
+
+  return labels[value] || value;
+}
+
+function SettingsInfoCard({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="flex flex-col items-center justify-center py-24 text-center">
-      <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-4">
-        <SettingsIcon size={20} className="text-slate-500" />
+    <section className="bg-[#090d16] border border-white/5 rounded-2xl p-6">
+      <div className="mb-5">
+        <p className="text-sm font-black text-white">{title}</p>
+        <p className="text-xs text-slate-500 mt-1">{description}</p>
       </div>
-      <p className="text-sm font-black text-slate-300">{title}</p>
-      <p className="text-xs text-slate-500 mt-1">Em desenvolvimento — em breve disponível.</p>
+      <div className="grid gap-3">{children}</div>
+    </section>
+  );
+}
+
+function SettingsField({ label, value }: { label: string; value?: string | number | null }) {
+  return (
+    <div className="bg-white/[0.02] border border-white/5 rounded-xl px-4 py-3">
+      <p className="text-[9px] font-black uppercase tracking-wider text-slate-500">{label}</p>
+      <p className="text-sm font-bold text-slate-200 mt-1 break-words">{value || 'Não informado'}</p>
     </div>
+  );
+}
+
+function ProfileSection() {
+  const [user] = useState<StoredUser | null>(() => readStoredUser());
+
+  return (
+    <SettingsInfoCard
+      title="Perfil do usuário"
+      description="Identidade usada na sessão atual e nas trilhas de auditoria do tenant."
+    >
+      <SettingsField label="Nome" value={user?.name} />
+      <SettingsField label="E-mail" value={user?.email} />
+      <SettingsField label="Perfil de acesso" value={user?.role || 'Usuário autenticado'} />
+      <SettingsField label="Identificador" value={user?.id} />
+    </SettingsInfoCard>
+  );
+}
+
+function CompanySection() {
+  const { selectedCompany } = useCompany();
+
+  return (
+    <SettingsInfoCard
+      title="Dados da empresa ativa"
+      description="Contexto multi-tenant aplicado aos módulos fiscais, financeiros e contábeis."
+    >
+      <SettingsField label="Razão social / Nome" value={selectedCompany?.name} />
+      <SettingsField label="CNPJ" value={selectedCompany?.cnpj} />
+      <SettingsField label="Regime tributário" value={formatTaxRegime(selectedCompany?.taxRegime)} />
+      <SettingsField label="CNAE principal" value={selectedCompany?.cnae} />
+      <SettingsField label="ID do tenant" value={selectedCompany?.id} />
+    </SettingsInfoCard>
+  );
+}
+
+function UsersSection() {
+  const { companies } = useCompany();
+  const [user] = useState<StoredUser | null>(() => readStoredUser());
+
+  return (
+    <SettingsInfoCard
+      title="Usuários e permissões"
+      description="Resumo de acesso disponível na sessão. Alterações sensíveis devem permanecer auditáveis."
+    >
+      <SettingsField label="Usuário autenticado" value={user?.email || user?.name} />
+      <SettingsField label="Empresas vinculadas no contexto" value={companies.length} />
+      <SettingsField label="Escopo operacional" value="Tenant ativo isolado por x-company-id" />
+      <SettingsField label="Governança" value="Convites, papéis e remoções exigem endpoint auditado" />
+    </SettingsInfoCard>
   );
 }
 
@@ -332,11 +432,6 @@ export default function SettingsPage() {
                 >
                   <Icon size={14} />
                   {section.label}
-                  {!section.ready && (
-                    <span className="ml-auto text-[8px] bg-white/10 px-1.5 py-0.5 rounded-full">
-                      EM BREVE
-                    </span>
-                  )}
                 </button>
               );
             })}
@@ -346,9 +441,9 @@ export default function SettingsPage() {
         {/* Conteúdo da seção ativa */}
         <div className="flex-1 min-w-0">
           {activeSection === 'billing' && <BillingSection />}
-          {activeSection === 'profile' && <ComingSoonSection title="Perfil do usuário" />}
-          {activeSection === 'company' && <ComingSoonSection title="Dados da empresa" />}
-          {activeSection === 'users' && <ComingSoonSection title="Usuários e permissões" />}
+          {activeSection === 'profile' && <ProfileSection />}
+          {activeSection === 'company' && <CompanySection />}
+          {activeSection === 'users' && <UsersSection />}
         </div>
       </div>
     </div>

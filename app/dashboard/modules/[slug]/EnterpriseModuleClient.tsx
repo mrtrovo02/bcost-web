@@ -10,6 +10,7 @@ import {
   getEnterpriseModuleModel,
   resolveEnterpriseCompanyId,
 } from '@/lib/api/enterprise-universal';
+import { automationJobsApi } from '@/lib/api/automation-jobs';
 
 type EnterpriseModuleClientProps = {
   slug: string;
@@ -320,13 +321,19 @@ function AutomationJobsView({
   search: string;
   companyId: string | null;
   onSearchChange: (value: string) => void;
-  onRefresh: () => void;
+  onRefresh: () => void | Promise<void>;
   onSubmitSearch: () => void;
 }) {
   const jobs = useMemo(() => (data?.items || []) as AutomationJobRecord[], [data?.items]);
 
   const stats = useMemo(() => getAutomationStats(jobs), [jobs]);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<{
+    type: 'success' | 'error' | 'warning';
+    title: string;
+    description?: string;
+  } | null>(null);
 
   const selectedJob = useMemo(() => {
     if (!jobs.length) return null;
@@ -335,6 +342,33 @@ function AutomationJobsView({
     }
     return jobs[0];
   }, [jobs, selectedJobId]);
+
+  const retrySelectedJob = useCallback(async () => {
+    if (!selectedJob?.id) return;
+
+    const jobId = String(selectedJob.id);
+    setActionLoading(`retry:${jobId}`);
+    setActionMessage(null);
+
+    try {
+      const response = await automationJobsApi.retry(jobId);
+      setActionMessage({
+        type: response.status === 'OK' ? 'success' : 'warning',
+        title: response.message || 'Job reenfileirado para reprocessamento.',
+        description: `Job ${response.jobId || jobId}`,
+      });
+      await onRefresh();
+    } catch (error) {
+      setActionMessage({
+        type: 'error',
+        title: 'Falha ao reprocessar job',
+        description:
+          error instanceof Error ? error.message : 'Não foi possível acionar o endpoint de retry.',
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  }, [onRefresh, selectedJob?.id]);
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -618,17 +652,39 @@ function AutomationJobsView({
                   </div>
 
                   <div className="mt-5 grid gap-2">
+                    {actionMessage ? (
+                      <div
+                        className={`rounded-2xl border p-4 text-sm ${
+                          actionMessage.type === 'success'
+                            ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                            : actionMessage.type === 'warning'
+                              ? 'border-amber-200 bg-amber-50 text-amber-800'
+                              : 'border-red-200 bg-red-50 text-red-800'
+                        }`}
+                      >
+                        <p className="font-bold">{actionMessage.title}</p>
+                        {actionMessage.description ? (
+                          <p className="mt-1 text-xs opacity-80">{actionMessage.description}</p>
+                        ) : null}
+                      </div>
+                    ) : null}
                     <button
                       type="button"
-                      disabled
-                      className="rounded-2xl bg-slate-200 px-5 py-3 text-sm font-bold text-slate-500"
-                      title="Ação será conectada ao endpoint de retry/cancel na próxima fase backend."
+                      disabled={!selectedJob.id || actionLoading === `retry:${selectedJob.id}`}
+                      onClick={retrySelectedJob}
+                      className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                      title={
+                        selectedJob.id
+                          ? 'Reenfileira o job selecionado pelo endpoint oficial de retry.'
+                          : 'Job sem identificador persistido.'
+                      }
                     >
-                      Reprocessar job em breve
+                      {actionLoading === `retry:${selectedJob.id}`
+                        ? 'Reprocessando...'
+                        : 'Reprocessar job'}
                     </button>
                     <p className="text-xs text-slate-500">
-                      Nesta fase a tela é somente leitura para evitar acionar endpoints de retry
-                      ainda não validados.
+                      A ação registra auditoria no backend e atualiza esta visão após a resposta.
                     </p>
                   </div>
                 </>
