@@ -6,6 +6,22 @@ import { useCompany } from '@/app/context/CompanyContext';
 import CompanySessionHydrator from '@/components/session/CompanySessionHydrator';
 import Sidebar from '@/components/Sidebar';
 import CbsIbsAlertBanner from '@/components/alerts/CbsIbsAlertBanner';
+import { safeJsonParse, safeLocalStorageGet } from '@/lib/utils/runtime-guards';
+
+type StoredUser = {
+  name?: string;
+  email?: string;
+  role?: string;
+};
+
+function getStoredUser(): StoredUser | null {
+  for (const key of ['bcost_user', 'user', 'auth_user']) {
+    const parsed = safeJsonParse<StoredUser | null>(safeLocalStorageGet(key), null);
+    if (parsed?.email || parsed?.name) return parsed;
+  }
+
+  return null;
+}
 
 /**
  * DashboardLayout (Enterprise Grade)
@@ -13,6 +29,15 @@ import CbsIbsAlertBanner from '@/components/alerts/CbsIbsAlertBanner';
  */
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { selectedCompany } = useCompany();
+  const user = getStoredUser();
+  const displayName = user?.name || user?.email || 'Usuário';
+  const initials = displayName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase();
 
   return (
     <>
@@ -47,13 +72,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {/* User Profile Identity Badge */}
             <div className="flex items-center gap-3.5 bg-[#090d16] border border-white/5 p-2 pr-5 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.3)] hover:border-white/10 transition-all duration-300 group cursor-pointer">
               <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-600 to-indigo-800 flex items-center justify-center text-white text-sm font-black shadow-lg relative overflow-hidden">
-                <span className="relative z-10">V</span>
+                <span className="relative z-10">{initials || 'U'}</span>
                 <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
               <div className="flex flex-col">
-                <span className="text-xs font-black text-slate-200 leading-none">Vinícius</span>
+                <span className="max-w-36 truncate text-xs font-black text-slate-200 leading-none">
+                  {displayName}
+                </span>
                 <span className="text-[8px] font-black text-emerald-500 uppercase tracking-wider mt-0.5">
-                  Admin Master
+                  {user?.role || 'Usuário autenticado'}
                 </span>
               </div>
             </div>

@@ -3,7 +3,7 @@
  * Dados mock para desenvolvimento local sem API real.
  */
 
-import { writeCookie } from './api';
+import { deleteCookie, writeCookie } from './api';
 import { TransactionStatus } from '@/lib/types/global';
 import { XmlDocumentType } from '@/lib/types/fiscal';
 
@@ -312,8 +312,32 @@ export function seedDemoData(): boolean {
     return false;
   }
 
-  const alreadySeeded = sessionStorage.getItem('bcost_demo_seeded');
-  if (alreadySeeded) return true;
+  for (const key of [
+    'bcost_active_company',
+    'bcost_active_company_data',
+    'bcost_companies',
+    'companies',
+    'bcost_company_id',
+    'companyId',
+    'activeCompanyId',
+    'bcost_user',
+    'user',
+    'auth_user',
+    'bcost_token',
+    'bcost_access_token',
+    'bcost_refresh_token',
+  ]) {
+    localStorage.removeItem(key);
+  }
+
+  for (const cookieName of [
+    'bcost_token',
+    'bcost_access_token',
+    'bcost_refresh_token',
+    'bcost_company_id',
+  ]) {
+    deleteCookie(cookieName);
+  }
 
   localStorage.setItem('bcost_active_company', DEMO_COMPANIES[0].id);
   localStorage.setItem('bcost_active_company_data', JSON.stringify(DEMO_COMPANIES[0]));

@@ -1,6 +1,6 @@
 'use strict';
 
-import { api, getActiveCompanyId, setActiveCompanyId } from '@/services/api';
+import { api, getActiveCompanyId, getToken, setActiveCompanyId } from '@/services/api';
 import { safeLocalStorageGet } from '@/lib/utils/runtime-guards';
 import { trackEvent } from '@/lib/utils/telemetry';
 import { getSchemaModuleBySlug } from '@/lib/product/schema-modules';
@@ -141,16 +141,20 @@ export function getStoredCompanyId(): string | null {
   return getActiveCompanyId?.() || null;
 }
 
+function hasRealAuthToken(): boolean {
+  const token = getToken?.();
+  return Boolean(token && token !== 'demo-token-local');
+}
+
 export async function resolveEnterpriseCompanyId(): Promise<string | null> {
-  const stored = getStoredCompanyId();
-
-  if (stored) {
-    return stored;
-  }
-
   try {
     const me = await api.get('/auth/me');
-    const companyId = me.data?.companyId;
+    const companies = Array.isArray(me.data?.companies) ? me.data.companies : [];
+    const companyId =
+      me.data?.activeCompanyId ||
+      me.data?.companyId ||
+      companies.find((company: { id?: string }) => company.id === getStoredCompanyId())?.id ||
+      companies[0]?.id;
 
     if (companyId) {
       setActiveCompanyId?.(companyId);
@@ -170,6 +174,12 @@ export async function resolveEnterpriseCompanyId(): Promise<string | null> {
     }
   } catch {
     // sem fallback disponível
+  }
+
+  const stored = getStoredCompanyId();
+
+  if (stored && (!isDemoEntityId(stored) || !hasRealAuthToken())) {
+    return stored;
   }
 
   assertOperationalDemoFallbackEnabled(

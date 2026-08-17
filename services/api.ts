@@ -202,6 +202,7 @@ function isDemoId(value?: string | null): boolean {
 
 function clearStoredCompanyData(): void {
   lsRemove([...COMPANY_KEYS, ...COMPANY_DATA_KEYS]);
+  deleteCookie('bcost_company_id');
 }
 
 function dispatchCompanyContextUpdated(companyId?: string, companies?: BcostCompany[]): void {
