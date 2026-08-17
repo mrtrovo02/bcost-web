@@ -15,6 +15,9 @@ export interface Company {
   id: string;
   name: string;
   cnpj: string;
+  taxRegime?: 'SIMPLES_NACIONAL' | 'LUCRO_PRESUMIDO' | 'LUCRO_REAL';
+  cnae?: string | null;
+  anexo?: number | null;
 }
 
 export interface CompanyContextType {

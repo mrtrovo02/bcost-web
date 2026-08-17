@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback, FormEvent } from 'react';
+import { useState, useEffect, useCallback, FormEvent, MouseEvent } from 'react';
 import { useRouter } from 'next/navigation';
-// Caminho relativo infalível para evitar erro de resolução do Turbopack
-import { api } from '../../../services/api';
+import { Pencil, Save, Trash2, X } from 'lucide-react';
 import { companyService } from '../../../services/company.service';
 import { useCompany } from '@/app/context/CompanyContext';
 import { formatCnpj, normalizeCnpj } from '@/lib/utils/cnpj';
@@ -18,10 +17,27 @@ interface Company {
   name: string;
   cnpj: string;
   taxRegime?: TaxRegime;
+  cnae?: string | null;
+  anexo?: number | null;
   status?: string;
 }
 
 type TaxRegime = 'SIMPLES_NACIONAL' | 'LUCRO_PRESUMIDO' | 'LUCRO_REAL';
+type CompanyEditForm = {
+  name: string;
+  taxRegime: TaxRegime;
+  cnae: string;
+  anexo: number;
+};
+
+const DEFAULT_TAX_REGIME: TaxRegime = 'SIMPLES_NACIONAL';
+
+function resolveErrorMessage(error: unknown, fallback: string): string {
+  const responseData = isRecord(error) && isRecord(error.response) ? error.response.data : undefined;
+  return isRecord(responseData)
+    ? getErrorMessage(responseData, fallback)
+    : getErrorMessage(error, fallback);
+}
 
 export default function CompaniesPage() {
   const {
@@ -36,9 +52,19 @@ export default function CompaniesPage() {
   const [newCompanyName, setNewCompanyName] = useState<string>('');
   const [newCompanyCnpj, setNewCompanyCnpj] = useState<string>('');
   const [newCompanyTaxRegime, setNewCompanyTaxRegime] =
-    useState<TaxRegime>('SIMPLES_NACIONAL');
+    useState<TaxRegime>(DEFAULT_TAX_REGIME);
   const [isCreating, setIsCreating] = useState<boolean>(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<CompanyEditForm>({
+    name: '',
+    taxRegime: DEFAULT_TAX_REGIME,
+    cnae: '',
+    anexo: 3,
+  });
+  const [busyCompanyId, setBusyCompanyId] = useState<string | null>(null);
   const router = useRouter();
 
   /**
@@ -64,8 +90,7 @@ export default function CompaniesPage() {
         return;
       }
 
-      // Chamada à API bCost Engine
-      const { data } = await api.get<Company[]>('/company');
+      const data = await companyService.getAll();
       setCompanies(data);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
@@ -130,7 +155,7 @@ export default function CompaniesPage() {
       setSelectedCompany(created);
       setNewCompanyName('');
       setNewCompanyCnpj('');
-      setNewCompanyTaxRegime('SIMPLES_NACIONAL');
+      setNewCompanyTaxRegime(DEFAULT_TAX_REGIME);
       setActiveId(created.id);
 
       if (typeof window !== 'undefined') {
@@ -153,21 +178,107 @@ export default function CompaniesPage() {
       setSelectedCompany(created);
       setNewCompanyName('');
       setNewCompanyCnpj('');
-      setNewCompanyTaxRegime('SIMPLES_NACIONAL');
+      setNewCompanyTaxRegime(DEFAULT_TAX_REGIME);
       setActiveId(created.id);
       localStorage.setItem('bcost_active_company', created.id);
       localStorage.setItem('bcost_active_company_data', JSON.stringify(created));
       router.push('/dashboard/intelligence');
     } catch (error: unknown) {
-      const responseData =
-        isRecord(error) && isRecord(error.response) ? error.response.data : undefined;
-      const message = isRecord(responseData)
-        ? getErrorMessage(responseData, 'Falha ao cadastrar a nova unidade.')
-        : getErrorMessage(error, 'Falha ao cadastrar a nova unidade.');
+      const message = resolveErrorMessage(error, 'Falha ao cadastrar a nova unidade.');
       console.error('🔴 [Companies Create Error]:', message);
       setCreateError(message);
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const startEditing = (event: MouseEvent<HTMLButtonElement>, company: Company) => {
+    event.stopPropagation();
+    setActionError(null);
+    setActionMessage(null);
+    setEditingId(company.id);
+    setEditForm({
+      name: company.name,
+      taxRegime: company.taxRegime ?? DEFAULT_TAX_REGIME,
+      cnae: company.cnae ?? '',
+      anexo: company.anexo ?? 3,
+    });
+  };
+
+  const cancelEditing = (event?: MouseEvent<HTMLButtonElement>) => {
+    event?.stopPropagation();
+    setEditingId(null);
+    setActionError(null);
+  };
+
+  const handleUpdateCompany = async (event: FormEvent<HTMLFormElement>, company: Company) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setActionError(null);
+    setActionMessage(null);
+
+    if (!editForm.name.trim()) {
+      setActionError('Nome da unidade é obrigatório.');
+      return;
+    }
+
+    const payload = {
+      name: editForm.name.trim(),
+      taxRegime: editForm.taxRegime,
+      cnae: editForm.cnae.trim() || undefined,
+      anexo: editForm.anexo,
+    };
+
+    try {
+      setBusyCompanyId(company.id);
+
+      const updated = isDemoSession
+        ? { ...company, ...payload }
+        : await companyService.update(company.id, payload);
+      const nextCompanies = companies.map((item) => (item.id === company.id ? updated : item));
+
+      setCompanies(nextCompanies);
+      if (activeId === company.id) {
+        setSelectedCompany(updated);
+        localStorage.setItem('bcost_active_company_data', JSON.stringify(updated));
+      }
+      setEditingId(null);
+      setActionMessage('Empresa atualizada com sucesso.');
+    } catch (error: unknown) {
+      const message = resolveErrorMessage(error, 'Falha ao atualizar a empresa.');
+      console.error('🔴 [Companies Update Error]:', message);
+      setActionError(message);
+    } finally {
+      setBusyCompanyId(null);
+    }
+  };
+
+  const handleRemoveCompany = async (event: MouseEvent<HTMLButtonElement>, company: Company) => {
+    event.stopPropagation();
+    setActionError(null);
+    setActionMessage(null);
+
+    if (activeId === company.id) {
+      setActionError('Selecione outra empresa antes de desativar a unidade em operação.');
+      return;
+    }
+
+    const confirmed = window.confirm(`Desativar a empresa "${company.name}"?`);
+    if (!confirmed) return;
+
+    try {
+      setBusyCompanyId(company.id);
+      if (!isDemoSession) {
+        await companyService.remove(company.id);
+      }
+      setCompanies(companies.filter((item) => item.id !== company.id));
+      setActionMessage('Empresa desativada com sucesso.');
+    } catch (error: unknown) {
+      const message = resolveErrorMessage(error, 'Falha ao desativar a empresa.');
+      console.error('🔴 [Companies Remove Error]:', message);
+      setActionError(message);
+    } finally {
+      setBusyCompanyId(null);
     }
   };
 
@@ -250,6 +361,18 @@ export default function CompaniesPage() {
         {createError && <p className="mt-3 text-sm text-red-400">{createError}</p>}
       </section>
 
+      {(actionError || actionMessage) && (
+        <div
+          className={`rounded-2xl border px-5 py-4 text-sm font-semibold ${
+            actionError
+              ? 'border-red-500/20 bg-red-500/10 text-red-300'
+              : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
+          }`}
+        >
+          {actionError || actionMessage}
+        </div>
+      )}
+
       {/* Grid de Instâncias */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {isLoading
@@ -264,7 +387,7 @@ export default function CompaniesPage() {
               const isSelected = activeId === company.id;
 
               return (
-                <div
+                <article
                   key={company.id}
                   onClick={() => handleSelectCompany(company.id)}
                   className={`
@@ -286,45 +409,165 @@ export default function CompaniesPage() {
                     </span>
                   </div>
 
-                  <div className="space-y-5">
-                    <div
-                      className={`
-                    h-14 w-14 rounded-2xl flex items-center justify-center text-2xl transition-all duration-500
-                    ${isSelected ? 'bg-blue-600 text-white' : 'bg-white/5 text-slate-500 group-hover:bg-white/10'}
-                  `}
+                  {editingId === company.id ? (
+                    <form
+                      className="space-y-4"
+                      onClick={(event) => event.stopPropagation()}
+                      onSubmit={(event) => handleUpdateCompany(event, company)}
                     >
-                      🏢
-                    </div>
-
-                    <div>
-                      <h3 className="font-black text-white text-xl uppercase tracking-tighter leading-tight">
-                        {company.name}
-                      </h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[9px] font-bold text-blue-500/50 uppercase">
-                          CNPJ
-                        </span>
-                        <p className="text-[11px] font-bold text-slate-500 tracking-wider">
-                          {company.cnpj ? formatCnpj(company.cnpj) : '00.000.000/0000-00'}
-                        </p>
+                      <div>
+                        <label className="mb-2 block text-xs font-bold text-slate-400">
+                          Nome da unidade
+                        </label>
+                        <input
+                          value={editForm.name}
+                          onChange={(event) =>
+                            setEditForm((current) => ({ ...current, name: event.target.value }))
+                          }
+                          className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                        />
                       </div>
-                    </div>
-                  </div>
 
-                  {/* Footer do Card */}
-                  <div
-                    className={`mt-6 pt-6 border-t transition-colors ${isSelected ? 'border-blue-500/20' : 'border-white/5'}`}
-                  >
-                    <button
-                      className={`
-                    text-[10px] font-black uppercase tracking-widest transition-all
-                    ${isSelected ? 'text-blue-400' : 'text-slate-600 group-hover:text-slate-400'}
-                  `}
-                    >
-                      {isSelected ? 'Visualizando Agora' : 'Acessar Unidade'}
-                    </button>
-                  </div>
-                </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="mb-2 block text-xs font-bold text-slate-400">
+                            Regime
+                          </label>
+                          <select
+                            value={editForm.taxRegime}
+                            onChange={(event) =>
+                              setEditForm((current) => ({
+                                ...current,
+                                taxRegime: event.target.value as TaxRegime,
+                              }))
+                            }
+                            className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                          >
+                            <option value="SIMPLES_NACIONAL">Simples</option>
+                            <option value="LUCRO_PRESUMIDO">Presumido</option>
+                            <option value="LUCRO_REAL">Real</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="mb-2 block text-xs font-bold text-slate-400">
+                            Anexo
+                          </label>
+                          <select
+                            value={editForm.anexo}
+                            onChange={(event) =>
+                              setEditForm((current) => ({
+                                ...current,
+                                anexo: Number(event.target.value),
+                              }))
+                            }
+                            className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                          >
+                            {[1, 2, 3, 4, 5].map((anexo) => (
+                              <option key={anexo} value={anexo}>
+                                {anexo}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-xs font-bold text-slate-400">CNAE</label>
+                        <input
+                          value={editForm.cnae}
+                          onChange={(event) =>
+                            setEditForm((current) => ({ ...current, cnae: event.target.value }))
+                          }
+                          placeholder="Ex: 6201-5/01"
+                          className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                        />
+                      </div>
+
+                      <div className="flex gap-2 border-t border-white/5 pt-4">
+                        <button
+                          type="submit"
+                          disabled={busyCompanyId === company.id}
+                          className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-blue-400 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <Save className="h-4 w-4" />
+                          Salvar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={cancelEditing}
+                          className="inline-flex h-10 items-center justify-center rounded-xl border border-white/10 px-3 text-slate-300 transition hover:bg-white/5"
+                          aria-label="Cancelar edição"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <>
+                      <div className="space-y-5">
+                        <div
+                          className={`
+                        h-14 w-14 rounded-2xl flex items-center justify-center text-2xl transition-all duration-500
+                        ${isSelected ? 'bg-blue-600 text-white' : 'bg-white/5 text-slate-500 group-hover:bg-white/10'}
+                      `}
+                        >
+                          🏢
+                        </div>
+
+                        <div>
+                          <h3 className="font-black text-white text-xl uppercase tracking-tighter leading-tight">
+                            {company.name}
+                          </h3>
+                          <div className="mt-1 flex items-center gap-2">
+                            <span className="text-[9px] font-bold uppercase text-blue-500/50">
+                              CNPJ
+                            </span>
+                            <p className="text-[11px] font-bold tracking-wider text-slate-500">
+                              {company.cnpj ? formatCnpj(company.cnpj) : '00.000.000/0000-00'}
+                            </p>
+                          </div>
+                          <p className="mt-3 text-[10px] font-black uppercase tracking-widest text-slate-600">
+                            {company.taxRegime?.replaceAll('_', ' ') ?? 'SIMPLES NACIONAL'}
+                            {company.cnae ? ` • CNAE ${company.cnae}` : ''}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Footer do Card */}
+                      <div
+                        className={`mt-6 flex items-center justify-between gap-3 border-t pt-6 transition-colors ${isSelected ? 'border-blue-500/20' : 'border-white/5'}`}
+                      >
+                        <button
+                          className={`
+                        text-[10px] font-black uppercase tracking-widest transition-all
+                        ${isSelected ? 'text-blue-400' : 'text-slate-600 group-hover:text-slate-400'}
+                      `}
+                        >
+                          {isSelected ? 'Visualizando Agora' : 'Acessar Unidade'}
+                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={(event) => startEditing(event, company)}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 text-slate-400 transition hover:bg-white/5 hover:text-white"
+                            aria-label="Editar empresa"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={busyCompanyId === company.id}
+                            onClick={(event) => handleRemoveCompany(event, company)}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-red-500/20 text-red-300 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+                            aria-label="Desativar empresa"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </article>
               );
             })}
       </div>
