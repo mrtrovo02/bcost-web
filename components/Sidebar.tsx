@@ -117,34 +117,17 @@ export default function Sidebar() {
   ];
 
   /**
-   * Logout robusto: tenta avisar o backend (best-effort, timeout curto,
-   * nunca bloqueia a saída), limpa todos os cookies de sessão conhecidos,
-   * purga localStorage/sessionStorage, e força um hard reload para
-   * `/login` — garante que nenhum estado de componente/query cache
-   * sobreviva na memória do processo React após o logout.
+   * Logout local para autenticação JWT stateless.
+   * Limpa cookies/storage e força hard reload para remover qualquer estado
+   * em memória do React/Query cache.
    */
   const handleLogout = async () => {
     setIsLoggingOut(true);
 
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 800);
-
-      await fetch('/api/v1/auth/logout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        signal: controller.signal,
-      }).catch(() => {
-        /* best-effort: 401/404/offline/timeout não impedem o logout local */
-      });
-
-      clearTimeout(timeoutId);
-    } finally {
-      SESSION_COOKIE_NAMES.forEach((name) => deleteCookie(name));
-      localStorage.clear();
-      sessionStorage.clear();
-      window.location.replace('/login');
-    }
+    SESSION_COOKIE_NAMES.forEach((name) => deleteCookie(name));
+    localStorage.clear();
+    sessionStorage.clear();
+    window.location.replace('/login');
   };
 
   const commandItems = useMemo<NavigationItem[]>(
