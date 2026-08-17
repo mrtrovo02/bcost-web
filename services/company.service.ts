@@ -27,6 +27,13 @@ export interface CreateCompanyInput {
   taxRegime?: Company['taxRegime'];
 }
 
+export interface UpdateCompanyInput {
+  name?: string;
+  taxRegime?: Company['taxRegime'];
+  cnae?: string;
+  anexo?: number;
+}
+
 /**
  * CompanyService: O coração da multi-tenancy no bCost Web.
  * Gerencia a troca de contexto entre diferentes CNPJs.
@@ -67,6 +74,15 @@ export const companyService = {
   async create(companyData: CreateCompanyInput): Promise<Company> {
     const { data } = await api.post<Company>('/company', companyData);
     return data;
+  },
+
+  async update(companyId: string, companyData: UpdateCompanyInput): Promise<Company> {
+    const { data } = await api.patch<Company>(`/company/${companyId}`, companyData);
+    return data;
+  },
+
+  async remove(companyId: string): Promise<void> {
+    await api.delete(`/company/${companyId}`);
   },
 
   /**
