@@ -135,6 +135,18 @@ export default function CoreTaxPreviewWidget() {
             </div>
           </div>
 
+          <div
+            className={`mt-5 rounded-2xl border p-4 text-sm font-bold ${
+              preview.canClose
+                ? 'border-emerald-100 bg-emerald-50 text-emerald-700'
+                : 'border-red-100 bg-red-50 text-red-700'
+            }`}
+          >
+            {preview.canClose
+              ? 'Fechamento oficial liberado para gerar obrigação DAS e snapshot fiscal.'
+              : 'Fechamento oficial bloqueado até resolver os gates obrigatórios.'}
+          </div>
+
           <div className="mt-5 grid gap-3 xl:grid-cols-2">
             {preview.gates.map((gate) => (
               <div key={gate.code} className={`rounded-xl border p-4 text-xs ${gateClass(gate.status)}`}>
