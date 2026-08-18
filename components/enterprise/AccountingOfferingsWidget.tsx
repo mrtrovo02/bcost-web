@@ -22,6 +22,12 @@ function statusClass(status: AccountingOffering['marketStatus']) {
   return 'border-red-100 bg-red-50 text-red-700';
 }
 
+function activationClass(status: AccountingOffering['activationRequirements'][number]['status']) {
+  if (status === 'READY') return 'border-emerald-100 bg-emerald-50 text-emerald-700';
+  if (status === 'REQUIRES_SETUP') return 'border-blue-100 bg-blue-50 text-blue-700';
+  return 'border-red-100 bg-red-50 text-red-700';
+}
+
 export default function AccountingOfferingsWidget() {
   const [offerings, setOfferings] = useState<AccountingOfferingsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -147,6 +153,15 @@ export default function AccountingOfferingsWidget() {
               </h3>
               <p className="mt-2 text-sm leading-6 text-slate-600">{offering.headline}</p>
 
+              <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
+                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  Decisão comercial
+                </div>
+                <p className="mt-2 text-sm font-bold leading-6 text-slate-700">
+                  {offering.commercialDecision}
+                </p>
+              </div>
+
               <div className="mt-4 flex flex-wrap gap-2">
                 {offering.targetCustomers.map((customer) => (
                   <span
@@ -182,6 +197,44 @@ export default function AccountingOfferingsWidget() {
                     ))}
                   </div>
                 </div>
+              </div>
+
+              <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
+                <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3">
+                  <div className="text-lg font-black text-emerald-700">
+                    {offering.activationSummary.ready}
+                  </div>
+                  <div className="font-bold text-emerald-600">prontos</div>
+                </div>
+                <div className="rounded-xl border border-blue-100 bg-blue-50 p-3">
+                  <div className="text-lg font-black text-blue-700">
+                    {offering.activationSummary.requiresSetup}
+                  </div>
+                  <div className="font-bold text-blue-600">setup</div>
+                </div>
+                <div className="rounded-xl border border-red-100 bg-red-50 p-3">
+                  <div className="text-lg font-black text-red-700">
+                    {offering.activationSummary.blocked}
+                  </div>
+                  <div className="font-bold text-red-600">bloqueios</div>
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-2">
+                {offering.activationRequirements.slice(0, 4).map((requirement) => (
+                  <div
+                    key={requirement.code}
+                    className={`rounded-xl border p-3 text-xs ${activationClass(requirement.status)}`}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-black">{requirement.label}</span>
+                      <span className="font-black uppercase tracking-widest">{requirement.owner}</span>
+                    </div>
+                    <div className="mt-1 leading-5">
+                      {requirement.evidenceRequired.slice(0, 2).join(' · ')}
+                    </div>
+                  </div>
+                ))}
               </div>
 
               <div className="mt-4 flex flex-wrap gap-2">
