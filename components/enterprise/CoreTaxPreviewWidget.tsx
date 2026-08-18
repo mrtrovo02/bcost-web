@@ -6,6 +6,7 @@ import { useCompany } from '@/app/context/CompanyContext';
 import {
   MonthlyTaxGateParams,
   MonthlyTaxClosurePreview,
+  MonthlyTaxEvidenceStatus,
   MonthlyTaxPreviewGateStatus,
   coreTaxPreviewApi,
 } from '@/lib/api/core-tax-preview';
@@ -23,6 +24,12 @@ function gateClass(status: MonthlyTaxPreviewGateStatus) {
 function statusClass(status: MonthlyTaxClosurePreview['status']) {
   if (status === 'READY_TO_CLOSE') return 'border-emerald-100 bg-emerald-50 text-emerald-700';
   if (status === 'REQUIRES_ACTION') return 'border-amber-100 bg-amber-50 text-amber-700';
+  return 'border-red-100 bg-red-50 text-red-700';
+}
+
+function artifactClass(status: MonthlyTaxEvidenceStatus) {
+  if (status === 'READY') return 'border-emerald-100 bg-emerald-50 text-emerald-700';
+  if (status === 'PENDING') return 'border-amber-100 bg-amber-50 text-amber-700';
   return 'border-red-100 bg-red-50 text-red-700';
 }
 
@@ -229,6 +236,36 @@ export default function CoreTaxPreviewWidget() {
                 <p className="mt-2 leading-5">{gate.message}</p>
               </div>
             ))}
+          </div>
+
+          <div className="mt-5 rounded-2xl border border-slate-100 bg-slate-50 p-4">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  Pacote de evidências
+                </div>
+                <div className="mt-1 text-xs font-bold text-slate-600">
+                  {preview.evidencePacket.id}
+                </div>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-[11px] font-bold text-slate-600">
+                {preview.evidencePacket.integrityHash.slice(0, 16)}
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-2 md:grid-cols-2">
+              {preview.evidencePacket.requiredArtifacts.slice(0, 8).map((artifact) => (
+                <div
+                  key={artifact.code}
+                  className={`rounded-xl border px-3 py-3 text-xs ${artifactClass(artifact.status)}`}
+                >
+                  <div className="font-black">{artifact.label}</div>
+                  <div className="mt-1 font-mono text-[10px] uppercase">
+                    {artifact.status} / {artifact.source}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
           {preview.nextActions.length > 0 && (

@@ -4,6 +4,8 @@ import { api } from '@/services/api';
 
 export type MonthlyTaxPreviewGateStatus = 'PASS' | 'WARN' | 'FAIL';
 export type MonthlyTaxPreviewStatus = 'READY_TO_CLOSE' | 'REQUIRES_ACTION' | 'BLOCKED';
+export type MonthlyTaxEvidenceStatus = 'READY' | 'PENDING' | 'MISSING';
+export type MonthlyTaxEvidenceSource = 'BCOST' | 'CUSTOMER' | 'GOVERNMENT_PORTAL' | 'CRC';
 
 export type MonthlyTaxClosurePreview = {
   status: MonthlyTaxPreviewStatus;
@@ -27,6 +29,16 @@ export type MonthlyTaxClosurePreview = {
     message: string;
   }[];
   evidenceRequired: string[];
+  evidencePacket: {
+    id: string;
+    integrityHash: string;
+    requiredArtifacts: {
+      code: string;
+      label: string;
+      status: MonthlyTaxEvidenceStatus;
+      source: MonthlyTaxEvidenceSource;
+    }[];
+  };
   nextActions: string[];
   generatedAt: string;
 };
