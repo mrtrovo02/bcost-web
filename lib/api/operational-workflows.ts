@@ -18,13 +18,27 @@ export type OperationalWorkflowStageStatus =
   | 'REQUIRES_CUSTOMER'
   | 'REQUIRES_CRC';
 
+export type OperationalWorkflowRuntimeStatus =
+  | 'NOT_STARTED'
+  | 'WAITING_DEPENDENCY'
+  | 'READY_TO_RUN'
+  | 'IN_PROGRESS'
+  | 'WAITING_CUSTOMER'
+  | 'WAITING_PUBLIC_AGENCY'
+  | 'WAITING_CRC_REVIEW'
+  | 'DONE'
+  | 'BLOCKED';
+
 export type OperationalWorkflowStage = {
   id: string;
   title: string;
   actor: OperationalWorkflowActor;
   status: OperationalWorkflowStageStatus;
+  runtimeStatus: OperationalWorkflowRuntimeStatus;
+  allowedTransitions: OperationalWorkflowRuntimeStatus[];
   executionEngine: string;
   evidenceRequired: string[];
+  blockingReason?: string;
 };
 
 export type OperationalWorkflowPreview = {
@@ -36,6 +50,13 @@ export type OperationalWorkflowPreview = {
   productionReadiness: string;
   operationalRisk: string;
   stages: OperationalWorkflowStage[];
+  operationalSummary: {
+    totalStages: number;
+    readyStages: number;
+    dependencyStages: number;
+    humanStages: number;
+    evidenceArtifacts: number;
+  };
   gates: {
     requiresCrcValidation: boolean;
     requiresOfficialCredential: boolean;

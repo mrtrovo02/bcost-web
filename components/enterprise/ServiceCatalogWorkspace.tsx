@@ -679,9 +679,22 @@ export default function ServiceCatalogWorkspace() {
 
                           {workflow && workflow.serviceId === service.id && (
                             <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm">
-                              <div className="flex items-center gap-2 font-bold text-slate-900">
-                                <Milestone className="h-4 w-4" />
-                                Esteira operacional oficial
+                              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                <div className="flex items-center gap-2 font-bold text-slate-900">
+                                  <Milestone className="h-4 w-4" />
+                                  Esteira operacional oficial
+                                </div>
+                                <div className="flex flex-wrap gap-2 text-xs">
+                                  <span className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 font-bold text-slate-700">
+                                    {workflow.operationalSummary.totalStages} etapas
+                                  </span>
+                                  <span className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 font-bold text-slate-700">
+                                    {workflow.operationalSummary.humanStages} humanas
+                                  </span>
+                                  <span className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 font-bold text-slate-700">
+                                    {workflow.operationalSummary.evidenceArtifacts} evidências
+                                  </span>
+                                </div>
                               </div>
                               <div className="mt-3 grid gap-2">
                                 {workflow.stages.map((stage, index) => (
@@ -697,9 +710,17 @@ export default function ServiceCatalogWorkspace() {
                                       <div className="mt-1 text-xs text-slate-500">
                                         {stage.executionEngine} · {stage.actor}
                                       </div>
+                                      <div className="mt-2 text-xs font-semibold text-slate-700">
+                                        Status operacional: {stage.runtimeStatus}
+                                      </div>
                                       {stage.evidenceRequired[0] && (
                                         <div className="mt-2 text-xs leading-5 text-slate-600">
                                           {stage.evidenceRequired[0]}
+                                        </div>
+                                      )}
+                                      {stage.blockingReason && (
+                                        <div className="mt-2 text-xs leading-5 text-amber-700">
+                                          {stage.blockingReason}
                                         </div>
                                       )}
                                     </div>
