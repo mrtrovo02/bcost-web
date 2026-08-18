@@ -11,6 +11,8 @@ import {
   resolveEnterpriseCompanyId,
 } from '@/lib/api/enterprise-universal';
 import { automationJobsApi } from '@/lib/api/automation-jobs';
+import { isDemoEntityId } from '@/lib/config/demo-policy';
+import { getToken } from '@/services/api';
 
 type EnterpriseModuleClientProps = {
   slug: string;
@@ -32,6 +34,11 @@ type AutomationJobRecord = EnterpriseModuleRecord & {
   finishedAt?: string | null;
   companyId?: string;
 };
+
+function hasRealAuthToken(): boolean {
+  const token = getToken();
+  return Boolean(token && token !== 'demo-token-local');
+}
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -936,7 +943,11 @@ export default function EnterpriseModuleClient({ slug }: EnterpriseModuleClientP
 
         setError(null);
 
-        const resolvedCompanyId = companyId || (await resolveEnterpriseCompanyId());
+        const shouldResolveCompany =
+          !companyId || (isDemoEntityId(companyId) && hasRealAuthToken());
+        const resolvedCompanyId = shouldResolveCompany
+          ? await resolveEnterpriseCompanyId()
+          : companyId;
 
         if (!resolvedCompanyId) {
           setData(null);
@@ -965,6 +976,23 @@ export default function EnterpriseModuleClient({ slug }: EnterpriseModuleClientP
     },
     [companyId, search, slug],
   );
+
+  useEffect(() => {
+    const handleCompanyContextUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<{ companyId?: string }>).detail;
+      const nextCompanyId = detail?.companyId;
+
+      setCompanyId(nextCompanyId && !isDemoEntityId(nextCompanyId) ? nextCompanyId : null);
+      setData(null);
+      setError(null);
+    };
+
+    window.addEventListener('bcost:company-context-updated', handleCompanyContextUpdated);
+
+    return () => {
+      window.removeEventListener('bcost:company-context-updated', handleCompanyContextUpdated);
+    };
+  }, []);
 
   useEffect(() => {
     void load('initial');

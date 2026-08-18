@@ -28,12 +28,15 @@ import {
   getDemoBillingEntitlements,
   PlanLevel,
 } from '@/lib/api/billing';
-import { api } from '@/services/api';
+import { isDemoEntityId, isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
+import { api, getToken } from '@/services/api';
 
 type AuthMeResponse = {
   id: string;
   email: string;
   companyId?: string;
+  activeCompanyId?: string;
+  companies?: Array<{ id?: string }>;
   role?: string;
   [key: string]: unknown;
 };
@@ -48,15 +51,22 @@ function isBrowser() {
   return typeof window !== 'undefined';
 }
 
+function hasRealAuthToken(): boolean {
+  const token = getToken();
+  return Boolean(token && token !== 'demo-token-local');
+}
+
 function readStoredCompanyId(): string | null {
   if (!isBrowser()) return null;
 
   const keys = ['bcost_active_company', 'bcost_company_id', 'companyId', 'activeCompanyId'];
+  const realAuth = hasRealAuthToken();
 
   for (const key of keys) {
     const value = localStorage.getItem(key);
 
     if (value && value !== 'null' && value !== 'undefined' && value !== 'ID_DA_EMPRESA') {
+      if (realAuth && isDemoEntityId(value)) continue;
       return value;
     }
   }
@@ -72,6 +82,7 @@ function readStoredCompanyId(): string | null {
       const companyId = parsed.companyId || parsed.activeCompanyId || parsed.company_id;
 
       if (typeof companyId === 'string' && companyId) {
+        if (realAuth && isDemoEntityId(companyId)) return null;
         return companyId;
       }
     }
@@ -83,24 +94,39 @@ function readStoredCompanyId(): string | null {
 }
 
 async function resolveCompanyId(): Promise<string> {
-  const stored = readStoredCompanyId();
+  const realAuth = hasRealAuthToken();
 
-  if (stored) return stored;
-
-  let companyId: string | undefined;
+  if (!realAuth) {
+    const stored = readStoredCompanyId();
+    if (stored) return stored;
+  }
 
   try {
     const response = await api.get<AuthMeResponse>('/auth/me');
-    companyId = response.data.companyId || 'demo-001';
+    const companyId =
+      response.data.activeCompanyId ||
+      response.data.companyId ||
+      response.data.companies?.find((company) => typeof company.id === 'string')?.id;
+
+    if (companyId && !(realAuth && isDemoEntityId(companyId))) {
+      if (isBrowser()) {
+        localStorage.setItem('bcost_active_company', companyId);
+      }
+
+      return companyId;
+    }
   } catch {
-    companyId = 'demo-001';
+    // The caller decides whether production may use a demonstrative fallback.
   }
 
-  if (isBrowser()) {
-    localStorage.setItem('bcost_active_company', companyId);
+  const stored = readStoredCompanyId();
+  if (stored) return stored;
+
+  if (isOperationalDemoFallbackEnabled()) {
+    return 'demo-001';
   }
 
-  return companyId;
+  throw new Error('Empresa ativa não encontrada para carregar billing.');
 }
 
 function planTone(plan?: PlanLevel) {
@@ -321,6 +347,20 @@ export default function BillingPlansWidget() {
         });
       }
     } catch (error) {
+      if (!isOperationalDemoFallbackEnabled()) {
+        setPlans([]);
+        setEntitlements(null);
+        setMessage({
+          type: 'error',
+          title: 'Billing indisponível',
+          description:
+            error instanceof Error
+              ? error.message
+              : 'Não foi possível carregar os dados reais de billing.',
+        });
+        return;
+      }
+
       const fallbackCompany = { id: companyId || 'demo-001', name: 'Empresa Demo' };
       setCompanyId(fallbackCompany.id);
       setPlans(DEMO_BILLING_PLANS);
