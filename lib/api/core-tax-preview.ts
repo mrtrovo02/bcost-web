@@ -31,21 +31,41 @@ export type MonthlyTaxClosurePreview = {
   generatedAt: string;
 };
 
+export type MonthlyTaxGateParams = {
+  month?: number;
+  year?: number;
+  hasDigitalCertificate?: boolean;
+  hasCrcReview?: boolean;
+  hasOfficialPortalAccess?: boolean;
+  hasRevenueReconciliation?: boolean;
+};
+
+export type MonthlyTaxCloseResponse = {
+  status: 'closed';
+  obligation: unknown;
+  snapshotId: string;
+  integrityHash: string;
+};
+
 export const coreTaxPreviewApi = {
   monthlyClosurePreview: async (
     companyId: string,
-    params: {
-      month?: number;
-      year?: number;
-      hasDigitalCertificate?: boolean;
-      hasCrcReview?: boolean;
-      hasOfficialPortalAccess?: boolean;
-      hasRevenueReconciliation?: boolean;
-    } = {},
+    params: MonthlyTaxGateParams = {},
   ): Promise<MonthlyTaxClosurePreview> => {
     const response = await api.get<MonthlyTaxClosurePreview>(
       `/fiscal/tax/monthly-preview/${companyId}`,
       { params },
+    );
+
+    return response.data;
+  },
+  closeMonth: async (
+    companyId: string,
+    payload: MonthlyTaxGateParams,
+  ): Promise<MonthlyTaxCloseResponse> => {
+    const response = await api.post<MonthlyTaxCloseResponse>(
+      `/fiscal/tax/close-month/${companyId}`,
+      payload,
     );
 
     return response.data;

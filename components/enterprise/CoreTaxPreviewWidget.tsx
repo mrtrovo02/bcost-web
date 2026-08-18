@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { AlertTriangle, Calculator, CheckCircle2, Loader2 } from 'lucide-react';
 import { useCompany } from '@/app/context/CompanyContext';
 import {
+  MonthlyTaxGateParams,
   MonthlyTaxClosurePreview,
   MonthlyTaxPreviewGateStatus,
   coreTaxPreviewApi,
@@ -28,8 +29,13 @@ function statusClass(status: MonthlyTaxClosurePreview['status']) {
 export default function CoreTaxPreviewWidget() {
   const { selectedCompany } = useCompany();
   const [preview, setPreview] = useState<MonthlyTaxClosurePreview | null>(null);
+  const [gateParams, setGateParams] = useState<MonthlyTaxGateParams>({
+    hasRevenueReconciliation: true,
+  });
   const [loading, setLoading] = useState(false);
+  const [closing, setClosing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [closeResult, setCloseResult] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -43,9 +49,10 @@ export default function CoreTaxPreviewWidget() {
       try {
         setLoading(true);
         setError(null);
-        const response = await coreTaxPreviewApi.monthlyClosurePreview(selectedCompany.id, {
-          hasRevenueReconciliation: true,
-        });
+        const response = await coreTaxPreviewApi.monthlyClosurePreview(
+          selectedCompany.id,
+          gateParams,
+        );
         if (mounted) setPreview(response);
       } catch (err) {
         if (mounted) {
@@ -65,7 +72,34 @@ export default function CoreTaxPreviewWidget() {
     return () => {
       mounted = false;
     };
-  }, [selectedCompany?.id]);
+  }, [gateParams, selectedCompany?.id]);
+
+  function toggleGate(key: keyof MonthlyTaxGateParams) {
+    setCloseResult(null);
+    setGateParams((current) => ({
+      ...current,
+      [key]: !current[key],
+    }));
+  }
+
+  async function closeMonth() {
+    if (!selectedCompany?.id || !preview?.canClose) return;
+
+    try {
+      setClosing(true);
+      setError(null);
+      const result = await coreTaxPreviewApi.closeMonth(selectedCompany.id, gateParams);
+      setCloseResult(`Competência fechada. Snapshot ${result.snapshotId}.`);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Não foi possível fechar a competência fiscal.',
+      );
+    } finally {
+      setClosing(false);
+    }
+  }
 
   return (
     <section className="rounded-[2rem] border border-slate-100 bg-white p-7 shadow-sm">
@@ -87,6 +121,28 @@ export default function CoreTaxPreviewWidget() {
         <div className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-black uppercase tracking-widest text-slate-600">
           {selectedCompany?.name ?? 'sem empresa ativa'}
         </div>
+      </div>
+
+      <div className="mt-6 grid gap-2 md:grid-cols-4">
+        {[
+          ['hasRevenueReconciliation', 'Receitas reconciliadas'],
+          ['hasDigitalCertificate', 'Certificado/procuração'],
+          ['hasOfficialPortalAccess', 'Portal oficial'],
+          ['hasCrcReview', 'Revisão CRC'],
+        ].map(([key, label]) => (
+          <label
+            key={key}
+            className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs font-bold text-slate-600"
+          >
+            <span>{label}</span>
+            <input
+              checked={Boolean(gateParams[key as keyof MonthlyTaxGateParams])}
+              className="h-4 w-4 accent-blue-600"
+              onChange={() => toggleGate(key as keyof MonthlyTaxGateParams)}
+              type="checkbox"
+            />
+          </label>
+        ))}
       </div>
 
       {loading ? (
@@ -145,6 +201,22 @@ export default function CoreTaxPreviewWidget() {
             {preview.canClose
               ? 'Fechamento oficial liberado para gerar obrigação DAS e snapshot fiscal.'
               : 'Fechamento oficial bloqueado até resolver os gates obrigatórios.'}
+          </div>
+
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <button
+              className="rounded-xl bg-slate-950 px-4 py-3 text-xs font-black uppercase tracking-widest text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+              disabled={!preview.canClose || closing}
+              onClick={closeMonth}
+              type="button"
+            >
+              {closing ? 'Fechando...' : 'Fechar competência'}
+            </button>
+            {closeResult && (
+              <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-700">
+                {closeResult}
+              </div>
+            )}
           </div>
 
           <div className="mt-5 grid gap-3 xl:grid-cols-2">
