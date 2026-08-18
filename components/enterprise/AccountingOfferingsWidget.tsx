@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, BriefcaseBusiness, CheckCircle2, Loader2, ShieldCheck } from 'lucide-react';
 import {
   AccountingOffering,
+  AccountingOfferingCompanyAssessment,
   AccountingOfferingPortfolioAssessment,
   AccountingOfferingsResponse,
   accountingPlatformApi,
@@ -17,10 +18,22 @@ const STATUS_LABEL: Record<AccountingOffering['marketStatus'], string> = {
   INTERNAL_ROADMAP: 'Roadmap interno',
 };
 
+const DECISION_LABEL: Record<AccountingOfferingCompanyAssessment['decision'], string> = {
+  ACTIVATION_ALLOWED: 'Ativação liberada',
+  ASSISTED_REQUIRED: 'Operação assistida',
+  BLOCKED: 'Bloqueada',
+};
+
 function statusClass(status: AccountingOffering['marketStatus']) {
   if (status === 'MARKET_READY') return 'border-emerald-100 bg-emerald-50 text-emerald-700';
   if (status === 'ASSISTED_SELLABLE') return 'border-blue-100 bg-blue-50 text-blue-700';
   if (status === 'WAITLIST_ONLY') return 'border-amber-100 bg-amber-50 text-amber-700';
+  return 'border-red-100 bg-red-50 text-red-700';
+}
+
+function decisionClass(decision: AccountingOfferingCompanyAssessment['decision']) {
+  if (decision === 'ACTIVATION_ALLOWED') return 'border-emerald-100 bg-emerald-50 text-emerald-700';
+  if (decision === 'ASSISTED_REQUIRED') return 'border-blue-100 bg-blue-50 text-blue-700';
   return 'border-red-100 bg-red-50 text-red-700';
 }
 
@@ -74,6 +87,13 @@ export default function AccountingOfferingsWidget() {
         (a, b) => b.launchReadinessScore - a.launchReadinessScore || a.name.localeCompare(b.name),
       ),
     [offerings?.offerings],
+  );
+  const assessmentByOffering = useMemo(
+    () =>
+      new Map(
+        (portfolioAssessment?.assessments ?? []).map((item) => [item.offeringId, item]),
+      ),
+    [portfolioAssessment?.assessments],
   );
 
   useEffect(() => {
@@ -225,7 +245,10 @@ export default function AccountingOfferingsWidget() {
         </div>
       ) : (
         <div className="mt-6 grid gap-5 xl:grid-cols-2">
-          {sortedOfferings.map((offering) => (
+          {sortedOfferings.map((offering) => {
+            const offeringAssessment = assessmentByOffering.get(offering.id);
+
+            return (
             <article key={offering.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-5">
               <div className="flex flex-wrap items-center gap-2">
                 <span
@@ -238,6 +261,15 @@ export default function AccountingOfferingsWidget() {
                 <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-600">
                   {offering.launchReadinessScore}% readiness
                 </span>
+                {offeringAssessment && (
+                  <span
+                    className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-widest ${decisionClass(
+                      offeringAssessment.decision,
+                    )}`}
+                  >
+                    {DECISION_LABEL[offeringAssessment.decision]} · {offeringAssessment.score}%
+                  </span>
+                )}
               </div>
 
               <h3 className="mt-4 text-2xl font-black tracking-tight text-slate-950">
@@ -253,6 +285,19 @@ export default function AccountingOfferingsWidget() {
                   {offering.commercialDecision}
                 </p>
               </div>
+
+              {offeringAssessment && offeringAssessment.requiredActions.length > 0 && (
+                <div className="mt-4 rounded-xl border border-amber-100 bg-white p-4">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-amber-600">
+                    Pendências da empresa
+                  </div>
+                  <div className="mt-3 grid gap-2 text-xs font-semibold leading-5 text-amber-800">
+                    {offeringAssessment.requiredActions.slice(0, 3).map((action) => (
+                      <div key={action}>{action}</div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="mt-4 flex flex-wrap gap-2">
                 {offering.targetCustomers.map((customer) => (
@@ -362,7 +407,8 @@ export default function AccountingOfferingsWidget() {
                 ))}
               </div>
             </article>
-          ))}
+            );
+          })}
         </div>
       )}
     </section>
