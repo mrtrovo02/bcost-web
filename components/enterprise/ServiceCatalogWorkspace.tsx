@@ -14,6 +14,7 @@ import {
   KeyRound,
   Loader2,
   MapPinned,
+  Milestone,
   RefreshCw,
   Search,
   ShieldAlert,
@@ -29,6 +30,10 @@ import {
   ServiceExecutionProfile,
   serviceCatalogApi,
 } from '@/lib/api/service-catalog';
+import {
+  OperationalWorkflowPreview,
+  operationalWorkflowsApi,
+} from '@/lib/api/operational-workflows';
 
 type UiMessage = {
   type: 'error' | 'warning' | 'success';
@@ -171,6 +176,7 @@ export default function ServiceCatalogWorkspace() {
   const [evaluating, setEvaluating] = useState<boolean>(false);
   const [message, setMessage] = useState<UiMessage | null>(null);
   const [evaluation, setEvaluation] = useState<ServiceEvaluationResult | null>(null);
+  const [workflow, setWorkflow] = useState<OperationalWorkflowPreview | null>(null);
 
   const flatServices = useMemo(() => flattenCatalog(catalog), [catalog]);
 
@@ -249,10 +255,27 @@ export default function ServiceCatalogWorkspace() {
           municipalityDigital,
           physicalProtocolRequired,
         });
+        let workflowPreview: OperationalWorkflowPreview | null = null;
+
+        try {
+          workflowPreview = await operationalWorkflowsApi.preview({
+            serviceIds: [serviceId],
+            plan,
+            activeCustomer,
+            contractedAt,
+            periodStart,
+            municipalityDigital,
+            physicalProtocolRequired,
+          });
+        } catch {
+          workflowPreview = null;
+        }
 
         setEvaluation(result);
+        setWorkflow(workflowPreview);
         setSelectedServiceId(serviceId);
       } catch (error) {
+        setWorkflow(null);
         setMessage({
           type: 'error',
           title: 'Falha ao avaliar serviço',
@@ -650,6 +673,43 @@ export default function ServiceCatalogWorkspace() {
                                   .map((artifact) => (
                                     <div key={artifact}>{artifact}</div>
                                   ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {workflow && workflow.serviceId === service.id && (
+                            <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm">
+                              <div className="flex items-center gap-2 font-bold text-slate-900">
+                                <Milestone className="h-4 w-4" />
+                                Esteira operacional oficial
+                              </div>
+                              <div className="mt-3 grid gap-2">
+                                {workflow.stages.map((stage, index) => (
+                                  <div
+                                    key={stage.id}
+                                    className="grid gap-2 rounded-lg border border-slate-100 bg-slate-50 p-3 md:grid-cols-[32px_minmax(0,1fr)_160px]"
+                                  >
+                                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-950 text-xs font-bold text-white">
+                                      {index + 1}
+                                    </div>
+                                    <div>
+                                      <div className="font-semibold text-slate-950">{stage.title}</div>
+                                      <div className="mt-1 text-xs text-slate-500">
+                                        {stage.executionEngine} · {stage.actor}
+                                      </div>
+                                      {stage.evidenceRequired[0] && (
+                                        <div className="mt-2 text-xs leading-5 text-slate-600">
+                                          {stage.evidenceRequired[0]}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="text-left md:text-right">
+                                      <span className="inline-flex rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-700">
+                                        {stage.status}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                             </div>
                           )}
