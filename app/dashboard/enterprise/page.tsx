@@ -4,6 +4,7 @@ import AccountingOfferingsWidget from '@/components/enterprise/AccountingOfferin
 import AccountingPlatformCoverageWidget from '@/components/enterprise/AccountingPlatformCoverageWidget';
 import AutomationJobsExecutiveWidget from '@/components/enterprise/AutomationJobsExecutiveWidget';
 import BillingPlansWidget from '@/components/enterprise/BillingPlansWidget';
+import CoreTaxPreviewWidget from '@/components/enterprise/CoreTaxPreviewWidget';
 
 function statusLabel(status: string) {
   if (status === 'ACTIVE') return 'Ativo';
@@ -93,6 +94,7 @@ export default function EnterpriseModulesPage() {
       </section>
 
       <AccountingOfferingsWidget />
+      <CoreTaxPreviewWidget />
       <AccountingPlatformCoverageWidget />
 
       {bcostModuleAreas.map((area) => {
