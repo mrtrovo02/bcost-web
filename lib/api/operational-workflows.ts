@@ -29,6 +29,18 @@ export type OperationalWorkflowRuntimeStatus =
   | 'DONE'
   | 'BLOCKED';
 
+export type OperationalCapability =
+  | 'CUSTOMER_PORTAL'
+  | 'BACKOFFICE_TEAM'
+  | 'CRC_ACCOUNTANT'
+  | 'DIGITAL_CERTIFICATE'
+  | 'OFFICIAL_PORTAL_ACCESS'
+  | 'OFFICIAL_API_PROVIDER'
+  | 'MUNICIPAL_COVERAGE'
+  | 'BAAS_PARTNER'
+  | 'OPEN_FINANCE_PROVIDER'
+  | 'AUDIT_EVIDENCE_STORE';
+
 export type OperationalWorkflowStage = {
   id: string;
   title: string;
@@ -37,6 +49,7 @@ export type OperationalWorkflowStage = {
   runtimeStatus: OperationalWorkflowRuntimeStatus;
   allowedTransitions: OperationalWorkflowRuntimeStatus[];
   executionEngine: string;
+  requiredCapabilities: OperationalCapability[];
   evidenceRequired: string[];
   blockingReason?: string;
 };
@@ -56,7 +69,9 @@ export type OperationalWorkflowPreview = {
     dependencyStages: number;
     humanStages: number;
     evidenceArtifacts: number;
+    requiredCapabilities: number;
   };
+  requiredCapabilities: OperationalCapability[];
   gates: {
     requiresCrcValidation: boolean;
     requiresOfficialCredential: boolean;

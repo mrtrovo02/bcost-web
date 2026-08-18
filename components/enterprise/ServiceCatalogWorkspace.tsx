@@ -694,8 +694,23 @@ export default function ServiceCatalogWorkspace() {
                                   <span className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 font-bold text-slate-700">
                                     {workflow.operationalSummary.evidenceArtifacts} evidências
                                   </span>
+                                  <span className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 font-bold text-slate-700">
+                                    {workflow.operationalSummary.requiredCapabilities} capacidades
+                                  </span>
                                 </div>
                               </div>
+                              {workflow.requiredCapabilities.length > 0 && (
+                                <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+                                  {workflow.requiredCapabilities.map((capability) => (
+                                    <span
+                                      key={capability}
+                                      className="rounded-lg border border-indigo-100 bg-indigo-50 px-2 py-1 text-xs font-bold text-indigo-700"
+                                    >
+                                      {capability}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
                               <div className="mt-3 grid gap-2">
                                 {workflow.stages.map((stage, index) => (
                                   <div
@@ -713,6 +728,18 @@ export default function ServiceCatalogWorkspace() {
                                       <div className="mt-2 text-xs font-semibold text-slate-700">
                                         Status operacional: {stage.runtimeStatus}
                                       </div>
+                                      {stage.requiredCapabilities.length > 0 && (
+                                        <div className="mt-2 flex flex-wrap gap-1">
+                                          {stage.requiredCapabilities.map((capability) => (
+                                            <span
+                                              key={capability}
+                                              className="rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] font-semibold text-slate-600"
+                                            >
+                                              {capability}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )}
                                       {stage.evidenceRequired[0] && (
                                         <div className="mt-2 text-xs leading-5 text-slate-600">
                                           {stage.evidenceRequired[0]}
