@@ -15,6 +15,31 @@ export type BcostPlan =
 
 export type ServiceConditionSeverity = 'INFO' | 'WARNING' | 'BLOCKER';
 
+export type ServiceExecutionEngine =
+  | 'SOFTWARE_WORKFLOW'
+  | 'OFFICIAL_API'
+  | 'GOVERNMENT_PORTAL_RPA'
+  | 'MUNICIPAL_RPA'
+  | 'CERTIFICATE_AUTH'
+  | 'BANKING_AS_A_SERVICE'
+  | 'OPEN_FINANCE'
+  | 'HUMAN_CRC_REVIEW'
+  | 'MANUAL_PROTOCOL';
+
+export type ServiceAutomationLevel =
+  | 'FULL_AUTOMATION_CANDIDATE'
+  | 'ASSISTED_AUTOMATION'
+  | 'HUMAN_VALIDATED'
+  | 'HUMAN_LED';
+
+export type ServiceProductionReadiness =
+  | 'READY_FOR_INTERNAL_WORKFLOW'
+  | 'INTEGRATION_REQUIRED'
+  | 'BACKOFFICE_REQUIRED'
+  | 'PLANNED';
+
+export type ServiceOperationalRisk = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+
 export type ServiceCondition = {
   code: string;
   severity: ServiceConditionSeverity;
@@ -47,6 +72,18 @@ export type MacroServiceDefinition = {
   microServices: MicroServiceDefinition[];
 };
 
+export type ServiceExecutionProfile = {
+  automationLevel: ServiceAutomationLevel;
+  productionReadiness: ServiceProductionReadiness;
+  operationalRisk: ServiceOperationalRisk;
+  executionEngines: ServiceExecutionEngine[];
+  integrationTargets: string[];
+  evidenceArtifacts: string[];
+  requiresCrcValidation: boolean;
+  requiresOfficialCredential: boolean;
+  requiresCustomerAction: boolean;
+};
+
 export type ServiceCatalogResponse = {
   status: string;
   catalog: MacroServiceDefinition[];
@@ -68,6 +105,7 @@ export type ServiceEvaluationInput = {
 export type EvaluatedMicroService = MicroServiceDefinition & {
   macroServiceId: number;
   macroServiceName: string;
+  executionProfile: ServiceExecutionProfile;
 };
 
 export type ServiceEvaluationResult = {
@@ -81,6 +119,9 @@ export type ServiceEvaluationResult = {
     warnings: number;
     infos: number;
     requiresHumanReview: boolean;
+    crcValidationServices: number;
+    customerActionServices: number;
+    officialCredentialServices: number;
   };
   generatedAt: string;
 };
@@ -110,6 +151,121 @@ function parseDate(value?: string): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function buildExecutionProfile(service: MicroServiceDefinition): ServiceExecutionProfile {
+  const tags = new Set((service.complianceTags ?? []).map((tag) => tag.toUpperCase()));
+  const executionEngines = new Set<ServiceExecutionEngine>(['SOFTWARE_WORKFLOW']);
+  const integrationTargets = new Set<string>();
+  const evidenceArtifacts = new Set<string>([
+    'Registro de solicitação com usuário, empresa, competência e timestamp.',
+    'Log de execução e resultado do workflow.',
+  ]);
+
+  let requiresCrcValidation = false;
+  let requiresOfficialCredential = false;
+  let requiresCustomerAction = Boolean(service.physicalProtocolMayApply);
+  let operationalRisk: ServiceOperationalRisk = 'LOW';
+
+  if (service.officialSources?.length || service.complianceTags?.length) {
+    evidenceArtifacts.add('Fonte oficial, leiaute ou norma usada na validação.');
+    operationalRisk = 'MEDIUM';
+  }
+
+  if (service.governmentFeesMayApply) {
+    evidenceArtifacts.add('Comprovante de taxa pública quando aplicável.');
+    operationalRisk = 'MEDIUM';
+  }
+
+  if (service.municipalDependency) {
+    executionEngines.add('MUNICIPAL_RPA');
+    integrationTargets.add('Prefeitura municipal ou emissor nacional quando disponível.');
+    evidenceArtifacts.add('Protocolo municipal, recibo ou comprovante de deferimento.');
+    requiresOfficialCredential = true;
+    operationalRisk = 'HIGH';
+  }
+
+  if (service.physicalProtocolMayApply) {
+    executionEngines.add('MANUAL_PROTOCOL');
+    evidenceArtifacts.add('Comprovante de protocolo físico ou orientação enviada ao cliente.');
+    requiresCustomerAction = true;
+    operationalRisk = 'HIGH';
+  }
+
+  if (
+    [
+      'SPED',
+      'ECD',
+      'ECF',
+      'DCTFWEB',
+      'EFD-REINF',
+      'EFD ICMS IPI',
+      'EFD CONTRIBUIÇÕES',
+      'PGDAS-D',
+      'DAS',
+      'DEFIS',
+      'ESOCIAL',
+      'FGTS DIGITAL',
+    ].some((tag) => tags.has(tag))
+  ) {
+    executionEngines.add('GOVERNMENT_PORTAL_RPA');
+    executionEngines.add('CERTIFICATE_AUTH');
+    executionEngines.add('HUMAN_CRC_REVIEW');
+    integrationTargets.add('Portal oficial da Receita Federal, SPED, eSocial ou FGTS Digital.');
+    evidenceArtifacts.add('Recibo oficial de transmissão, guia, declaração ou comprovante.');
+    requiresCrcValidation = true;
+    requiresOfficialCredential = true;
+    operationalRisk = 'CRITICAL';
+  }
+
+  if (tags.has('NFS-E') || tags.has('NF-E') || tags.has('NFC-E') || tags.has('CT-E')) {
+    executionEngines.add('OFFICIAL_API');
+    executionEngines.add('GOVERNMENT_PORTAL_RPA');
+    executionEngines.add('CERTIFICATE_AUTH');
+    integrationTargets.add('SEFAZ, NFS-e Nacional ou prefeitura homologada.');
+    evidenceArtifacts.add('XML autorizado, protocolo, recibo e evento fiscal.');
+    requiresOfficialCredential = true;
+    operationalRisk = 'CRITICAL';
+  }
+
+  if (
+    service.id.includes('bank') ||
+    service.id.includes('baas') ||
+    service.name.toLowerCase().includes('open finance')
+  ) {
+    executionEngines.add('OPEN_FINANCE');
+    executionEngines.add('BANKING_AS_A_SERVICE');
+    integrationTargets.add('Instituição parceira regulada, Open Finance ou BaaS.');
+    evidenceArtifacts.add('Consentimento, extrato, evento de conciliação e trilha de auditoria.');
+    requiresOfficialCredential = true;
+    operationalRisk = 'HIGH';
+  }
+
+  const automationLevel: ServiceAutomationLevel = executionEngines.has('MANUAL_PROTOCOL')
+    ? 'HUMAN_LED'
+    : requiresCrcValidation
+      ? 'HUMAN_VALIDATED'
+      : requiresCustomerAction || executionEngines.size > 1
+        ? 'ASSISTED_AUTOMATION'
+        : 'FULL_AUTOMATION_CANDIDATE';
+  const productionReadiness: ServiceProductionReadiness =
+    automationLevel === 'HUMAN_LED' || requiresCrcValidation
+      ? 'BACKOFFICE_REQUIRED'
+      : requiresOfficialCredential
+        ? 'INTEGRATION_REQUIRED'
+        : 'READY_FOR_INTERNAL_WORKFLOW';
+
+  return {
+    automationLevel,
+    productionReadiness,
+    operationalRisk,
+    executionEngines: [...executionEngines],
+    integrationTargets: [...integrationTargets],
+    evidenceArtifacts: [...evidenceArtifacts],
+    requiresCrcValidation,
+    requiresOfficialCredential,
+    requiresCustomerAction,
+  };
+}
+
 function localEvaluate(payload: ServiceEvaluationInput): ServiceEvaluationResult {
   const plan = normalizePlan(payload.plan);
   const macroIds = new Set(payload.macroServiceIds ?? []);
@@ -131,6 +287,7 @@ function localEvaluate(payload: ServiceEvaluationInput): ServiceEvaluationResult
         ...service,
         macroServiceId: macro.id,
         macroServiceName: macro.name,
+        executionProfile: buildExecutionProfile(service),
       }));
   });
 
@@ -236,6 +393,15 @@ function localEvaluate(payload: ServiceEvaluationInput): ServiceEvaluationResult
       warnings,
       infos,
       requiresHumanReview: blockers > 0 || warnings > 0,
+      crcValidationServices: selectedServices.filter(
+        (service) => service.executionProfile.requiresCrcValidation,
+      ).length,
+      customerActionServices: selectedServices.filter(
+        (service) => service.executionProfile.requiresCustomerAction,
+      ).length,
+      officialCredentialServices: selectedServices.filter(
+        (service) => service.executionProfile.requiresOfficialCredential,
+      ).length,
     },
     generatedAt: new Date().toISOString(),
   };

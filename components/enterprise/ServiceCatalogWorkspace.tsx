@@ -9,12 +9,16 @@ import {
   CalendarDays,
   CheckCircle2,
   CircleDollarSign,
+  Cpu,
+  FileCheck2,
+  KeyRound,
   Loader2,
   MapPinned,
   RefreshCw,
   Search,
   ShieldAlert,
   SlidersHorizontal,
+  UserCheck,
 } from 'lucide-react';
 
 import {
@@ -22,6 +26,7 @@ import {
   MicroServiceDefinition,
   ServiceCondition,
   ServiceEvaluationResult,
+  ServiceExecutionProfile,
   serviceCatalogApi,
 } from '@/lib/api/service-catalog';
 
@@ -99,6 +104,34 @@ function flagLabel(service: MicroServiceDefinition) {
 
 function serviceNotes(service: MicroServiceDefinition) {
   return service.notes ?? [];
+}
+
+const AUTOMATION_LABEL: Record<ServiceExecutionProfile['automationLevel'], string> = {
+  FULL_AUTOMATION_CANDIDATE: 'Automação total candidata',
+  ASSISTED_AUTOMATION: 'Automação assistida',
+  HUMAN_VALIDATED: 'Validação CRC',
+  HUMAN_LED: 'Operação humana',
+};
+
+const READINESS_LABEL: Record<ServiceExecutionProfile['productionReadiness'], string> = {
+  READY_FOR_INTERNAL_WORKFLOW: 'Workflow interno pronto',
+  INTEGRATION_REQUIRED: 'Integração necessária',
+  BACKOFFICE_REQUIRED: 'Backoffice obrigatório',
+  PLANNED: 'Planejado',
+};
+
+const RISK_LABEL: Record<ServiceExecutionProfile['operationalRisk'], string> = {
+  LOW: 'Baixo',
+  MEDIUM: 'Médio',
+  HIGH: 'Alto',
+  CRITICAL: 'Crítico',
+};
+
+function executionTone(profile: ServiceExecutionProfile) {
+  if (profile.operationalRisk === 'CRITICAL') return 'border-red-200 bg-red-50 text-red-800';
+  if (profile.operationalRisk === 'HIGH') return 'border-amber-200 bg-amber-50 text-amber-800';
+  if (profile.operationalRisk === 'MEDIUM') return 'border-blue-200 bg-blue-50 text-blue-800';
+  return 'border-emerald-200 bg-emerald-50 text-emerald-800';
 }
 
 function Metric({
@@ -262,6 +295,14 @@ export default function ServiceCatalogWorkspace() {
     }, {});
   }, [evaluation]);
 
+  const selectedEvaluatedService = useMemo(() => {
+    return (
+      evaluation?.selectedServices.find((service) => service.id === selectedServiceId) ??
+      evaluation?.selectedServices[0] ??
+      null
+    );
+  }, [evaluation?.selectedServices, selectedServiceId]);
+
   return (
     <main className="min-h-screen bg-slate-50 p-4 text-slate-950 md:p-6">
       <section className="mx-auto flex max-w-7xl flex-col gap-6">
@@ -311,8 +352,8 @@ export default function ServiceCatalogWorkspace() {
         <div className="grid gap-4 md:grid-cols-4">
           <Metric label="Macroserviços" value={catalog.length} icon={<Building2 className="h-5 w-5" />} />
           <Metric label="Microserviços" value={flatServices.length} icon={<SlidersHorizontal className="h-5 w-5" />} />
-          <Metric label="Avisos" value={evaluation?.summary.warnings ?? 0} icon={<AlertTriangle className="h-5 w-5" />} />
-          <Metric label="Bloqueios" value={evaluation?.summary.blockers ?? 0} icon={<ShieldAlert className="h-5 w-5" />} />
+          <Metric label="Validação CRC" value={evaluation?.summary.crcValidationServices ?? 0} icon={<UserCheck className="h-5 w-5" />} />
+          <Metric label="Credencial oficial" value={evaluation?.summary.officialCredentialServices ?? 0} icon={<KeyRound className="h-5 w-5" />} />
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
@@ -546,6 +587,73 @@ export default function ServiceCatalogWorkspace() {
 
                       {selectedServiceId === service.id && (
                         <div className="mt-4 grid gap-2">
+                          {selectedEvaluatedService?.executionProfile && (
+                            <div
+                              className={`rounded-lg border p-3 text-sm ${executionTone(
+                                selectedEvaluatedService.executionProfile,
+                              )}`}
+                            >
+                              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                <div>
+                                  <div className="flex items-center gap-2 font-bold">
+                                    <Cpu className="h-4 w-4" />
+                                    Engenharia de execução
+                                  </div>
+                                  <div className="mt-2 grid gap-1 text-xs leading-5">
+                                    <span>
+                                      {AUTOMATION_LABEL[selectedEvaluatedService.executionProfile.automationLevel]}
+                                    </span>
+                                    <span>
+                                      {READINESS_LABEL[selectedEvaluatedService.executionProfile.productionReadiness]}
+                                    </span>
+                                    <span>
+                                      Risco operacional: {RISK_LABEL[selectedEvaluatedService.executionProfile.operationalRisk]}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="flex flex-wrap gap-2">
+                                  {selectedEvaluatedService.executionProfile.requiresCrcValidation && (
+                                    <span className="inline-flex items-center gap-1 rounded-lg border border-white/60 bg-white/70 px-2 py-1 text-xs font-bold">
+                                      <UserCheck className="h-3.5 w-3.5" />
+                                      CRC
+                                    </span>
+                                  )}
+                                  {selectedEvaluatedService.executionProfile.requiresOfficialCredential && (
+                                    <span className="inline-flex items-center gap-1 rounded-lg border border-white/60 bg-white/70 px-2 py-1 text-xs font-bold">
+                                      <KeyRound className="h-3.5 w-3.5" />
+                                      credencial
+                                    </span>
+                                  )}
+                                  {selectedEvaluatedService.executionProfile.requiresCustomerAction && (
+                                    <span className="inline-flex items-center gap-1 rounded-lg border border-white/60 bg-white/70 px-2 py-1 text-xs font-bold">
+                                      <FileCheck2 className="h-3.5 w-3.5" />
+                                      cliente
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {selectedEvaluatedService.executionProfile.integrationTargets.length > 0 && (
+                                <div className="mt-3 border-t border-current/15 pt-3 text-xs leading-5">
+                                  <div className="font-bold uppercase opacity-75">Integrações</div>
+                                  {selectedEvaluatedService.executionProfile.integrationTargets.map((target) => (
+                                    <div key={target}>{target}</div>
+                                  ))}
+                                </div>
+                              )}
+
+                              <div className="mt-3 border-t border-current/15 pt-3 text-xs leading-5">
+                                <div className="font-bold uppercase opacity-75">Evidências</div>
+                                {selectedEvaluatedService.executionProfile.evidenceArtifacts
+                                  .slice(0, 3)
+                                  .map((artifact) => (
+                                    <div key={artifact}>{artifact}</div>
+                                  ))}
+                              </div>
+                            </div>
+                          )}
+
                           {evaluating ? (
                             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">
                               <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
