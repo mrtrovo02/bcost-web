@@ -237,6 +237,28 @@ export default function AccountingOfferingsWidget() {
                 ))}
               </div>
 
+              <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
+                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  Playbook de ativação
+                </div>
+                <div className="mt-3 grid gap-2">
+                  {offering.activationPlaybook.map((stage) => (
+                    <div
+                      key={stage.id}
+                      className={`rounded-xl border p-3 text-xs ${activationClass(stage.status)}`}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-black">{stage.title}</span>
+                        <span className="font-black uppercase tracking-widest">
+                          {stage.owner} · {stage.targetSlaHours}h
+                        </span>
+                      </div>
+                      <div className="mt-1 leading-5">{stage.exitCriteria.slice(0, 1)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <div className="mt-4 flex flex-wrap gap-2">
                 {offering.requiredCapabilities.slice(0, 6).map((capability) => (
                   <span
