@@ -74,6 +74,17 @@ type TaxEvidenceFormState = {
   notes: string;
 };
 
+type OfficialTaxEvidence = {
+  auditId: string;
+  fileUrl: string;
+  receiptCode: string;
+  integrityHash: string;
+  source?: string;
+  recordedAt?: string;
+  recordedBy?: string | null;
+  notes?: string | null;
+};
+
 const DEFAULT_TAX_FORM: TaxFormState = {
   name: '',
   dueDate: '',
@@ -230,6 +241,47 @@ function moduleName(mode: WorkspaceMode) {
   return mode === 'tax' ? 'tax-obligations' : 'fiscal-obligations';
 }
 
+function getObject(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
+}
+
+function getString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value : undefined;
+}
+
+function extractOfficialTaxEvidences(audits: AuditLogRecord[]): OfficialTaxEvidence[] {
+  return audits.reduce<OfficialTaxEvidence[]>((items, audit) => {
+    if (audit.action !== 'TAX_OBLIGATION_OFFICIAL_EVIDENCE_REGISTERED') {
+      return items;
+    }
+
+    const payload = getObject(audit.payload);
+    const evidence = getObject(payload?.evidence);
+
+    if (!evidence) return items;
+
+    const fileUrl = getString(evidence.fileUrl);
+    const receiptCode = getString(evidence.receiptCode);
+    const integrityHash = getString(evidence.integrityHash);
+
+    if (!fileUrl || !receiptCode || !integrityHash) return items;
+
+    items.push({
+      auditId: audit.id,
+      fileUrl,
+      receiptCode,
+      integrityHash,
+      source: getString(evidence.source),
+      recordedAt: getString(evidence.recordedAt) || audit.createdAt || undefined,
+      recordedBy: getString(evidence.recordedBy) || null,
+      notes: getString(evidence.notes) || null,
+    });
+
+    return items;
+  }, []);
+}
+
 function Button({
   children,
   onClick,
@@ -323,6 +375,10 @@ export default function ObligationsEnterpriseWorkspace({ mode }: { mode: Workspa
   const selectedDaysToDue = selected?.daysToDue ?? '—';
   const selectedCreatedAt = selected?.createdAt;
   const auditModule = moduleName(mode);
+  const officialTaxEvidences = useMemo(
+    () => extractOfficialTaxEvidences(audits),
+    [audits],
+  );
 
   const loadAudits = useCallback(
     async (companyIdOverride?: string, entityId?: string) => {
@@ -1226,6 +1282,61 @@ export default function ObligationsEnterpriseWorkspace({ mode }: { mode: Workspa
                       </div>
                     </div>
                   </div>
+
+                  {isTax && (
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                      <div className="flex items-center gap-2 text-sm font-bold text-slate-950">
+                        <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                        Evidências oficiais registradas
+                      </div>
+
+                      {officialTaxEvidences.length === 0 ? (
+                        <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                          Nenhum recibo ou guia oficial vinculado a esta obrigação.
+                        </div>
+                      ) : (
+                        <div className="mt-4 space-y-3">
+                          {officialTaxEvidences.map((evidence) => (
+                            <div
+                              key={evidence.auditId}
+                              className="rounded-xl border border-emerald-100 bg-emerald-50 p-4"
+                            >
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-emerald-700">
+                                  {evidence.receiptCode}
+                                </span>
+                                <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-slate-600">
+                                  {evidence.source || 'GOVERNMENT_PORTAL'}
+                                </span>
+                              </div>
+
+                              <div className="mt-3 font-mono text-[11px] font-semibold text-emerald-800">
+                                {evidence.integrityHash}
+                              </div>
+
+                              <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-600">
+                                <a
+                                  className="font-bold text-blue-700 hover:text-blue-900"
+                                  href={evidence.fileUrl}
+                                  rel="noreferrer"
+                                  target="_blank"
+                                >
+                                  Abrir documento oficial
+                                </a>
+                                <span>{formatDate(evidence.recordedAt)}</span>
+                              </div>
+
+                              {evidence.notes && (
+                                <p className="mt-2 text-xs leading-5 text-slate-600">
+                                  {evidence.notes}
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <pre className="max-h-96 overflow-auto rounded-2xl bg-slate-950 p-4 text-xs leading-6 text-slate-100">
                     {formatJson(selected)}
