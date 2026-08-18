@@ -29,6 +29,13 @@ function gapClass(severity: string) {
   return 'border-blue-100 bg-blue-50 text-blue-700';
 }
 
+function priorityClass(tier?: string) {
+  if (tier === 'P0') return 'border-red-100 bg-red-50 text-red-700';
+  if (tier === 'P1') return 'border-amber-100 bg-amber-50 text-amber-700';
+  if (tier === 'P2') return 'border-blue-100 bg-blue-50 text-blue-700';
+  return 'border-slate-100 bg-slate-50 text-slate-600';
+}
+
 export default function AccountingPlatformCoverageWidget() {
   const [coverage, setCoverage] = useState<AccountingPlatformCoverageResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -64,7 +71,7 @@ export default function AccountingPlatformCoverageWidget() {
   }, []);
 
   const grouped = useMemo(() => {
-    return (coverage?.items ?? []).reduce<
+    const result = (coverage?.items ?? []).reduce<
       Record<AccountingPlatformCoverageItem['block'], AccountingPlatformCoverageItem[]>
     >(
       (acc, item) => {
@@ -78,6 +85,15 @@ export default function AccountingPlatformCoverageWidget() {
         SERVICE_ARCHITECTURE: [],
       },
     );
+
+    for (const block of Object.keys(result) as AccountingPlatformCoverageItem['block'][]) {
+      result[block].sort(
+        (a, b) =>
+          (b.priorityScore ?? 0) - (a.priorityScore ?? 0) || a.title.localeCompare(b.title),
+      );
+    }
+
+    return result;
   }, [coverage?.items]);
 
   return (
@@ -108,8 +124,8 @@ export default function AccountingPlatformCoverageWidget() {
               <div className="font-bold text-blue-600">integração</div>
             </div>
             <div className="rounded-2xl border border-red-100 bg-red-50 p-3">
-              <div className="text-xl font-black text-red-700">{coverage.summary.blockers}</div>
-              <div className="font-bold text-red-600">bloqueios</div>
+              <div className="text-xl font-black text-red-700">{coverage.summary.p0}</div>
+              <div className="font-bold text-red-600">P0</div>
             </div>
           </div>
         )}
@@ -149,6 +165,13 @@ export default function AccountingPlatformCoverageWidget() {
                       </span>
                       <span className="rounded-full border border-slate-200 bg-white px-2 py-1 text-[10px] font-black uppercase tracking-widest text-slate-600">
                         {item.automationBoundary}
+                      </span>
+                      <span
+                        className={`rounded-full border px-2 py-1 text-[10px] font-black uppercase tracking-widest ${priorityClass(
+                          item.priorityTier,
+                        )}`}
+                      >
+                        {item.priorityTier ?? 'P3'} · {item.priorityScore ?? 0}
                       </span>
                     </div>
 

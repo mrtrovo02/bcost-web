@@ -22,6 +22,8 @@ export type AccountingPlatformReadinessGap = {
   message: string;
 };
 
+export type AccountingPlatformPriorityTier = 'P0' | 'P1' | 'P2' | 'P3';
+
 export type AccountingPlatformCoverageItem = {
   id: string;
   block: AccountingPlatformBlock;
@@ -36,6 +38,8 @@ export type AccountingPlatformCoverageItem = {
   officialEvidence: string[];
   readinessGaps?: AccountingPlatformReadinessGap[];
   nextActions?: string[];
+  priorityScore?: number;
+  priorityTier?: AccountingPlatformPriorityTier;
 };
 
 export type AccountingPlatformCoverageResponse = {
@@ -51,6 +55,8 @@ export type AccountingPlatformCoverageResponse = {
     crcValidated: number;
     blockers: number;
     warnings: number;
+    p0: number;
+    p1: number;
   };
   generatedAt: string;
 };
