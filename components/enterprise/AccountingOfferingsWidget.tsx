@@ -37,6 +37,12 @@ function decisionClass(decision: AccountingOfferingCompanyAssessment['decision']
   return 'border-red-100 bg-red-50 text-red-700';
 }
 
+function priorityClass(priority: 'P0' | 'P1' | 'P2') {
+  if (priority === 'P0') return 'border-red-100 bg-red-50 text-red-700';
+  if (priority === 'P1') return 'border-amber-100 bg-amber-50 text-amber-700';
+  return 'border-blue-100 bg-blue-50 text-blue-700';
+}
+
 function activationClass(status: AccountingOffering['activationRequirements'][number]['status']) {
   if (status === 'READY') return 'border-emerald-100 bg-emerald-50 text-emerald-700';
   if (status === 'REQUIRES_SETUP') return 'border-blue-100 bg-blue-50 text-blue-700';
@@ -200,32 +206,54 @@ export default function AccountingOfferingsWidget() {
           </div>
 
           {portfolioAssessment && (
-            <div className="mt-4 grid gap-3 lg:grid-cols-4">
-              <div className="rounded-xl border border-emerald-100 bg-white p-3 text-xs">
-                <div className="text-lg font-black text-emerald-700">
-                  {portfolioAssessment.summary.activationAllowed}
+            <>
+              <div className="mt-4 grid gap-3 lg:grid-cols-4">
+                <div className="rounded-xl border border-emerald-100 bg-white p-3 text-xs">
+                  <div className="text-lg font-black text-emerald-700">
+                    {portfolioAssessment.summary.activationAllowed}
+                  </div>
+                  <div className="font-bold text-emerald-600">liberadas</div>
                 </div>
-                <div className="font-bold text-emerald-600">liberadas</div>
-              </div>
-              <div className="rounded-xl border border-blue-100 bg-white p-3 text-xs">
-                <div className="text-lg font-black text-blue-700">
-                  {portfolioAssessment.summary.assistedRequired}
+                <div className="rounded-xl border border-blue-100 bg-white p-3 text-xs">
+                  <div className="text-lg font-black text-blue-700">
+                    {portfolioAssessment.summary.assistedRequired}
+                  </div>
+                  <div className="font-bold text-blue-600">assistidas</div>
                 </div>
-                <div className="font-bold text-blue-600">assistidas</div>
-              </div>
-              <div className="rounded-xl border border-red-100 bg-white p-3 text-xs">
-                <div className="text-lg font-black text-red-700">
-                  {portfolioAssessment.summary.blocked}
+                <div className="rounded-xl border border-red-100 bg-white p-3 text-xs">
+                  <div className="text-lg font-black text-red-700">
+                    {portfolioAssessment.summary.blocked}
+                  </div>
+                  <div className="font-bold text-red-600">bloqueadas</div>
                 </div>
-                <div className="font-bold text-red-600">bloqueadas</div>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-white p-3 text-xs">
-                <div className="text-lg font-black text-slate-800">
-                  {portfolioAssessment.summary.averageScore}%
+                <div className="rounded-xl border border-slate-200 bg-white p-3 text-xs">
+                  <div className="text-lg font-black text-slate-800">
+                    {portfolioAssessment.summary.averageScore}%
+                  </div>
+                  <div className="font-bold text-slate-500">score médio</div>
                 </div>
-                <div className="font-bold text-slate-500">score médio</div>
               </div>
-            </div>
+
+              {portfolioAssessment.actionQueue.length > 0 && (
+                <div className="mt-4 grid gap-2 xl:grid-cols-2">
+                  {portfolioAssessment.actionQueue.slice(0, 4).map((item) => (
+                    <div
+                      key={item.id}
+                      className={`rounded-xl border p-3 text-xs ${priorityClass(item.priority)}`}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-black">{item.priority}</span>
+                        <span className="font-black uppercase tracking-widest">{item.owner}</span>
+                      </div>
+                      <div className="mt-2 font-semibold leading-5">{item.action}</div>
+                      <div className="mt-1 leading-5 opacity-80">
+                        {item.impactedOfferings.slice(0, 3).join(' · ')}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
