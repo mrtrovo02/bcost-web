@@ -68,6 +68,12 @@ type FiscalFormState = {
   receiptCode: string;
 };
 
+type TaxEvidenceFormState = {
+  fileUrl: string;
+  receiptCode: string;
+  notes: string;
+};
+
 const DEFAULT_TAX_FORM: TaxFormState = {
   name: '',
   dueDate: '',
@@ -85,6 +91,12 @@ const DEFAULT_FISCAL_FORM: FiscalFormState = {
   fileUrl: '',
   fileHash: '',
   receiptCode: '',
+};
+
+const DEFAULT_TAX_EVIDENCE_FORM: TaxEvidenceFormState = {
+  fileUrl: '',
+  receiptCode: '',
+  notes: '',
 };
 
 const FISCAL_TYPES: FiscalObligationType[] = [
@@ -292,6 +304,9 @@ export default function ObligationsEnterpriseWorkspace({ mode }: { mode: Workspa
   const [selectedFiscal, setSelectedFiscal] = useState<FiscalObligationRecord | null>(null);
   const [taxForm, setTaxForm] = useState<TaxFormState>(DEFAULT_TAX_FORM);
   const [fiscalForm, setFiscalForm] = useState<FiscalFormState>(DEFAULT_FISCAL_FORM);
+  const [taxEvidenceForm, setTaxEvidenceForm] = useState<TaxEvidenceFormState>(
+    DEFAULT_TAX_EVIDENCE_FORM,
+  );
   const [audits, setAudits] = useState<AuditLogRecord[]>([]);
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [typeFilter, setTypeFilter] = useState('ALL');
@@ -554,6 +569,52 @@ export default function ObligationsEnterpriseWorkspace({ mode }: { mode: Workspa
     [companyId, load, loadAudits],
   );
 
+  const registerTaxEvidence = useCallback(
+    async (item: TaxObligationRecord, form: TaxEvidenceFormState) => {
+      if (!companyId) return;
+
+      setActionLoading(`evidence:${item.id}`);
+      setMessage(null);
+
+      try {
+        const response = await obligationsApi.registerTaxEvidence(companyId, item.id, {
+          fileUrl: form.fileUrl.trim(),
+          receiptCode: form.receiptCode.trim(),
+          notes: form.notes.trim() || undefined,
+        });
+
+        setMessage({
+          type: response.audit?.recorded ? 'success' : 'warning',
+          title: response.message || 'Evidência oficial registrada.',
+          description: response.evidence?.integrityHash
+            ? `Hash: ${response.evidence.integrityHash.slice(0, 16)}`
+            : 'Ação concluída, mas a auditoria retornou alerta.',
+        });
+
+        await load({ silent: true });
+
+        if (response.item) {
+          setSelectedTax(response.item);
+          setTaxEvidenceForm({
+            fileUrl: response.item.fileUrl || '',
+            receiptCode: '',
+            notes: '',
+          });
+          await loadAudits(companyId, response.item.id);
+        }
+      } catch (error) {
+        setMessage({
+          type: 'error',
+          title: 'Falha ao registrar evidência oficial',
+          description: error instanceof Error ? error.message : 'Erro inesperado.',
+        });
+      } finally {
+        setActionLoading(null);
+      }
+    },
+    [companyId, load, loadAudits],
+  );
+
   const runFiscalAction = useCallback(
     async (action: 'submit' | 'accept' | 'reject', item: FiscalObligationRecord) => {
       if (!companyId) return;
@@ -602,6 +663,11 @@ export default function ObligationsEnterpriseWorkspace({ mode }: { mode: Workspa
   const selectTax = useCallback(
     async (item: TaxObligationRecord) => {
       setSelectedTax(item);
+      setTaxEvidenceForm({
+        fileUrl: item.fileUrl || '',
+        receiptCode: '',
+        notes: '',
+      });
       await loadAudits(companyId, item.id);
     },
     [companyId, loadAudits],
@@ -1164,6 +1230,79 @@ export default function ObligationsEnterpriseWorkspace({ mode }: { mode: Workspa
                   <pre className="max-h-96 overflow-auto rounded-2xl bg-slate-950 p-4 text-xs leading-6 text-slate-100">
                     {formatJson(selected)}
                   </pre>
+
+                  {isTax && selectedTax && (
+                    <form
+                      className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        void registerTaxEvidence(selectedTax, taxEvidenceForm);
+                      }}
+                    >
+                      <div className="flex items-center gap-2 text-sm font-bold text-slate-950">
+                        <UploadCloud className="h-4 w-4 text-blue-600" />
+                        Evidência oficial da guia
+                      </div>
+
+                      <div className="mt-4 grid gap-3">
+                        <input
+                          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-400"
+                          onChange={(event) =>
+                            setTaxEvidenceForm((current) => ({
+                              ...current,
+                              fileUrl: event.target.value,
+                            }))
+                          }
+                          placeholder="URL oficial do recibo ou guia DAS"
+                          required
+                          type="url"
+                          value={taxEvidenceForm.fileUrl}
+                        />
+
+                        <input
+                          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-400"
+                          onChange={(event) =>
+                            setTaxEvidenceForm((current) => ({
+                              ...current,
+                              receiptCode: event.target.value,
+                            }))
+                          }
+                          placeholder="Código do recibo/protocolo oficial"
+                          required
+                          value={taxEvidenceForm.receiptCode}
+                        />
+
+                        <textarea
+                          className="min-h-20 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-400"
+                          onChange={(event) =>
+                            setTaxEvidenceForm((current) => ({
+                              ...current,
+                              notes: event.target.value,
+                            }))
+                          }
+                          placeholder="Observação operacional"
+                          value={taxEvidenceForm.notes}
+                        />
+                      </div>
+
+                      <Button
+                        disabled={
+                          actionLoading === `evidence:${selectedTax.id}` ||
+                          !taxEvidenceForm.fileUrl.trim() ||
+                          !taxEvidenceForm.receiptCode.trim()
+                        }
+                        type="submit"
+                        variant="secondary"
+                      >
+                        {actionLoading === `evidence:${selectedTax.id}` ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <ShieldCheck className="h-4 w-4" />
+                        )}
+                        Registrar evidência
+                      </Button>
+                    </form>
+                  )}
                 </div>
               )}
             </section>

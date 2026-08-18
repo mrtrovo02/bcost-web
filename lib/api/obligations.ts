@@ -180,6 +180,26 @@ export type SubmitFiscalPayload = {
   submittedAt?: string;
 };
 
+export type RegisterTaxEvidencePayload = {
+  fileUrl: string;
+  receiptCode: string;
+  notes?: string;
+};
+
+export type TaxEvidenceResponse = ObligationActionResponse<TaxObligationRecord> & {
+  evidence?: {
+    obligationId: string;
+    companyId: string;
+    fileUrl: string;
+    receiptCode: string;
+    notes?: string | null;
+    source: 'GOVERNMENT_PORTAL';
+    recordedBy?: string | null;
+    recordedAt: string;
+    integrityHash: string;
+  };
+};
+
 export type ObligationsQuery = {
   limit?: number;
   offset?: number;
@@ -315,6 +335,19 @@ export const obligationsApi = {
   ): Promise<ObligationActionResponse<TaxObligationRecord>> => {
     const response = await api.post<ObligationActionResponse<TaxObligationRecord>>(
       `/obligations/enterprise/tax/${companyId}/${obligationId}/cancel`,
+    );
+
+    return response.data;
+  },
+
+  registerTaxEvidence: async (
+    companyId: string,
+    obligationId: string,
+    payload: RegisterTaxEvidencePayload,
+  ): Promise<TaxEvidenceResponse> => {
+    const response = await api.post<TaxEvidenceResponse>(
+      `/obligations/enterprise/tax/${companyId}/${obligationId}/evidence`,
+      payload,
     );
 
     return response.data;
