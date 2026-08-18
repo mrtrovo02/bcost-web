@@ -126,6 +126,26 @@ export type AccountingOfferingCompanyAssessment = {
   generatedAt: string;
 };
 
+export type AccountingOfferingPortfolioAssessment = {
+  status: 'OK';
+  companyId?: string;
+  assessments: AccountingOfferingCompanyAssessment[];
+  summary: {
+    total: number;
+    activationAllowed: number;
+    assistedRequired: number;
+    blocked: number;
+    averageScore: number;
+  };
+  recommendedNextOffering?: {
+    offeringId: string;
+    offeringName: string;
+    decision: AccountingOfferingCompanyAssessment['decision'];
+    score: number;
+  };
+  generatedAt: string;
+};
+
 export type AccountingOffering = {
   id: string;
   name: string;
@@ -184,6 +204,21 @@ export const accountingPlatformApi = {
   ): Promise<AccountingOfferingCompanyAssessment> => {
     const response = await api.get<AccountingOfferingCompanyAssessment>(
       `/accounting-platform/offerings/${offeringId}/assessment`,
+      {
+        params: {
+          ...profile,
+          cnae: profile.cnae ?? undefined,
+        },
+      },
+    );
+
+    return response.data;
+  },
+  assessOfferings: async (
+    profile: AccountingOfferingCompanyProfile,
+  ): Promise<AccountingOfferingPortfolioAssessment> => {
+    const response = await api.get<AccountingOfferingPortfolioAssessment>(
+      '/accounting-platform/offerings/assessment',
       {
         params: {
           ...profile,

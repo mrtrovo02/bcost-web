@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, BriefcaseBusiness, CheckCircle2, Loader2, ShieldCheck } from 'lucide-react';
 import {
   AccountingOffering,
-  AccountingOfferingCompanyAssessment,
+  AccountingOfferingPortfolioAssessment,
   AccountingOfferingsResponse,
   accountingPlatformApi,
 } from '@/lib/api/accounting-platform';
@@ -33,7 +33,8 @@ function activationClass(status: AccountingOffering['activationRequirements'][nu
 export default function AccountingOfferingsWidget() {
   const { selectedCompany } = useCompany();
   const [offerings, setOfferings] = useState<AccountingOfferingsResponse | null>(null);
-  const [assessment, setAssessment] = useState<AccountingOfferingCompanyAssessment | null>(null);
+  const [portfolioAssessment, setPortfolioAssessment] =
+    useState<AccountingOfferingPortfolioAssessment | null>(null);
   const [loading, setLoading] = useState(true);
   const [assessmentLoading, setAssessmentLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,28 +75,27 @@ export default function AccountingOfferingsWidget() {
       ),
     [offerings?.offerings],
   );
-  const primaryOffering = sortedOfferings[0] ?? null;
 
   useEffect(() => {
     let mounted = true;
 
     async function loadAssessment() {
-      if (!selectedCompany?.id || !primaryOffering?.id) {
-        setAssessment(null);
+      if (!selectedCompany?.id) {
+        setPortfolioAssessment(null);
         return;
       }
 
       try {
         setAssessmentLoading(true);
-        const response = await accountingPlatformApi.assessOffering(primaryOffering.id, {
+        const response = await accountingPlatformApi.assessOfferings({
           companyId: selectedCompany.id,
           taxRegime: selectedCompany.taxRegime,
           cnae: selectedCompany.cnae,
           hasAuditEvidenceStore: true,
         });
-        if (mounted) setAssessment(response);
+        if (mounted) setPortfolioAssessment(response);
       } catch {
-        if (mounted) setAssessment(null);
+        if (mounted) setPortfolioAssessment(null);
       } finally {
         if (mounted) setAssessmentLoading(false);
       }
@@ -106,7 +106,7 @@ export default function AccountingOfferingsWidget() {
     return () => {
       mounted = false;
     };
-  }, [primaryOffering?.id, selectedCompany?.cnae, selectedCompany?.id, selectedCompany?.taxRegime]);
+  }, [selectedCompany?.cnae, selectedCompany?.id, selectedCompany?.taxRegime]);
 
   return (
     <section className="rounded-[2rem] border border-slate-100 bg-white p-7 shadow-sm">
@@ -156,36 +156,55 @@ export default function AccountingOfferingsWidget() {
         )}
       </div>
 
-      {primaryOffering && (
+      {offerings && (
         <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                Avaliação da empresa ativa
+                Portfólio da empresa ativa
               </div>
               <p className="mt-1 text-sm font-bold text-slate-700">
-                {selectedCompany?.name ?? 'Selecione uma empresa'} · {primaryOffering.name}
+                {selectedCompany?.name ?? 'Selecione uma empresa'} ·{' '}
+                {portfolioAssessment?.recommendedNextOffering
+                  ? `próxima oferta: ${portfolioAssessment.recommendedNextOffering.offeringName}`
+                  : 'avaliação comercial'}
               </p>
             </div>
             <div className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-black uppercase tracking-widest text-slate-600">
               {assessmentLoading
                 ? 'avaliando'
-                : assessment
-                  ? `${assessment.decision} · ${assessment.score}%`
+                : portfolioAssessment
+                  ? `${portfolioAssessment.summary.averageScore}% · ${portfolioAssessment.summary.blocked} bloqueio(s)`
                   : 'sem empresa ativa'}
             </div>
           </div>
 
-          {assessment && assessment.requiredActions.length > 0 && (
-            <div className="mt-4 grid gap-2 md:grid-cols-2">
-              {assessment.requiredActions.slice(0, 4).map((action) => (
-                <div
-                  key={action}
-                  className="rounded-xl border border-amber-100 bg-white p-3 text-xs font-semibold leading-5 text-amber-800"
-                >
-                  {action}
+          {portfolioAssessment && (
+            <div className="mt-4 grid gap-3 lg:grid-cols-4">
+              <div className="rounded-xl border border-emerald-100 bg-white p-3 text-xs">
+                <div className="text-lg font-black text-emerald-700">
+                  {portfolioAssessment.summary.activationAllowed}
                 </div>
-              ))}
+                <div className="font-bold text-emerald-600">liberadas</div>
+              </div>
+              <div className="rounded-xl border border-blue-100 bg-white p-3 text-xs">
+                <div className="text-lg font-black text-blue-700">
+                  {portfolioAssessment.summary.assistedRequired}
+                </div>
+                <div className="font-bold text-blue-600">assistidas</div>
+              </div>
+              <div className="rounded-xl border border-red-100 bg-white p-3 text-xs">
+                <div className="text-lg font-black text-red-700">
+                  {portfolioAssessment.summary.blocked}
+                </div>
+                <div className="font-bold text-red-600">bloqueadas</div>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-white p-3 text-xs">
+                <div className="text-lg font-black text-slate-800">
+                  {portfolioAssessment.summary.averageScore}%
+                </div>
+                <div className="font-bold text-slate-500">score médio</div>
+              </div>
             </div>
           )}
         </div>
