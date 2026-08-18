@@ -61,10 +61,51 @@ export type AccountingPlatformCoverageResponse = {
   generatedAt: string;
 };
 
+export type AccountingOfferingMarketStatus =
+  | 'MARKET_READY'
+  | 'ASSISTED_SELLABLE'
+  | 'WAITLIST_ONLY'
+  | 'INTERNAL_ROADMAP';
+
+export type AccountingOffering = {
+  id: string;
+  name: string;
+  headline: string;
+  targetCustomers: string[];
+  blocks: AccountingPlatformBlock[];
+  coverageItemIds: string[];
+  includedServices: string[];
+  excludedServices: string[];
+  requiredCapabilities: OperationalCapability[];
+  marketStatus: AccountingOfferingMarketStatus;
+  marketGuardrails: string[];
+  launchReadinessScore: number;
+};
+
+export type AccountingOfferingsResponse = {
+  status: 'OK';
+  offerings: AccountingOffering[];
+  summary: {
+    total: number;
+    marketReady: number;
+    assistedSellable: number;
+    waitlistOnly: number;
+    internalRoadmap: number;
+  };
+  generatedAt: string;
+};
+
 export const accountingPlatformApi = {
   coverage: async (): Promise<AccountingPlatformCoverageResponse> => {
     const response = await api.get<AccountingPlatformCoverageResponse>(
       '/accounting-platform/coverage',
+    );
+
+    return response.data;
+  },
+  offerings: async (): Promise<AccountingOfferingsResponse> => {
+    const response = await api.get<AccountingOfferingsResponse>(
+      '/accounting-platform/offerings',
     );
 
     return response.data;

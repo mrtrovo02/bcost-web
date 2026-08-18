@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { bcostModuleAreas, bcostSchemaModules, getModuleStats } from '@/lib/product/schema-modules';
+import AccountingOfferingsWidget from '@/components/enterprise/AccountingOfferingsWidget';
 import AccountingPlatformCoverageWidget from '@/components/enterprise/AccountingPlatformCoverageWidget';
 import AutomationJobsExecutiveWidget from '@/components/enterprise/AutomationJobsExecutiveWidget';
 import BillingPlansWidget from '@/components/enterprise/BillingPlansWidget';
@@ -91,6 +92,7 @@ export default function EnterpriseModulesPage() {
         </div>
       </section>
 
+      <AccountingOfferingsWidget />
       <AccountingPlatformCoverageWidget />
 
       {bcostModuleAreas.map((area) => {
