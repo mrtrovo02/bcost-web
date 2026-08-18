@@ -16,6 +16,12 @@ export type AccountingPlatformMaturity =
   | 'REQUIRES_PARTNER'
   | 'REQUIRES_HUMAN_OPERATION';
 
+export type AccountingPlatformReadinessGap = {
+  code: string;
+  severity: 'INFO' | 'WARNING' | 'BLOCKER';
+  message: string;
+};
+
 export type AccountingPlatformCoverageItem = {
   id: string;
   block: AccountingPlatformBlock;
@@ -28,6 +34,8 @@ export type AccountingPlatformCoverageItem = {
   automationBoundary: 'SOFTWARE_ONLY' | 'ASSISTED_AUTOMATION' | 'CRC_VALIDATED' | 'HUMAN_LED';
   maturity: AccountingPlatformMaturity;
   officialEvidence: string[];
+  readinessGaps?: AccountingPlatformReadinessGap[];
+  nextActions?: string[];
 };
 
 export type AccountingPlatformCoverageResponse = {
@@ -41,6 +49,8 @@ export type AccountingPlatformCoverageResponse = {
     requiresPartner: number;
     requiresHumanOperation: number;
     crcValidated: number;
+    blockers: number;
+    warnings: number;
   };
   generatedAt: string;
 };

@@ -23,6 +23,12 @@ function maturityClass(maturity: AccountingPlatformCoverageItem['maturity']) {
   return 'border-slate-100 bg-slate-50 text-slate-600';
 }
 
+function gapClass(severity: string) {
+  if (severity === 'BLOCKER') return 'border-red-100 bg-red-50 text-red-700';
+  if (severity === 'WARNING') return 'border-amber-100 bg-amber-50 text-amber-700';
+  return 'border-blue-100 bg-blue-50 text-blue-700';
+}
+
 export default function AccountingPlatformCoverageWidget() {
   const [coverage, setCoverage] = useState<AccountingPlatformCoverageResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -102,8 +108,8 @@ export default function AccountingPlatformCoverageWidget() {
               <div className="font-bold text-blue-600">integração</div>
             </div>
             <div className="rounded-2xl border border-red-100 bg-red-50 p-3">
-              <div className="text-xl font-black text-red-700">{coverage.summary.crcValidated}</div>
-              <div className="font-bold text-red-600">CRC</div>
+              <div className="text-xl font-black text-red-700">{coverage.summary.blockers}</div>
+              <div className="font-bold text-red-600">bloqueios</div>
             </div>
           </div>
         )}
@@ -174,6 +180,35 @@ export default function AccountingPlatformCoverageWidget() {
                       <CheckCircle2 className="h-4 w-4" />
                       {item.officialEvidence.length} evidência(s) oficial(is) previstas
                     </div>
+
+                    {item.readinessGaps && item.readinessGaps.length > 0 && (
+                      <div className="mt-4 grid gap-2">
+                        {item.readinessGaps.slice(0, 3).map((gap) => (
+                          <div
+                            key={gap.code}
+                            className={`rounded-xl border p-3 text-xs leading-5 ${gapClass(
+                              gap.severity,
+                            )}`}
+                          >
+                            <div className="font-black">{gap.code}</div>
+                            <div className="mt-1">{gap.message}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {item.nextActions && item.nextActions.length > 0 && (
+                      <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50 p-3">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                          Próximas ações
+                        </div>
+                        <div className="mt-2 grid gap-1 text-xs leading-5 text-slate-600">
+                          {item.nextActions.slice(0, 2).map((action) => (
+                            <div key={action}>{action}</div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </article>
                 ))}
               </div>
