@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { bcostModuleAreas, bcostSchemaModules, getModuleStats } from '@/lib/product/schema-modules';
+import AccountingPlatformCoverageWidget from '@/components/enterprise/AccountingPlatformCoverageWidget';
 import AutomationJobsExecutiveWidget from '@/components/enterprise/AutomationJobsExecutiveWidget';
 import BillingPlansWidget from '@/components/enterprise/BillingPlansWidget';
 
@@ -89,6 +90,8 @@ export default function EnterpriseModulesPage() {
           </div>
         </div>
       </section>
+
+      <AccountingPlatformCoverageWidget />
 
       {bcostModuleAreas.map((area) => {
         const modules = bcostSchemaModules.filter((module) => module.area === area);
