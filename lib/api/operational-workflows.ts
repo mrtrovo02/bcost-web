@@ -41,6 +41,24 @@ export type OperationalCapability =
   | 'OPEN_FINANCE_PROVIDER'
   | 'AUDIT_EVIDENCE_STORE';
 
+export type OperationalCapabilityCategory =
+  | 'PLATFORM'
+  | 'BACKOFFICE'
+  | 'REGULATORY'
+  | 'GOVERNMENT'
+  | 'FINTECH'
+  | 'AUDIT';
+
+export type OperationalCapabilityCriticality = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+
+export type OperationalCapabilityDefinition = {
+  code: OperationalCapability;
+  label: string;
+  description: string;
+  category: OperationalCapabilityCategory;
+  criticality: OperationalCapabilityCriticality;
+};
+
 export type OperationalWorkflowStage = {
   id: string;
   title: string;
@@ -72,6 +90,7 @@ export type OperationalWorkflowPreview = {
     requiredCapabilities: number;
   };
   requiredCapabilities: OperationalCapability[];
+  capabilityDetails: OperationalCapabilityDefinition[];
   gates: {
     requiresCrcValidation: boolean;
     requiresOfficialCredential: boolean;
@@ -85,7 +104,21 @@ export type OperationalWorkflowResponse = {
   workflow: OperationalWorkflowPreview;
 };
 
+export type OperationalCapabilitiesResponse = {
+  status: 'OK';
+  capabilities: OperationalCapabilityDefinition[];
+  generatedAt: string;
+};
+
 export const operationalWorkflowsApi = {
+  capabilities: async (): Promise<OperationalCapabilityDefinition[]> => {
+    const response = await api.get<OperationalCapabilitiesResponse>(
+      '/operations/workflows/capabilities',
+    );
+
+    return response.data.capabilities;
+  },
+
   preview: async (payload: ServiceEvaluationInput): Promise<OperationalWorkflowPreview> => {
     const response = await api.post<OperationalWorkflowResponse>(
       '/operations/workflows/preview',

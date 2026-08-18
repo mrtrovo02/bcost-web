@@ -31,6 +31,7 @@ import {
   serviceCatalogApi,
 } from '@/lib/api/service-catalog';
 import {
+  OperationalCapabilityDefinition,
   OperationalWorkflowPreview,
   operationalWorkflowsApi,
 } from '@/lib/api/operational-workflows';
@@ -137,6 +138,13 @@ function executionTone(profile: ServiceExecutionProfile) {
   if (profile.operationalRisk === 'HIGH') return 'border-amber-200 bg-amber-50 text-amber-800';
   if (profile.operationalRisk === 'MEDIUM') return 'border-blue-200 bg-blue-50 text-blue-800';
   return 'border-emerald-200 bg-emerald-50 text-emerald-800';
+}
+
+function capabilityTone(capability?: OperationalCapabilityDefinition) {
+  if (capability?.criticality === 'CRITICAL') return 'border-red-100 bg-red-50 text-red-700';
+  if (capability?.criticality === 'HIGH') return 'border-amber-100 bg-amber-50 text-amber-700';
+  if (capability?.criticality === 'MEDIUM') return 'border-blue-100 bg-blue-50 text-blue-700';
+  return 'border-slate-200 bg-slate-50 text-slate-700';
 }
 
 function Metric({
@@ -325,6 +333,16 @@ export default function ServiceCatalogWorkspace() {
       null
     );
   }, [evaluation?.selectedServices, selectedServiceId]);
+
+  const capabilityDetailsByCode = useMemo(() => {
+    return (workflow?.capabilityDetails ?? []).reduce<Record<string, OperationalCapabilityDefinition>>(
+      (acc, capability) => {
+        acc[capability.code] = capability;
+        return acc;
+      },
+      {},
+    );
+  }, [workflow?.capabilityDetails]);
 
   return (
     <main className="min-h-screen bg-slate-50 p-4 text-slate-950 md:p-6">
@@ -704,9 +722,12 @@ export default function ServiceCatalogWorkspace() {
                                   {workflow.requiredCapabilities.map((capability) => (
                                     <span
                                       key={capability}
-                                      className="rounded-lg border border-indigo-100 bg-indigo-50 px-2 py-1 text-xs font-bold text-indigo-700"
+                                      title={capabilityDetailsByCode[capability]?.description}
+                                      className={`rounded-lg border px-2 py-1 text-xs font-bold ${capabilityTone(
+                                        capabilityDetailsByCode[capability],
+                                      )}`}
                                     >
-                                      {capability}
+                                      {capabilityDetailsByCode[capability]?.label ?? capability}
                                     </span>
                                   ))}
                                 </div>
@@ -733,9 +754,12 @@ export default function ServiceCatalogWorkspace() {
                                           {stage.requiredCapabilities.map((capability) => (
                                             <span
                                               key={capability}
-                                              className="rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] font-semibold text-slate-600"
+                                              title={capabilityDetailsByCode[capability]?.description}
+                                              className={`rounded-md border px-1.5 py-0.5 text-[11px] font-semibold ${capabilityTone(
+                                                capabilityDetailsByCode[capability],
+                                              )}`}
                                             >
-                                              {capability}
+                                              {capabilityDetailsByCode[capability]?.label ?? capability}
                                             </span>
                                           ))}
                                         </div>
