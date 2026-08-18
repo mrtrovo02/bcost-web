@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { bcostModuleAreas, bcostSchemaModules, getModuleStats } from '@/lib/product/schema-modules';
 import AccountingOfferingsWidget from '@/components/enterprise/AccountingOfferingsWidget';
 import AccountingPlatformCoverageWidget from '@/components/enterprise/AccountingPlatformCoverageWidget';
+import AccountingSetupReadinessWidget from '@/components/enterprise/AccountingSetupReadinessWidget';
 import AutomationJobsExecutiveWidget from '@/components/enterprise/AutomationJobsExecutiveWidget';
 import BillingPlansWidget from '@/components/enterprise/BillingPlansWidget';
 import CoreTaxPreviewWidget from '@/components/enterprise/CoreTaxPreviewWidget';
@@ -94,6 +95,7 @@ export default function EnterpriseModulesPage() {
       </section>
 
       <AccountingOfferingsWidget />
+      <AccountingSetupReadinessWidget />
       <CoreTaxPreviewWidget />
       <AccountingPlatformCoverageWidget />
 
