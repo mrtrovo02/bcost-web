@@ -4,9 +4,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, BriefcaseBusiness, CheckCircle2, Loader2, ShieldCheck } from 'lucide-react';
 import {
   AccountingOffering,
+  AccountingOfferingCompanyAssessment,
   AccountingOfferingsResponse,
   accountingPlatformApi,
 } from '@/lib/api/accounting-platform';
+import { useCompany } from '@/app/context/CompanyContext';
 
 const STATUS_LABEL: Record<AccountingOffering['marketStatus'], string> = {
   MARKET_READY: 'Pronto para mercado',
@@ -29,8 +31,11 @@ function activationClass(status: AccountingOffering['activationRequirements'][nu
 }
 
 export default function AccountingOfferingsWidget() {
+  const { selectedCompany } = useCompany();
   const [offerings, setOfferings] = useState<AccountingOfferingsResponse | null>(null);
+  const [assessment, setAssessment] = useState<AccountingOfferingCompanyAssessment | null>(null);
   const [loading, setLoading] = useState(true);
+  const [assessmentLoading, setAssessmentLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -69,6 +74,39 @@ export default function AccountingOfferingsWidget() {
       ),
     [offerings?.offerings],
   );
+  const primaryOffering = sortedOfferings[0] ?? null;
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadAssessment() {
+      if (!selectedCompany?.id || !primaryOffering?.id) {
+        setAssessment(null);
+        return;
+      }
+
+      try {
+        setAssessmentLoading(true);
+        const response = await accountingPlatformApi.assessOffering(primaryOffering.id, {
+          companyId: selectedCompany.id,
+          taxRegime: selectedCompany.taxRegime,
+          cnae: selectedCompany.cnae,
+          hasAuditEvidenceStore: true,
+        });
+        if (mounted) setAssessment(response);
+      } catch {
+        if (mounted) setAssessment(null);
+      } finally {
+        if (mounted) setAssessmentLoading(false);
+      }
+    }
+
+    void loadAssessment();
+
+    return () => {
+      mounted = false;
+    };
+  }, [primaryOffering?.id, selectedCompany?.cnae, selectedCompany?.id, selectedCompany?.taxRegime]);
 
   return (
     <section className="rounded-[2rem] border border-slate-100 bg-white p-7 shadow-sm">
@@ -117,6 +155,41 @@ export default function AccountingOfferingsWidget() {
           </div>
         )}
       </div>
+
+      {primaryOffering && (
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                Avaliação da empresa ativa
+              </div>
+              <p className="mt-1 text-sm font-bold text-slate-700">
+                {selectedCompany?.name ?? 'Selecione uma empresa'} · {primaryOffering.name}
+              </p>
+            </div>
+            <div className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-black uppercase tracking-widest text-slate-600">
+              {assessmentLoading
+                ? 'avaliando'
+                : assessment
+                  ? `${assessment.decision} · ${assessment.score}%`
+                  : 'sem empresa ativa'}
+            </div>
+          </div>
+
+          {assessment && assessment.requiredActions.length > 0 && (
+            <div className="mt-4 grid gap-2 md:grid-cols-2">
+              {assessment.requiredActions.slice(0, 4).map((action) => (
+                <div
+                  key={action}
+                  className="rounded-xl border border-amber-100 bg-white p-3 text-xs font-semibold leading-5 text-amber-800"
+                >
+                  {action}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {loading ? (
         <div className="mt-6 flex items-center gap-2 rounded-2xl border border-dashed border-slate-200 p-6 text-sm text-slate-500">

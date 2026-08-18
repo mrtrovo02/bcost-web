@@ -94,6 +94,38 @@ export type AccountingOfferingPlaybookStage = {
   status: AccountingOfferingActivationStatus;
 };
 
+export type AccountingOfferingCompanyProfile = {
+  companyId?: string;
+  taxRegime?: 'SIMPLES_NACIONAL' | 'LUCRO_PRESUMIDO' | 'LUCRO_REAL';
+  cnae?: string | null;
+  municipalityCode?: string;
+  hasDigitalCertificate?: boolean;
+  hasCrcResponsible?: boolean;
+  hasBackofficeOwner?: boolean;
+  hasAuditEvidenceStore?: boolean;
+  hasBaasPartner?: boolean;
+  hasOpenFinanceConsent?: boolean;
+  hasOfficialPortalAccess?: boolean;
+  hasOfficialApiProvider?: boolean;
+};
+
+export type AccountingOfferingCompanyAssessment = {
+  status: 'OK';
+  offeringId: string;
+  offeringName: string;
+  companyId?: string;
+  decision: 'ACTIVATION_ALLOWED' | 'ASSISTED_REQUIRED' | 'BLOCKED';
+  score: number;
+  checks: {
+    code: string;
+    label: string;
+    status: 'PASS' | 'WARN' | 'FAIL';
+    message: string;
+  }[];
+  requiredActions: string[];
+  generatedAt: string;
+};
+
 export type AccountingOffering = {
   id: string;
   name: string;
@@ -142,6 +174,22 @@ export const accountingPlatformApi = {
   offerings: async (): Promise<AccountingOfferingsResponse> => {
     const response = await api.get<AccountingOfferingsResponse>(
       '/accounting-platform/offerings',
+    );
+
+    return response.data;
+  },
+  assessOffering: async (
+    offeringId: string,
+    profile: AccountingOfferingCompanyProfile,
+  ): Promise<AccountingOfferingCompanyAssessment> => {
+    const response = await api.get<AccountingOfferingCompanyAssessment>(
+      `/accounting-platform/offerings/${offeringId}/assessment`,
+      {
+        params: {
+          ...profile,
+          cnae: profile.cnae ?? undefined,
+        },
+      },
     );
 
     return response.data;
