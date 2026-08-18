@@ -253,6 +253,40 @@ export default function AccountingOfferingsWidget() {
                   ))}
                 </div>
               )}
+
+              {portfolioAssessment.ownerSummary.length > 0 && (
+                <div className="mt-4 grid gap-2 lg:grid-cols-3">
+                  {portfolioAssessment.ownerSummary.slice(0, 3).map((item) => (
+                    <div
+                      key={item.owner}
+                      className="rounded-xl border border-slate-200 bg-white p-3 text-xs"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-black uppercase tracking-widest text-slate-500">
+                          {item.owner}
+                        </span>
+                        <span className="font-black text-slate-900">
+                          {item.totalActions} ação(ões)
+                        </span>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <span className="rounded-full bg-red-50 px-2 py-1 font-black text-red-700">
+                          P0 {item.p0}
+                        </span>
+                        <span className="rounded-full bg-amber-50 px-2 py-1 font-black text-amber-700">
+                          P1 {item.p1}
+                        </span>
+                        <span className="rounded-full bg-blue-50 px-2 py-1 font-black text-blue-700">
+                          P2 {item.p2}
+                        </span>
+                      </div>
+                      <div className="mt-2 leading-5 text-slate-500">
+                        {item.impactedOfferings.slice(0, 3).join(' · ')}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </>
           )}
         </div>
