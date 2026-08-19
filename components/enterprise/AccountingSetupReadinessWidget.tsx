@@ -21,7 +21,7 @@ function statusClass(status: string) {
     return 'border-emerald-100 bg-emerald-50 text-emerald-700';
   }
 
-  if (status === 'WARN' || status === 'REQUIRES_ACTION') {
+  if (status === 'WARN' || status === 'REQUIRES_ACTION' || status === 'PENDING') {
     return 'border-amber-100 bg-amber-50 text-amber-700';
   }
 
@@ -229,7 +229,32 @@ export default function AccountingSetupReadinessWidget() {
             ))}
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="grid gap-4 lg:grid-cols-4">
+            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                Dossiê auditável
+              </div>
+              <div className="mt-2 text-xs font-bold text-slate-600">
+                {readiness.setupDossier.id}
+              </div>
+              <div className="mt-3 rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-[11px] font-bold text-slate-600">
+                {readiness.setupDossier.integrityHash.slice(0, 20)}
+              </div>
+              <div className="mt-3 grid gap-2">
+                {readiness.setupDossier.requiredArtifacts.slice(0, 5).map((artifact) => (
+                  <div
+                    className={`rounded-xl border px-3 py-2 text-xs ${statusClass(artifact.status)}`}
+                    key={artifact.code}
+                  >
+                    <div className="font-black">{artifact.label}</div>
+                    <div className="mt-1 font-mono text-[10px] uppercase">
+                      {artifact.status} / {artifact.source}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
               <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                 Dependências oficiais
