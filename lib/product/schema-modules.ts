@@ -280,7 +280,7 @@ export const bcostSchemaModules: BcostSchemaModule[] = [
     description: 'Folha, pró-labore, salários e total mensal para Fator R.',
     commercialValue: 'Um dos maiores diferenciais fiscais para Simples Nacional.',
     route: '/dashboard/modules/payrolls',
-    apiBase: '/fiscal/payroll',
+    apiBase: '/payroll/enterprise/payrolls',
     mainActions: ['Registrar folha', 'Simular pró-labore', 'Fechar competência', 'Ver Fator R'],
     kpis: ['Folha total', 'Pró-labore', 'Fator R', 'Economia possível'],
   },

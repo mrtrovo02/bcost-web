@@ -210,7 +210,7 @@ export const enterpriseEndpointStrategies: EnterpriseEndpointStrategy[] = [
     slug: 'payrolls',
     label: 'Folha / Fator R',
     method: 'GET',
-    path: '/fiscal/payroll/:companyId',
+    path: '/payroll/enterprise/payrolls/:companyId',
     enabled: true,
     expectsCompanyId: true,
   },
