@@ -128,6 +128,71 @@ export type AccountingMarketReadinessResponse = {
   generatedAt: string;
 };
 
+export type AccountingArchitectureLayer =
+  | 'CUSTOMER_EXPERIENCE'
+  | 'ACCOUNTING_CORE'
+  | 'FISCAL_CORE'
+  | 'PAYROLL_CORE'
+  | 'FINTECH_CORE'
+  | 'GOVERNANCE'
+  | 'INTEGRATIONS';
+
+export type AccountingArchitectureOwner =
+  | 'accounting-platform'
+  | 'service-catalog'
+  | 'operational-workflows'
+  | 'fiscal'
+  | 'obligations-enterprise'
+  | 'payroll-enterprise'
+  | 'banking-enterprise'
+  | 'accounting-enterprise'
+  | 'company'
+  | 'security';
+
+export type AccountingArchitectureStatus =
+  | 'CANONICAL'
+  | 'SHARED_CAPABILITY'
+  | 'NEEDS_CONSOLIDATION'
+  | 'DEPRECATED_ALIAS';
+
+export type AccountingArchitectureRegistryItem = {
+  capabilityId: string;
+  name: string;
+  layer: AccountingArchitectureLayer;
+  canonicalOwner: AccountingArchitectureOwner;
+  canonicalApiBase: string;
+  frontendRoutes: string[];
+  relatedModules: string[];
+  status: AccountingArchitectureStatus;
+  duplicateRisk: 'LOW' | 'MEDIUM' | 'HIGH';
+  consolidationRule: string;
+  publicContract: string;
+  integrationPoints: string[];
+  forbiddenDuplicates: string[];
+};
+
+export type AccountingArchitectureRegistryResponse = {
+  status: 'OK';
+  items: AccountingArchitectureRegistryItem[];
+  summary: {
+    total: number;
+    canonical: number;
+    shared: number;
+    needsConsolidation: number;
+    deprecatedAlias: number;
+    highRisk: number;
+    mediumRisk: number;
+  };
+  recommendations: {
+    id: string;
+    priority: AccountingPlatformPriorityTier;
+    action: string;
+    owner: AccountingArchitectureOwner;
+    affectedCapabilities: string[];
+  }[];
+  generatedAt: string;
+};
+
 export type AccountingSetupOperation =
   | 'COMPANY_OPENING'
   | 'ACCOUNTING_MIGRATION'
@@ -337,15 +402,20 @@ export const accountingPlatformApi = {
     return response.data;
   },
   offerings: async (): Promise<AccountingOfferingsResponse> => {
-    const response = await api.get<AccountingOfferingsResponse>(
-      '/accounting-platform/offerings',
-    );
+    const response = await api.get<AccountingOfferingsResponse>('/accounting-platform/offerings');
 
     return response.data;
   },
   marketReadiness: async (): Promise<AccountingMarketReadinessResponse> => {
     const response = await api.get<AccountingMarketReadinessResponse>(
       '/accounting-platform/market-readiness',
+    );
+
+    return response.data;
+  },
+  architectureRegistry: async (): Promise<AccountingArchitectureRegistryResponse> => {
+    const response = await api.get<AccountingArchitectureRegistryResponse>(
+      '/accounting-platform/architecture-registry',
     );
 
     return response.data;
