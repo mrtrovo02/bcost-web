@@ -100,7 +100,7 @@ export default function AccountingArchitectureRegistryWidget() {
             <Metric label="Compartilhadas" value={registry.summary.shared} tone="blue" />
             <Metric label="Consolidar" value={registry.summary.needsConsolidation} tone="red" />
             <Metric label="Risco alto" value={registry.summary.highRisk} tone="red" />
-            <Metric label="Risco médio" value={registry.summary.mediumRisk} tone="amber" />
+            <Metric label="Aliases" value={registry.summary.legacyAliases} tone="amber" />
           </div>
 
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
