@@ -1,8 +1,13 @@
 import type { NextConfig } from 'next';
 import { execSync } from 'child_process';
 
+/**
+ * Resolve o Build ID único para sincronização de Server Components e Server Actions.
+ * Garante consistência de hashes entre deploys e restarts do processo.
+ */
 function resolveBuildId(): string {
-  const envBuildVersion = process.env.BUILD_VERSION || process.env.NEXT_PUBLIC_BUILD_VERSION;
+  const envBuildVersion =
+    process.env.BUILD_VERSION || process.env.NEXT_PUBLIC_BUILD_VERSION;
   if (envBuildVersion) {
     return 'bcost-release-' + envBuildVersion;
   }
@@ -18,18 +23,20 @@ function resolveBuildId(): string {
       return 'bcost-release-' + gitHash;
     }
   } catch {
-    // Fallback gracioso
+    // Fallback gracioso caso git não esteja disponível no ambiente de build
   }
 
-  return 'bcost-release-main';
+  return 'bcost-release-' + (process.env.NODE_ENV || 'production');
 }
 
 const buildId = resolveBuildId();
 const isDevelopment = process.env.NODE_ENV !== 'production';
+
+// Origens de conexão permitidas na Política de Segurança de Conteúdo (CSP)
 const connectSources = [
   "'self'",
   'https://api.bcost.com.br',
-  ...(isDevelopment ? ['http://localhost:5000', 'http://127.0.0.1:5000'] : []),
+  ...(isDevelopment ? ['http://localhost:5000', 'http://127.0.0.1:5000', 'ws:', 'wss:'] : []),
 ].join(' ');
 
 const nextConfig: NextConfig = {
@@ -38,11 +45,25 @@ const nextConfig: NextConfig = {
   compress: true,
   productionBrowserSourceMaps: false,
 
+  // Otimização de Keep-Alive para garantir encerramento gracioso no PM2/SIGINT
+  httpAgentOptions: {
+    keepAlive: true,
+  },
+
   typescript: {
     ignoreBuildErrors: true,
   },
 
+  // Garante que o ID da build seja determinístico
   generateBuildId: async () => buildId,
+
+  // Configurações para Server Actions e requisições RSC
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '2mb',
+      allowedOrigins: ['bcost.com.br', '*.bcost.com.br', 'localhost:3000', '127.0.0.1:3000'],
+    },
+  },
 
   images: {
     remotePatterns: [
@@ -54,11 +75,13 @@ const nextConfig: NextConfig = {
   },
 
   async rewrites() {
+    const internalApiUrl = process.env.INTERNAL_API_URL || 'http://127.0.0.1:5000';
+
     return {
       beforeFiles: [
         {
           source: '/api/:path*',
-          destination: 'http://127.0.0.1:5000/:path*',
+          destination: `${internalApiUrl}/:path*`,
         },
       ],
       afterFiles: [],
