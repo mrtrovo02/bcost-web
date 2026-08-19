@@ -258,9 +258,9 @@ export const enterpriseEndpointStrategies: EnterpriseEndpointStrategy[] = [
     slug: 'notifications',
     label: 'Notificações',
     method: 'GET',
-    path: '/notifications',
-    enabled: false,
-    expectsCompanyId: false,
+    path: '/notifications/enterprise/:companyId',
+    enabled: true,
+    expectsCompanyId: true,
   },
 ];
 

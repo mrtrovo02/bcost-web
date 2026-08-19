@@ -146,6 +146,7 @@ export type AccountingArchitectureOwner =
   | 'obligations-enterprise'
   | 'payroll-enterprise'
   | 'banking-enterprise'
+  | 'notifications-enterprise'
   | 'accounting-enterprise'
   | 'company'
   | 'security';
