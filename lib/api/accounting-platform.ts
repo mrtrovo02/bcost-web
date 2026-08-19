@@ -169,6 +169,12 @@ export type AccountingArchitectureRegistryItem = {
   publicContract: string;
   integrationPoints: string[];
   forbiddenDuplicates: string[];
+  legacyAliases: {
+    method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+    path: string;
+    migrationTarget: string;
+    deprecationStage: 'SUPPORTED_ALIAS' | 'INTERNAL_ONLY' | 'REMOVE_AFTER_MIGRATION';
+  }[];
 };
 
 export type AccountingArchitectureRegistryResponse = {
