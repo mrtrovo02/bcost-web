@@ -487,7 +487,7 @@ export const bcostSchemaModules: BcostSchemaModule[] = [
     description: 'Certificados A1, validade, vencimento e status.',
     commercialValue: 'Obrigatório para automação fiscal real com Receita/SEFAZ.',
     route: '/dashboard/modules/digital-certificates',
-    apiBase: '/digital-certificates',
+    apiBase: '/digital-certificates/enterprise',
     mainActions: ['Enviar certificado', 'Ver validade', 'Revogar', 'Alertar vencimento'],
     kpis: ['Ativos', 'Expirados', 'A vencer', 'Revogados'],
   },
