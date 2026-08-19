@@ -406,7 +406,7 @@ export const bcostSchemaModules: BcostSchemaModule[] = [
     description: 'Pendências fiscais, severidade, status e resolução.',
     commercialValue: 'Diferencial direto contra contabilidades reativas.',
     route: '/dashboard/modules/compliance-checks',
-    apiBase: '/fiscal/compliance',
+    apiBase: '/compliance/enterprise/checks',
     mainActions: ['Executar auditoria', 'Resolver pendência', 'Ignorar', 'Gerar relatório'],
     kpis: ['Abertas', 'Resolvidas', 'Críticas', 'Em progresso'],
   },

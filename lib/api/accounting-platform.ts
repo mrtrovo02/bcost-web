@@ -142,6 +142,7 @@ export type AccountingArchitectureOwner =
   | 'service-catalog'
   | 'operational-workflows'
   | 'fiscal'
+  | 'compliance-enterprise'
   | 'obligations-enterprise'
   | 'payroll-enterprise'
   | 'banking-enterprise'
