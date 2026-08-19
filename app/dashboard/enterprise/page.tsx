@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { bcostModuleAreas, bcostSchemaModules, getModuleStats } from '@/lib/product/schema-modules';
+import AccountingMarketReadinessWidget from '@/components/enterprise/AccountingMarketReadinessWidget';
 import AccountingOfferingsWidget from '@/components/enterprise/AccountingOfferingsWidget';
 import AccountingPlatformCoverageWidget from '@/components/enterprise/AccountingPlatformCoverageWidget';
 import AccountingSetupReadinessWidget from '@/components/enterprise/AccountingSetupReadinessWidget';
@@ -95,6 +96,7 @@ export default function EnterpriseModulesPage() {
       </section>
 
       <AccountingOfferingsWidget />
+      <AccountingMarketReadinessWidget />
       <AccountingSetupReadinessWidget />
       <CoreTaxPreviewWidget />
       <AccountingPlatformCoverageWidget />
