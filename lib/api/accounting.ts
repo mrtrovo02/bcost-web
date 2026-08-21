@@ -1,6 +1,8 @@
 'use strict';
 
 import { api } from '@/services/api';
+import { createDemoEnterpriseResponse } from './enterprise-demo';
+import { isDemoEntityId, isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
 
 export type AccountType =
   | 'ATIVO'
@@ -223,12 +225,38 @@ export const accountingApi = {
     companyId: string,
     params: AccountingQuery = {},
   ): Promise<AccountPlanListResponse> => {
+    // Demo short-circuit
+    if (isDemoEntityId(companyId) && isOperationalDemoFallbackEnabled()) {
+      const demo = createDemoEnterpriseResponse('account-plan', companyId, params);
+      return {
+        status: demo.status,
+        module: 'account-plan',
+        model: 'AccountPlan',
+        companyId,
+        items: (demo.items as unknown as AccountPlanRecord[]) || [],
+        total: demo.total || 0,
+        limit: demo.limit || params.limit || 100,
+        offset: demo.offset || params.offset || 0,
+        hasMore: !!demo.hasMore,
+        summary: (demo.summary as unknown as AccountPlanSummary) || {
+          count: 0,
+          active: 0,
+          inactive: 0,
+          companySpecific: 0,
+          global: 0,
+          type: {},
+        },
+        generatedAt: demo.generatedAt || new Date().toISOString(),
+      };
+    }
+
     const response = await api.get<AccountPlanListResponse>(
       `/accounting/enterprise/account-plan/${companyId}${buildQuery(params)}`,
     );
 
     return response.data;
   },
+
 
   seedDefaultAccountPlan: async (
     companyId: string,
@@ -280,12 +308,43 @@ export const accountingApi = {
     companyId: string,
     params: AccountingQuery = {},
   ): Promise<AccountingEntriesListResponse> => {
+    // Demo short-circuit
+    if (isDemoEntityId(companyId) && isOperationalDemoFallbackEnabled()) {
+      const demo = createDemoEnterpriseResponse('accounting-entries', companyId, params);
+      return {
+        status: demo.status,
+        module: 'accounting-entries',
+        model: 'AccountingEntry',
+        companyId,
+        items: (demo.items as unknown as AccountingEntryRecord[]) || [],
+        total: demo.total || 0,
+        limit: demo.limit || params.limit || 100,
+        offset: demo.offset || params.offset || 0,
+        hasMore: !!demo.hasMore,
+        summary: (demo.summary as unknown as AccountingEntrySummary) || {
+          count: 0,
+          totalDebit: 0,
+          totalCredit: 0,
+          totalAmount: 0,
+          locked: 0,
+          unlocked: 0,
+          byOrigin: {},
+          byMonth: {},
+          byDebitCode: {},
+          byCreditCode: {},
+          balanced: true,
+        },
+        generatedAt: demo.generatedAt || new Date().toISOString(),
+      };
+    }
+
     const response = await api.get<AccountingEntriesListResponse>(
       `/accounting/enterprise/entries/${companyId}${buildQuery(params)}`,
     );
 
     return response.data;
   },
+
 
   createEntry: async (
     companyId: string,
@@ -324,12 +383,27 @@ export const accountingApi = {
   },
 
   listLocks: async (companyId: string): Promise<BalanceLocksListResponse> => {
+    // Demo short-circuit
+    if (isDemoEntityId(companyId) && isOperationalDemoFallbackEnabled()) {
+      const demo = createDemoEnterpriseResponse('balance-locks', companyId);
+      return {
+        status: demo.status,
+        module: 'balance-locks',
+        model: 'BalanceLock',
+        companyId,
+        items: (demo.items as unknown as BalanceLockRecord[]) || [],
+        total: demo.total || 0,
+        generatedAt: demo.generatedAt || new Date().toISOString(),
+      };
+    }
+
     const response = await api.get<BalanceLocksListResponse>(
       `/accounting/enterprise/locks/${companyId}`,
     );
 
     return response.data;
   },
+
 
   lockPeriod: async (
     companyId: string,
@@ -360,6 +434,17 @@ export const accountingApi = {
     module: 'account-plan' | 'accounting-entries' | 'balance-locks',
     params: Record<string, unknown> = {},
   ): Promise<AuditLogListResponse> => {
+    // Demo short-circuit: return empty audit list for demo companies
+    if (isDemoEntityId(companyId) && isOperationalDemoFallbackEnabled()) {
+      return {
+        items: [],
+        total: 0,
+        limit: Number(params.limit || 30),
+        offset: 0,
+        generatedAt: new Date().toISOString(),
+      };
+    }
+
     const response = await api.get<AuditLogListResponse>(
       `/audit/${companyId}${buildQuery({
         limit: 30,
@@ -370,4 +455,5 @@ export const accountingApi = {
 
     return response.data;
   },
+
 };

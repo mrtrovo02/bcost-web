@@ -1,6 +1,8 @@
 'use strict';
 
 import { api } from '@/services/api';
+import { createDemoEnterpriseResponse } from './enterprise-demo';
+import { isDemoEntityId, isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
 
 export type TransactionType = 'CREDIT' | 'DEBIT';
 
@@ -246,6 +248,37 @@ function buildQuery(params?: Record<string, unknown>): string {
 
 export const bankingEnterpriseApi = {
   summary: async (companyId: string): Promise<BankingSummaryResponse> => {
+    // Demo short-circuit: return a minimal demo summary when running with demo company IDs in dev
+    if (isDemoEntityId(companyId) && isOperationalDemoFallbackEnabled()) {
+      return {
+        status: 'OK_WITH_FALLBACK',
+        module: 'banking-enterprise-summary',
+        companyId,
+        accounts: {
+          count: 0,
+          active: 0,
+          deleted: 0,
+          totalBalance: 0,
+          byBank: {},
+        },
+        transactions: {
+          count: 0,
+          credits: 0,
+          debits: 0,
+          totalCredit: 0,
+          totalDebit: 0,
+          netAmount: 0,
+          reconciled: 0,
+          pending: 0,
+          reconciliationRate: 0,
+          byType: {},
+          byStatus: {},
+          byBankAccountId: {},
+        },
+        generatedAt: new Date().toISOString(),
+      };
+    }
+
     const response = await api.get<BankingSummaryResponse>(
       `/banking/enterprise/summary/${companyId}`,
     );
@@ -257,6 +290,30 @@ export const bankingEnterpriseApi = {
     companyId: string,
     params: BankingQuery = {},
   ): Promise<BankAccountsListResponse> => {
+    // Demo short-circuit
+    if (isDemoEntityId(companyId) && isOperationalDemoFallbackEnabled()) {
+      const demo = createDemoEnterpriseResponse('bank-accounts', companyId, params);
+      return {
+        status: demo.status,
+        module: 'bank-accounts',
+        model: 'BankAccount',
+        companyId,
+        items: (demo.items as unknown as BankAccountEnterpriseRecord[]) || [],
+        total: demo.total || 0,
+        limit: demo.limit || params.limit || 100,
+        offset: demo.offset || params.offset || 0,
+        hasMore: !!demo.hasMore,
+        summary: (demo.summary as unknown as BankAccountSummary) || {
+          count: 0,
+          active: 0,
+          deleted: 0,
+          totalBalance: 0,
+          byBank: {},
+        },
+        generatedAt: demo.generatedAt || new Date().toISOString(),
+      };
+    }
+
     const response = await api.get<BankAccountsListResponse>(
       `/banking/enterprise/accounts/${companyId}${buildQuery(params)}`,
     );
@@ -304,12 +361,44 @@ export const bankingEnterpriseApi = {
     companyId: string,
     params: BankingQuery = {},
   ): Promise<BankTransactionsListResponse> => {
+    // Demo short-circuit
+    if (isDemoEntityId(companyId) && isOperationalDemoFallbackEnabled()) {
+      const demo = createDemoEnterpriseResponse('bank-transactions', companyId, params);
+      return {
+        status: demo.status,
+        module: 'bank-transactions',
+        model: 'BankTransaction',
+        companyId,
+        items: (demo.items as unknown as BankTransactionEnterpriseRecord[]) || [],
+        total: demo.total || 0,
+        limit: demo.limit || params.limit || 100,
+        offset: demo.offset || params.offset || 0,
+        hasMore: !!demo.hasMore,
+        summary: (demo.summary as unknown as BankTransactionSummary) || {
+          count: 0,
+          credits: 0,
+          debits: 0,
+          totalCredit: 0,
+          totalDebit: 0,
+          netAmount: 0,
+          reconciled: 0,
+          pending: 0,
+          reconciliationRate: 0,
+          byType: {},
+          byStatus: {},
+          byBankAccountId: {},
+        },
+        generatedAt: demo.generatedAt || new Date().toISOString(),
+      };
+    }
+
     const response = await api.get<BankTransactionsListResponse>(
       `/banking/enterprise/transactions/${companyId}${buildQuery(params)}`,
     );
 
     return response.data;
   },
+
 
   createTransaction: async (
     companyId: string,
