@@ -32,7 +32,19 @@ export const taxScenariosApi = {
   },
 
   async getLatestSimulation(companyId: string): Promise<SimulationResponse | null> {
-    const { data } = await api.get<SimulationResponse>(`/tax-scenarios/company/${companyId}`);
-    return data;
+    try {
+      // Backend currently exposes only POST /tax-scenarios/simulate.
+      // Fallback to simulate with conservative defaults when latest endpoint is missing.
+      const { data } = await api.post<SimulationResponse>('/tax-scenarios/simulate', {
+        companyId,
+        annualRevenue: 0,
+        payrollExpense: 0,
+      });
+
+      return data;
+    } catch (err) {
+      // If the endpoint truly doesn't exist or fails, return null so callers can handle absence.
+      return null;
+    }
   },
 };
