@@ -37,8 +37,11 @@ export const taxScenariosApi = {
       // Fallback to simulate with conservative defaults when latest endpoint is missing.
       const { data } = await api.post<SimulationResponse>('/tax-scenarios/simulate', {
         companyId,
-        annualRevenue: 0,
-        payrollExpense: 0,
+        activity: 'OTHER',
+        monthlyRevenue: 0,
+        monthlyDeductibleExpenses: 0,
+        monthlyPayroll: 0,
+        dependents: 0,
       });
 
       return data;
