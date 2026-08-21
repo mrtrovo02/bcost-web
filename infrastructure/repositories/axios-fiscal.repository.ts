@@ -51,7 +51,7 @@ export class AxiosFiscalRepository implements FiscalRepository {
           ? (error as { status?: number }).status
           : undefined;
 
-      if (isDemoSession() || companyId.toLowerCase().startsWith('demo-') || status === 404 || status === 0) {
+      if (isDemoSession() || companyId.toLowerCase().startsWith('demo-') || status === 404 || status === 401 || status === 0) {
         return new TaxDataEntity(this.buildDemoTaxData(companyId));
       }
       throw error;
