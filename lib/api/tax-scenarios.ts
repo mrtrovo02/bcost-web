@@ -27,12 +27,12 @@ export interface SimulationResponse {
 
 export const taxScenariosApi = {
   async simulate(payload: SimulateTaxScenarioDto): Promise<SimulationResponse> {
-    const { data } = await api.post<SimulationResponse>('/v1/tax-scenarios/simulate', payload);
+    const { data } = await api.post<SimulationResponse>('/tax-scenarios/simulate', payload);
     return data;
   },
 
   async getLatestSimulation(companyId: string): Promise<SimulationResponse | null> {
-    const { data } = await api.get<SimulationResponse>(`/v1/tax-scenarios/company/${companyId}`);
+    const { data } = await api.get<SimulationResponse>(`/tax-scenarios/company/${companyId}`);
     return data;
   },
 };
