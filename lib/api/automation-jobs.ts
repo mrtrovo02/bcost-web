@@ -144,6 +144,11 @@ export const automationJobsApi = {
   ): Promise<AutomationJobsListResponse> => {
     const query = buildQuery(params);
 
+    // Short-circuit demo company IDs
+    if (typeof companyId === 'string' && companyId.toLowerCase().startsWith('demo-')) {
+      return demoAutomationResponse(companyId, params);
+    }
+
     try {
       const response = await api.get<AutomationJobsListResponse>(
         `/automation/jobs/${companyId}${query}`,
@@ -156,6 +161,21 @@ export const automationJobsApi = {
   },
 
   detail: async (companyId: string, jobId: string): Promise<AutomationJobDetailResponse> => {
+    // Short-circuit demo company IDs
+    if (typeof companyId === 'string' && companyId.toLowerCase().startsWith('demo-')) {
+      const demo = demoAutomationResponse(companyId);
+      const job = demo.items.find((item) => item.id === jobId) || demo.items[0];
+
+      return {
+        status: 'OK_DEMO',
+        module: 'automation-jobs',
+        model: 'AutomationJob',
+        companyId,
+        job,
+        generatedAt: new Date().toISOString(),
+      };
+    }
+
     try {
       const response = await api.get<AutomationJobDetailResponse>(
         `/automation/jobs/${companyId}/${jobId}`,

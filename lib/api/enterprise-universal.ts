@@ -223,6 +223,11 @@ export const enterpriseUniversalApi = {
       to?: string;
     },
   ): Promise<EnterpriseModuleResponse> {
+    // Short-circuit if this is a demo company id and operational demo fallback is enabled
+    if (isDemoEntityId(companyId) && isOperationalDemoFallbackEnabled()) {
+      return createDemoEnterpriseResponse(slug, companyId, params);
+    }
+
     try {
       const response = await api.get(`/enterprise/modules/${slug}/${companyId}`, {
         params: {
@@ -268,6 +273,11 @@ export const enterpriseUniversalApi = {
   },
 
   async summary(slug: string, companyId: string) {
+    // Demo short-circuit
+    if (isDemoEntityId(companyId) && isOperationalDemoFallbackEnabled()) {
+      return createDemoEnterpriseResponse(slug, companyId).summary;
+    }
+
     try {
       const response = await api.get(`/enterprise/modules/${slug}/${companyId}/summary`);
       return response.data;
@@ -281,6 +291,16 @@ export const enterpriseUniversalApi = {
   },
 
   async health(slug: string, companyId: string) {
+    // Demo short-circuit
+    if (isDemoEntityId(companyId) && isOperationalDemoFallbackEnabled()) {
+      return {
+        slug,
+        companyId,
+        status: 'OK_WITH_FALLBACK',
+        generatedAt: new Date().toISOString(),
+      };
+    }
+
     try {
       const response = await api.get(`/enterprise/modules/${slug}/${companyId}/health`);
       return response.data;
