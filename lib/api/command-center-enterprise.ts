@@ -376,6 +376,11 @@ export const commandCenterEnterpriseApi = {
     companyId: string,
     query: CommandCenterQuery = {},
   ): Promise<CommandCenterSummaryResponse> => {
+    // Short-circuit for demo companies to avoid unnecessary validation errors on the API (UUID expected)
+    if (typeof companyId === 'string' && companyId.toLowerCase().startsWith('demo-')) {
+      return createDemoCommandCenterSummary(companyId);
+    }
+
     try {
       const response = await api.get<CommandCenterSummaryResponse>(
         `/operations/command-center/${companyId}${buildQuery(query)}`,
@@ -391,6 +396,20 @@ export const commandCenterEnterpriseApi = {
     companyId: string,
     query: CommandCenterQuery = {},
   ): Promise<CommandCenterRisksResponse> => {
+    // Short-circuit demo company IDs to avoid server-side UUID validation failures
+    if (typeof companyId === 'string' && companyId.toLowerCase().startsWith('demo-')) {
+      const summary = createDemoCommandCenterSummary(companyId);
+      return {
+        status: summary.status,
+        module: summary.module,
+        companyId,
+        executiveSummary: summary.executiveSummary,
+        risks: summary.risks,
+        auditIntelligence: summary.auditIntelligence,
+        generatedAt: summary.generatedAt,
+      };
+    }
+
     try {
       const response = await api.get<CommandCenterRisksResponse>(
         `/operations/command-center/${companyId}/risks${buildQuery(query)}`,
@@ -415,6 +434,19 @@ export const commandCenterEnterpriseApi = {
     companyId: string,
     query: CommandCenterQuery = {},
   ): Promise<CommandCenterModulesResponse> => {
+    // Short-circuit demo company IDs to avoid server-side UUID validation failures
+    if (typeof companyId === 'string' && companyId.toLowerCase().startsWith('demo-')) {
+      const summary = createDemoCommandCenterSummary(companyId);
+      return {
+        status: summary.status,
+        module: summary.module,
+        companyId,
+        executiveSummary: summary.executiveSummary,
+        modules: summary.modules,
+        generatedAt: summary.generatedAt,
+      };
+    }
+
     try {
       const response = await api.get<CommandCenterModulesResponse>(
         `/operations/command-center/${companyId}/modules${buildQuery(query)}`,
@@ -438,6 +470,19 @@ export const commandCenterEnterpriseApi = {
     companyId: string,
     query: CommandCenterQuery = {},
   ): Promise<CommandCenterActivityResponse> => {
+    // Short-circuit demo company IDs to avoid server-side UUID validation failures
+    if (typeof companyId === 'string' && companyId.toLowerCase().startsWith('demo-')) {
+      const summary = createDemoCommandCenterSummary(companyId);
+      return {
+        status: summary.status,
+        module: summary.module,
+        companyId,
+        activity: summary.activity,
+        audit: summary.audit,
+        generatedAt: summary.generatedAt,
+      };
+    }
+
     try {
       const response = await api.get<CommandCenterActivityResponse>(
         `/operations/command-center/${companyId}/activity${buildQuery(query)}`,
