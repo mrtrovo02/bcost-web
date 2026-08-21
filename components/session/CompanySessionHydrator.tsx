@@ -42,10 +42,14 @@ function resolveApiBase() {
     typeof window !== 'undefined' &&
     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
   ) {
-    return 'http://localhost:5000/api/v1';
+    return 'http://localhost:5001/api/v1';
   }
 
-  return process.env.NEXT_PUBLIC_API_URL || 'https://api.bcost.com.br/api/v1';
+  return (
+    process.env.NEXT_PUBLIC_API_URL ||
+    process.env.NEXT_PUBLIC_API_BASE_URL ||
+    (process.env.NODE_ENV === 'development' ? 'http://localhost:5001/api/v1' : 'https://api.bcost.com.br/api/v1')
+  );
 }
 
 function readLocalStorage(keys: string[]): string | null {

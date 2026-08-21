@@ -449,12 +449,20 @@ export function isAuthMissingError(error: unknown): error is AuthMissingError {
 // Instancia Axios unificada
 function resolveApiBase(): string {
   if (isLocalBrowserHost()) {
-    return 'http://localhost:5000/api/v1';
+    return 'http://localhost:5001/api/v1';
+  }
+
+  if (
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  ) {
+    return 'http://localhost:5001/api/v1';
   }
 
   return (
     process.env.NEXT_PUBLIC_API_URL ||
-    (process.env.NODE_ENV === 'development' ? 'http://localhost:5000/api/v1' : '/api/v1')
+    process.env.NEXT_PUBLIC_API_BASE_URL ||
+    (process.env.NODE_ENV === 'development' ? 'http://localhost:5001/api/v1' : '/api/v1')
   );
 }
 
@@ -470,10 +478,16 @@ export const api: AxiosInstance = axios.create({
 // Interceptor de Requisicao (Injeção de Metadados e Tokens)
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    const runtimeBase = resolveApiBase();
+    if (runtimeBase && config.baseURL !== runtimeBase) {
+      config.baseURL = runtimeBase;
+    }
+
     const token = getToken();
     if (token && !config.headers.Authorization) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
     const companyId = getActiveCompanyId();
     if (companyId) {
       config.headers['x-company-id'] = companyId;
