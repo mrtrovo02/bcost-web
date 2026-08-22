@@ -10,11 +10,6 @@ export default defineConfig({
     setupFiles: ['./vitest.setup.ts'],
     pool: 'threads',
   },
-  poolOptions: {
-    threads: {
-      singleThread: true,
-    },
-  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, '.'),

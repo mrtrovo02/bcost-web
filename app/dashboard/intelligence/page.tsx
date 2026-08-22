@@ -7,6 +7,7 @@ import { getDemoFiscalData } from '@/services/demo-data';
 import { useCompany } from '@/app/context/CompanyContext';
 import TaxEvolutionChart from '@/components/TaxEvolutionChart';
 import CbsIbsAlertBanner, { calcularCbsIbs } from '@/components/alerts/CbsIbsAlertBanner';
+import TaxScenarioSimulator from '@/components/tax-intelligence/TaxScenarioSimulator';
 import TaxReformScenarioStack from '@/components/tax-reform/TaxReformScenarioStack';
 import { MonthlyPerformance } from '@/lib/types/fiscal';
 import { CBS_IBS_TRANSITION } from '@/lib/tax-reform/official-data';
@@ -238,6 +239,10 @@ export default function DashboardPage() {
               color="text-emerald-400"
               badgeColor="bg-emerald-500/10 text-emerald-400"
             />
+          </div>
+
+          <div className="mt-2">
+            <TaxScenarioSimulator />
           </div>
 
           {/* ─── Painel CBS/IBS com impacto calculado ──────────────────── */}

@@ -1,0 +1,331 @@
+'use client';
+
+import { useState } from 'react';
+import {
+  AlertTriangle,
+  ArrowRight,
+  Calculator,
+  CheckCircle2,
+  ShieldCheck,
+  TrendingUp,
+} from 'lucide-react';
+import { useCompany } from '@/app/context/CompanyContext';
+import { taxScenariosApi, type SimulateTaxScenarioDto, type SimulationResponse } from '@/lib/api/tax-scenarios';
+
+const BASE_FORM: Omit<SimulateTaxScenarioDto, 'companyId'> = {
+  activity: 'SERVICE_PROVIDER',
+  monthlyRevenue: 220000,
+  monthlyDeductibleExpenses: 35000,
+  monthlyPayroll: 50000,
+  dependents: 1,
+  currentModel: 'PF',
+};
+
+export default function TaxScenarioSimulator() {
+  const { selectedCompany } = useCompany();
+  const [form, setForm] = useState<SimulateTaxScenarioDto>({
+    ...BASE_FORM,
+    companyId: selectedCompany?.id,
+  });
+  const [result, setResult] = useState<SimulationResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleChange = <K extends keyof SimulateTaxScenarioDto>(
+    key: K,
+    value: SimulateTaxScenarioDto[K],
+  ) => {
+    setForm((previous) => ({
+      ...previous,
+      [key]: value,
+    }));
+  };
+
+  const handleSubmit = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const payload: SimulateTaxScenarioDto = {
+        ...form,
+        companyId: selectedCompany?.id ?? form.companyId,
+        monthlyRevenue: Number(form.monthlyRevenue || 0),
+        monthlyDeductibleExpenses: Number(form.monthlyDeductibleExpenses || 0),
+        monthlyPayroll: Number(form.monthlyPayroll || 0),
+        dependents: Number(form.dependents || 0),
+      };
+
+      const data = await taxScenariosApi.simulate(payload);
+      setResult(data);
+    } catch (requestError) {
+      console.error('Tax scenario simulation failed', requestError);
+      setError('Não foi possível calcular o cenário tributário. Verifique os dados e tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const bestModel = result?.bestEstimatedModel ?? 'SIMPLES_NACIONAL';
+  const bestComparison = result?.comparisons.find((comparison) => comparison.model === bestModel);
+  const currentComparison = result?.comparisons.find(
+    (comparison) => comparison.model === form.currentModel,
+  );
+
+  return (
+    <section className="bg-[#090d16] border border-white/5 rounded-[2.5rem] p-6 shadow-[0_4px_25px_rgba(0,0,0,0.25)]">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-6">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.28em] text-blue-400">
+            Tax Intelligence Engine
+          </p>
+          <h3 className="mt-2 text-2xl font-black text-white tracking-tight">
+            Simulador de regime tributário
+          </h3>
+        </div>
+        <div className="flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400">
+          <ShieldCheck size={14} />
+          Governança e auditoria
+        </div>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[320px_1fr]">
+        <div className="space-y-4 rounded-[2rem] border border-white/5 bg-[#0d1320] p-5">
+          <div className="grid grid-cols-2 gap-3">
+            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+              Faturamento mensal
+              <input
+                type="number"
+                value={form.monthlyRevenue}
+                onChange={(event) => handleChange('monthlyRevenue', Number(event.target.value))}
+                className="mt-2 w-full rounded-xl border border-white/10 bg-[#090d16] px-3 py-2 text-sm text-white outline-none focus:border-blue-500"
+              />
+            </label>
+            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+              Despesas dedutíveis
+              <input
+                type="number"
+                value={form.monthlyDeductibleExpenses}
+                onChange={(event) => handleChange('monthlyDeductibleExpenses', Number(event.target.value))}
+                className="mt-2 w-full rounded-xl border border-white/10 bg-[#090d16] px-3 py-2 text-sm text-white outline-none focus:border-blue-500"
+              />
+            </label>
+            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+              Folha mensal
+              <input
+                type="number"
+                value={form.monthlyPayroll}
+                onChange={(event) => handleChange('monthlyPayroll', Number(event.target.value))}
+                className="mt-2 w-full rounded-xl border border-white/10 bg-[#090d16] px-3 py-2 text-sm text-white outline-none focus:border-blue-500"
+              />
+            </label>
+            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+              Dependentes
+              <input
+                type="number"
+                min={0}
+                max={20}
+                value={form.dependents}
+                onChange={(event) => handleChange('dependents', Number(event.target.value))}
+                className="mt-2 w-full rounded-xl border border-white/10 bg-[#090d16] px-3 py-2 text-sm text-white outline-none focus:border-blue-500"
+              />
+            </label>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+              Atividade
+              <select
+                value={form.activity}
+                onChange={(event) => handleChange('activity', event.target.value as SimulateTaxScenarioDto['activity'])}
+                className="mt-2 w-full rounded-xl border border-white/10 bg-[#090d16] px-3 py-2 text-sm text-white outline-none focus:border-blue-500"
+              >
+                <option value="SERVICE_PROVIDER">Prestação de serviços</option>
+                <option value="TECHNOLOGY">Tecnologia</option>
+                <option value="LEGAL">Jurídico</option>
+                <option value="CONSULTING">Consultoria</option>
+                <option value="HEALTHCARE">Saúde</option>
+                <option value="CREATOR">Criador</option>
+                <option value="OTHER">Outros</option>
+              </select>
+            </label>
+            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+              Modelo atual
+              <select
+                value={form.currentModel ?? 'PF'}
+                onChange={(event) => handleChange('currentModel', event.target.value as SimulateTaxScenarioDto['currentModel'])}
+                className="mt-2 w-full rounded-xl border border-white/10 bg-[#090d16] px-3 py-2 text-sm text-white outline-none focus:border-blue-500"
+              >
+                <option value="PF">PF</option>
+                <option value="MEI">MEI</option>
+                <option value="SIMPLES_NACIONAL">Simples Nacional</option>
+                <option value="LUCRO_PRESUMIDO">Lucro Presumido</option>
+              </select>
+            </label>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={loading}
+            className="w-full rounded-2xl bg-blue-600 px-4 py-3 text-xs font-black uppercase tracking-[0.2em] text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loading ? 'Calculando...' : 'Simular cenário'}
+          </button>
+
+          {error && (
+            <div className="rounded-2xl border border-rose-500/20 bg-rose-500/5 px-3 py-2 text-xs text-rose-300">
+              {error}
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-4">
+          {result ? (
+            <>
+              <div className="grid gap-4 md:grid-cols-4">
+                <MetricTile
+                  label="Melhor regime"
+                  value={result.bestEstimatedModel.replace('_', ' ')}
+                  tone="blue"
+                />
+                <MetricTile
+                  label="Fator R"
+                  value={`${result.factorR.percentage.toFixed(1)}%`}
+                  tone="amber"
+                />
+                <MetricTile
+                  label="Economia anual"
+                  value={new Intl.NumberFormat('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL',
+                  }).format(result.annualSavings ?? 0)}
+                  tone="emerald"
+                />
+                <MetricTile
+                  label="Taxa efetiva"
+                  value={`${bestComparison?.estimatedEffectiveRate ?? 0}%`}
+                  tone="rose"
+                />
+              </div>
+
+              <div className="rounded-[2rem] border border-white/5 bg-[#0d1320] p-5">
+                <div className="flex items-center justify-between gap-3 pb-4 border-b border-white/5">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">
+                      Recomendação do motor
+                    </p>
+                    <h4 className="mt-2 text-xl font-black text-white">{result.recommendation.title}</h4>
+                  </div>
+                  {result.recommendation.decision === 'PJ_SIMULATION_RECOMMENDED' ? (
+                    <CheckCircle2 className="text-emerald-400" size={24} />
+                  ) : (
+                    <AlertTriangle className="text-amber-400" size={24} />
+                  )}
+                </div>
+
+                <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">
+                      Racional
+                    </p>
+                    <ul className="space-y-2 text-sm text-slate-300">
+                      {result.recommendation.rationale.map((item) => (
+                        <li key={item} className="flex gap-2">
+                          <ArrowRight size={14} className="mt-0.5 text-blue-400" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">
+                      Próximos passos
+                    </p>
+                    <ul className="space-y-2 text-sm text-slate-300">
+                      {result.recommendation.nextActions.map((item) => (
+                        <li key={item} className="flex gap-2">
+                          <TrendingUp size={14} className="mt-0.5 text-emerald-400" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-[2rem] border border-white/5 bg-[#0d1320] p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <Calculator className="text-blue-400" size={18} />
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                    Comparação por regime
+                  </p>
+                </div>
+                <div className="space-y-3">
+                  {result.comparisons.map((comparison) => (
+                    <div
+                      key={comparison.model}
+                      className={`rounded-2xl border p-4 ${comparison.model === bestModel ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-white/5 bg-[#090d16]'}`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">
+                            {comparison.model.replace('_', ' ')}
+                          </p>
+                          <p className="mt-2 text-xl font-black text-white">
+                            {new Intl.NumberFormat('pt-BR', {
+                              style: 'currency',
+                              currency: 'BRL',
+                            }).format(comparison.estimatedTax)}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
+                            líquida anual
+                          </p>
+                          <p className="mt-2 text-sm font-black text-slate-200">
+                            {new Intl.NumberFormat('pt-BR', {
+                              style: 'currency',
+                              currency: 'BRL',
+                            }).format(comparison.netAnnualResult)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex min-h-[260px] items-center justify-center rounded-[2rem] border border-dashed border-white/10 bg-[#0d1320] p-6 text-center text-sm text-slate-400">
+              Defina o faturamento e execute a simulação para ver a recomendação tributária.
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function MetricTile({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: 'blue' | 'amber' | 'emerald' | 'rose';
+}) {
+  const tones = {
+    blue: 'border-blue-500/20 bg-blue-500/5 text-blue-300',
+    amber: 'border-amber-500/20 bg-amber-500/5 text-amber-300',
+    emerald: 'border-emerald-500/20 bg-emerald-500/5 text-emerald-300',
+    rose: 'border-rose-500/20 bg-rose-500/5 text-rose-300',
+  } as const;
+
+  return (
+    <div className={`rounded-[1.5rem] border p-4 ${tones[tone]}`}>
+      <p className="text-[9px] font-black uppercase tracking-[0.24em] opacity-70">{label}</p>
+      <p className="mt-4 text-xl font-black text-white">{value}</p>
+    </div>
+  );
+}
