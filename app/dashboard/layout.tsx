@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Building2 } from 'lucide-react';
 import { useCompany } from '@/app/context/CompanyContext';
 import CompanySessionHydrator from '@/components/session/CompanySessionHydrator';
@@ -29,7 +29,12 @@ function getStoredUser(): StoredUser | null {
  */
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { selectedCompany } = useCompany();
-  const user = getStoredUser();
+  const [user, setUser] = useState<StoredUser | null>(null);
+
+  useEffect(() => {
+    setUser(getStoredUser());
+  }, []);
+
   const displayName = user?.name || user?.email || 'Usuário';
   const initials = displayName
     .split(/\s+/)
@@ -70,16 +75,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
 
             {/* User Profile Identity Badge */}
-            <div className="flex items-center gap-3.5 bg-[#090d16] border border-white/5 p-2 pr-5 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.3)] hover:border-white/10 transition-all duration-300 group cursor-pointer">
+            <div className="flex items-center gap-3.5 bg-[#090d16] border border-white/5 p-2 pr-5 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.3)] hover:border-white/10 transition-all duration-300 group cursor-pointer" suppressHydrationWarning>
               <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-600 to-indigo-800 flex items-center justify-center text-white text-sm font-black shadow-lg relative overflow-hidden">
                 <span className="relative z-10" suppressHydrationWarning>{initials || 'U'}</span>
                 <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
               <div className="flex flex-col">
-                <span className="max-w-36 truncate text-xs font-black text-slate-200 leading-none">
+                <span className="max-w-36 truncate text-xs font-black text-slate-200 leading-none" suppressHydrationWarning>
                   {displayName}
                 </span>
-                <span className="text-[8px] font-black text-emerald-500 uppercase tracking-wider mt-0.5">
+                <span className="text-[8px] font-black text-emerald-500 uppercase tracking-wider mt-0.5" suppressHydrationWarning>
                   {user?.role || 'Usuário autenticado'}
                 </span>
               </div>
