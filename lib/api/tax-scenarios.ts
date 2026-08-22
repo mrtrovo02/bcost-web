@@ -45,7 +45,7 @@ export const taxScenariosApi = {
       });
 
       return data;
-    } catch (err) {
+    } catch {
       // If the endpoint truly doesn't exist or fails, return null so callers can handle absence.
       return null;
     }

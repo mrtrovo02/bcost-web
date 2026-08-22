@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Building2 } from 'lucide-react';
 import { useCompany } from '@/app/context/CompanyContext';
 import CompanySessionHydrator from '@/components/session/CompanySessionHydrator';
@@ -29,11 +29,7 @@ function getStoredUser(): StoredUser | null {
  */
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { selectedCompany } = useCompany();
-  const [user, setUser] = useState<StoredUser | null>(null);
-
-  useEffect(() => {
-    setUser(getStoredUser());
-  }, []);
+  const [user] = useState<StoredUser | null>(() => getStoredUser());
 
   const displayName = user?.name || user?.email || 'Usuário';
   const initials = displayName
