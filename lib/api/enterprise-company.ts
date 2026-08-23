@@ -6,7 +6,7 @@ import {
   isDemoEntityId,
   isOperationalDemoFallbackEnabled,
 } from '@/lib/config/demo-policy';
-import { api } from '@/services/api';
+import { api, isDemoSession } from '@/services/api';
 
 type AuthMeResponse = {
   id: string;
@@ -62,6 +62,16 @@ export function readStoredEnterpriseCompanyId(): string | null {
 }
 
 export async function resolveEnterpriseCompanyIdWithFallback(): Promise<string> {
+  if (isDemoSession()) {
+    const demoCompanyId = getDemoEnterpriseCompanyId();
+
+    if (isBrowser()) {
+      localStorage.setItem('bcost_active_company', demoCompanyId);
+    }
+
+    return demoCompanyId;
+  }
+
   const stored = readStoredEnterpriseCompanyId();
 
   if (stored) return stored;

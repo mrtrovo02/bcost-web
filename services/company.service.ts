@@ -1,6 +1,7 @@
 'use strict';
 
-import { api } from './api';
+import { api, isDemoSession } from './api';
+import { DEMO_COMPANIES } from './demo-data';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -44,6 +45,10 @@ export const companyService = {
    * Alinhado com o bCost Engine v1.
    */
   async getAll(): Promise<Company[]> {
+    if (isDemoSession()) {
+      return DEMO_COMPANIES as Company[];
+    }
+
     try {
       // Como o BASE_URL no api.ts já termina em /v1, chamamos apenas /company
       const { data } = await api.get<Company[]>('/company');
@@ -64,6 +69,11 @@ export const companyService = {
    * 🔍 Busca detalhes de uma unidade específica para o Dashboard.
    */
   async getById(id: string): Promise<Company> {
+    if (isDemoSession()) {
+      const company = DEMO_COMPANIES.find((item) => item.id === id) ?? DEMO_COMPANIES[0];
+      return company as Company;
+    }
+
     const { data } = await api.get<Company>(`/company/${id}`);
     return data;
   },
@@ -72,16 +82,36 @@ export const companyService = {
    * 🏗️ Onboarding: Cria uma nova unidade/empresa no ecossistema.
    */
   async create(companyData: CreateCompanyInput): Promise<Company> {
+    if (isDemoSession()) {
+      return {
+        id: `demo-company-${Date.now()}`,
+        cnpj: companyData.cnpj,
+        name: companyData.name,
+        taxRegime: companyData.taxRegime,
+        role: 'OWNER',
+        status: 'ACTIVE',
+        plan: 'ENTERPRISE',
+        createdAt: new Date().toISOString(),
+      };
+    }
+
     const { data } = await api.post<Company>('/company', companyData);
     return data;
   },
 
   async update(companyId: string, companyData: UpdateCompanyInput): Promise<Company> {
+    if (isDemoSession()) {
+      const company = DEMO_COMPANIES.find((item) => item.id === companyId) ?? DEMO_COMPANIES[0];
+      return { ...(company as Company), ...companyData };
+    }
+
     const { data } = await api.patch<Company>(`/company/${companyId}`, companyData);
     return data;
   },
 
   async remove(companyId: string): Promise<void> {
+    if (isDemoSession()) return;
+
     await api.delete(`/company/${companyId}`);
   },
 

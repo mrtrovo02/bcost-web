@@ -1,6 +1,12 @@
 'use strict';
 
-import { api, getActiveCompanyId, getToken, setActiveCompanyId } from '@/services/api';
+import {
+  api,
+  getActiveCompanyId,
+  getToken,
+  isDemoSession,
+  setActiveCompanyId,
+} from '@/services/api';
 import { safeLocalStorageGet } from '@/lib/utils/runtime-guards';
 import { trackEvent } from '@/lib/utils/telemetry';
 import { getSchemaModuleBySlug } from '@/lib/product/schema-modules';
@@ -147,6 +153,12 @@ function hasRealAuthToken(): boolean {
 }
 
 export async function resolveEnterpriseCompanyId(): Promise<string | null> {
+  if (isDemoSession()) {
+    const demoCompanyId = getDemoEnterpriseCompanyId();
+    setActiveCompanyId?.(demoCompanyId);
+    return demoCompanyId;
+  }
+
   try {
     const me = await api.get('/auth/me');
     const companies = Array.isArray(me.data?.companies) ? me.data.companies : [];
