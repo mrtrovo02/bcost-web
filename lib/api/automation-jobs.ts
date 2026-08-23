@@ -1,6 +1,11 @@
 'use strict';
 
 import { api } from '@/services/api';
+import {
+  assertOperationalDemoFallbackEnabled,
+  isDemoEntityId,
+  isOperationalDemoFallbackEnabled,
+} from '@/lib/config/demo-policy';
 import { createDemoEnterpriseResponse } from './enterprise-demo';
 
 export type AutomationJobStatus =
@@ -105,6 +110,10 @@ export type AuditLogListResponse = {
 };
 
 function demoAutomationResponse(companyId: string, params: AutomationJobsQuery = {}) {
+  assertOperationalDemoFallbackEnabled(
+    'Automacoes indisponiveis e fallback demonstrativo desabilitado neste ambiente.',
+  );
+
   const demo = createDemoEnterpriseResponse('automation-jobs', companyId, params);
 
   return {
@@ -144,8 +153,7 @@ export const automationJobsApi = {
   ): Promise<AutomationJobsListResponse> => {
     const query = buildQuery(params);
 
-    // Short-circuit demo company IDs
-    if (typeof companyId === 'string' && companyId.toLowerCase().startsWith('demo-')) {
+    if (isDemoEntityId(companyId) && isOperationalDemoFallbackEnabled()) {
       return demoAutomationResponse(companyId, params);
     }
 
@@ -155,14 +163,17 @@ export const automationJobsApi = {
       );
 
       return response.data;
-    } catch {
-      return demoAutomationResponse(companyId, params);
+    } catch (error) {
+      if (isDemoEntityId(companyId)) {
+        return demoAutomationResponse(companyId, params);
+      }
+
+      throw error;
     }
   },
 
   detail: async (companyId: string, jobId: string): Promise<AutomationJobDetailResponse> => {
-    // Short-circuit demo company IDs
-    if (typeof companyId === 'string' && companyId.toLowerCase().startsWith('demo-')) {
+    if (isDemoEntityId(companyId) && isOperationalDemoFallbackEnabled()) {
       const demo = demoAutomationResponse(companyId);
       const job = demo.items.find((item) => item.id === jobId) || demo.items[0];
 
@@ -182,7 +193,11 @@ export const automationJobsApi = {
       );
 
       return response.data;
-    } catch {
+    } catch (error) {
+      if (!isDemoEntityId(companyId)) {
+        throw error;
+      }
+
       const demo = demoAutomationResponse(companyId);
       const job = demo.items.find((item) => item.id === jobId) || demo.items[0];
 
