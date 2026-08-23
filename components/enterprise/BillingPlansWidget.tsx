@@ -28,18 +28,9 @@ import {
   getDemoBillingEntitlements,
   PlanLevel,
 } from '@/lib/api/billing';
-import { isDemoEntityId, isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
-import { api, getToken } from '@/services/api';
-
-type AuthMeResponse = {
-  id: string;
-  email: string;
-  companyId?: string;
-  activeCompanyId?: string;
-  companies?: Array<{ id?: string }>;
-  role?: string;
-  [key: string]: unknown;
-};
+import { isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
+import { resolveEnterpriseCompanyIdWithFallback } from '@/lib/api/enterprise-company';
+import { getToken } from '@/services/api';
 
 type UiMessage = {
   type: 'success' | 'warning' | 'error' | 'info';
@@ -47,86 +38,13 @@ type UiMessage = {
   description?: string;
 };
 
-function isBrowser() {
-  return typeof window !== 'undefined';
-}
-
 function hasRealAuthToken(): boolean {
   const token = getToken();
   return Boolean(token && token !== 'demo-token-local');
 }
 
-function readStoredCompanyId(): string | null {
-  if (!isBrowser()) return null;
-
-  const keys = ['bcost_active_company', 'bcost_company_id', 'companyId', 'activeCompanyId'];
-  const realAuth = hasRealAuthToken();
-
-  for (const key of keys) {
-    const value = localStorage.getItem(key);
-
-    if (value && value !== 'null' && value !== 'undefined' && value !== 'ID_DA_EMPRESA') {
-      if (realAuth && isDemoEntityId(value)) continue;
-      return value;
-    }
-  }
-
-  try {
-    const rawUser =
-      localStorage.getItem('bcost_user') ||
-      localStorage.getItem('user') ||
-      localStorage.getItem('auth_user');
-
-    if (rawUser) {
-      const parsed = JSON.parse(rawUser) as Record<string, unknown>;
-      const companyId = parsed.companyId || parsed.activeCompanyId || parsed.company_id;
-
-      if (typeof companyId === 'string' && companyId) {
-        if (realAuth && isDemoEntityId(companyId)) return null;
-        return companyId;
-      }
-    }
-  } catch {
-    return null;
-  }
-
-  return null;
-}
-
 async function resolveCompanyId(): Promise<string> {
-  const realAuth = hasRealAuthToken();
-
-  if (!realAuth) {
-    const stored = readStoredCompanyId();
-    if (stored) return stored;
-  }
-
-  try {
-    const response = await api.get<AuthMeResponse>('/auth/me');
-    const companyId =
-      response.data.activeCompanyId ||
-      response.data.companyId ||
-      response.data.companies?.find((company) => typeof company.id === 'string')?.id;
-
-    if (companyId && !(realAuth && isDemoEntityId(companyId))) {
-      if (isBrowser()) {
-        localStorage.setItem('bcost_active_company', companyId);
-      }
-
-      return companyId;
-    }
-  } catch {
-    // The caller decides whether production may use a demonstrative fallback.
-  }
-
-  const stored = readStoredCompanyId();
-  if (stored) return stored;
-
-  if (isOperationalDemoFallbackEnabled()) {
-    return 'demo-001';
-  }
-
-  throw new Error('Empresa ativa não encontrada para carregar billing.');
+  return resolveEnterpriseCompanyIdWithFallback();
 }
 
 function planTone(plan?: PlanLevel) {

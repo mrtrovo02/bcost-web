@@ -36,16 +36,9 @@ import {
   NotificationsEnterpriseSummaryResponse,
   WebhookEnterpriseRecord,
 } from '@/lib/api/notifications-enterprise';
-import { api } from '@/services/api';
+import { resolveEnterpriseCompanyIdWithFallback } from '@/lib/api/enterprise-company';
 
 type WorkspaceMode = 'notifications' | 'webhooks';
-
-type AuthMeResponse = {
-  id: string;
-  email: string;
-  companyId?: string;
-  role?: string;
-};
 
 type UiMessage = {
   type: 'success' | 'warning' | 'error' | 'info';
@@ -108,43 +101,8 @@ const DEFAULT_DISPATCH_FORM: DispatchForm = {
   ),
 };
 
-function isBrowser() {
-  return typeof window !== 'undefined';
-}
-
-function readStoredCompanyId(): string | null {
-  if (!isBrowser()) return null;
-
-  const keys = ['bcost_active_company', 'bcost_company_id', 'companyId', 'activeCompanyId'];
-
-  for (const key of keys) {
-    const value = localStorage.getItem(key);
-
-    if (value && value !== 'null' && value !== 'undefined' && value !== 'ID_DA_EMPRESA') {
-      return value;
-    }
-  }
-
-  return null;
-}
-
 async function resolveCompanyId(): Promise<string> {
-  const stored = readStoredCompanyId();
-
-  if (stored) return stored;
-
-  const response = await api.get<AuthMeResponse>('/auth/me');
-  const companyId = response.data.companyId;
-
-  if (!companyId) {
-    throw new Error('Empresa ativa não encontrada no token.');
-  }
-
-  if (isBrowser()) {
-    localStorage.setItem('bcost_active_company', companyId);
-  }
-
-  return companyId;
+  return resolveEnterpriseCompanyIdWithFallback();
 }
 
 function parseJsonObject(value: string): Record<string, unknown> {
