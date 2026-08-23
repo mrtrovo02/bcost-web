@@ -1,6 +1,11 @@
 'use strict';
 
 import { api } from '@/services/api';
+import {
+  assertOperationalDemoFallbackEnabled,
+  isDemoEntityId,
+  isOperationalDemoFallbackEnabled,
+} from '@/lib/config/demo-policy';
 
 export type FinanceOperationStatus =
   | 'PAID'
@@ -275,6 +280,10 @@ function demoFinanceItem(
 }
 
 function createDemoFinanceSummary(companyId: string): FinanceOperationsSummaryResponse {
+  assertOperationalDemoFallbackEnabled(
+    'Operacoes financeiras indisponiveis e fallback demonstrativo desabilitado neste ambiente.',
+  );
+
   const receivables = [
     demoFinanceItem('rec-001', 'RECEIVABLE', 'Mensalidade SaaS', 24800, 'OPEN', 12, 'LOW'),
     demoFinanceItem('rec-002', 'RECEIVABLE', 'Serviços contábeis recorrentes', 13750, 'DUE_SOON', 5, 'MEDIUM'),
@@ -351,19 +360,31 @@ function fallbackFinanceSummary(companyId: string): FinanceOperationsSummaryResp
   return createDemoFinanceSummary(companyId);
 }
 
+function shouldUseFinanceFallback(companyId: string): boolean {
+  return isDemoEntityId(companyId) && isOperationalDemoFallbackEnabled();
+}
+
 export const financeOperationsEnterpriseApi = {
   summary: async (
     companyId: string,
     query: FinanceOperationsQuery = { limit: 50, includeRaw: false },
   ): Promise<FinanceOperationsSummaryResponse> => {
+    if (shouldUseFinanceFallback(companyId)) {
+      return fallbackFinanceSummary(companyId);
+    }
+
     try {
       const response = await api.get<FinanceOperationsSummaryResponse>(
         `/finance/operations/${companyId}${buildQuery(query)}`,
       );
 
       return response.data;
-    } catch {
-      return fallbackFinanceSummary(companyId);
+    } catch (error) {
+      if (isDemoEntityId(companyId)) {
+        return fallbackFinanceSummary(companyId);
+      }
+
+      throw error;
     }
   },
 
@@ -371,13 +392,30 @@ export const financeOperationsEnterpriseApi = {
     companyId: string,
     query: FinanceOperationsQuery = { limit: 50 },
   ): Promise<FinanceOperationsListResponse> => {
+    if (shouldUseFinanceFallback(companyId)) {
+      const summary = fallbackFinanceSummary(companyId);
+      return {
+        status: summary.status,
+        module: summary.module,
+        companyId,
+        summary: summary.executiveSummary.receivables,
+        aging: summary.aging.receivables,
+        items: summary.lists.receivables,
+        generatedAt: summary.generatedAt,
+      };
+    }
+
     try {
       const response = await api.get<FinanceOperationsListResponse>(
         `/finance/operations/${companyId}/receivables${buildQuery(query)}`,
       );
 
       return response.data;
-    } catch {
+    } catch (error) {
+      if (!isDemoEntityId(companyId)) {
+        throw error;
+      }
+
       const summary = fallbackFinanceSummary(companyId);
       return {
         status: summary.status,
@@ -395,13 +433,30 @@ export const financeOperationsEnterpriseApi = {
     companyId: string,
     query: FinanceOperationsQuery = { limit: 50 },
   ): Promise<FinanceOperationsListResponse> => {
+    if (shouldUseFinanceFallback(companyId)) {
+      const summary = fallbackFinanceSummary(companyId);
+      return {
+        status: summary.status,
+        module: summary.module,
+        companyId,
+        summary: summary.executiveSummary.payables,
+        aging: summary.aging.payables,
+        items: summary.lists.payables,
+        generatedAt: summary.generatedAt,
+      };
+    }
+
     try {
       const response = await api.get<FinanceOperationsListResponse>(
         `/finance/operations/${companyId}/payables${buildQuery(query)}`,
       );
 
       return response.data;
-    } catch {
+    } catch (error) {
+      if (!isDemoEntityId(companyId)) {
+        throw error;
+      }
+
       const summary = fallbackFinanceSummary(companyId);
       return {
         status: summary.status,
@@ -419,13 +474,30 @@ export const financeOperationsEnterpriseApi = {
     companyId: string,
     query: FinanceOperationsQuery = { limit: 50 },
   ): Promise<FinanceOperationsCashflowResponse> => {
+    if (shouldUseFinanceFallback(companyId)) {
+      const summary = fallbackFinanceSummary(companyId);
+      return {
+        status: summary.status,
+        module: summary.module,
+        companyId,
+        cashflow: summary.executiveSummary.cashflow,
+        cashItems: summary.lists.cashItems,
+        cashFlowProjections: summary.supportingData.cashFlowProjections || [],
+        generatedAt: summary.generatedAt,
+      };
+    }
+
     try {
       const response = await api.get<FinanceOperationsCashflowResponse>(
         `/finance/operations/${companyId}/cashflow${buildQuery(query)}`,
       );
 
       return response.data;
-    } catch {
+    } catch (error) {
+      if (!isDemoEntityId(companyId)) {
+        throw error;
+      }
+
       const summary = fallbackFinanceSummary(companyId);
       return {
         status: summary.status,
@@ -443,13 +515,33 @@ export const financeOperationsEnterpriseApi = {
     companyId: string,
     query: FinanceOperationsQuery = { limit: 50 },
   ): Promise<FinanceOperationsTimelineResponse> => {
+    if (shouldUseFinanceFallback(companyId)) {
+      const summary = fallbackFinanceSummary(companyId);
+      return {
+        status: summary.status,
+        module: summary.module,
+        companyId,
+        items: [
+          ...summary.lists.receivables,
+          ...summary.lists.payables,
+          ...summary.lists.cashItems,
+        ],
+        financialEvents: [],
+        generatedAt: summary.generatedAt,
+      };
+    }
+
     try {
       const response = await api.get<FinanceOperationsTimelineResponse>(
         `/finance/operations/${companyId}/timeline${buildQuery(query)}`,
       );
 
       return response.data;
-    } catch {
+    } catch (error) {
+      if (!isDemoEntityId(companyId)) {
+        throw error;
+      }
+
       const summary = fallbackFinanceSummary(companyId);
       return {
         status: summary.status,
