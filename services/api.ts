@@ -136,6 +136,10 @@ function cookieDeleteAttrs(): string {
     : `${base}; SameSite=Lax`;
 }
 
+function hostCookieDeleteAttrs(): string {
+  return 'path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+}
+
 export function readCookie(name: string): string | null {
   if (!isBrowser() || !document.cookie) return null;
   for (const raw of document.cookie.split(';')) {
@@ -161,6 +165,7 @@ export function writeCookie(name: string, value: string, maxAge = COOKIE_MAX_AGE
 export function deleteCookie(name: string): void {
   if (!isBrowser()) return;
   document.cookie = `${name}=; ${cookieDeleteAttrs()}`;
+  document.cookie = `${name}=; ${hostCookieDeleteAttrs()}`;
 }
 
 // localStorage helpers
@@ -260,6 +265,7 @@ export function getToken(): string | null {
 
 export function setToken(token: string): void {
   if (!isBrowser() || !isValidValue(token)) return;
+  for (const key of TOKEN_KEYS) deleteCookie(key);
   lsSet(TOKEN_KEYS, token);
   for (const key of TOKEN_KEYS) writeCookie(key, token);
 }

@@ -8,7 +8,13 @@ describe('isDemoSession', () => {
     vi.stubEnv('NEXT_PUBLIC_ENABLE_DEMO', 'true');
   });
 
-  it('treats missing auth as a demo session in development', () => {
+  it('does not treat missing auth as a demo session', () => {
+    expect(isDemoSession()).toBe(false);
+  });
+
+  it('detects an explicit demo token as a demo session', () => {
+    localStorage.setItem('bcost_token', 'demo-token-local');
+
     expect(isDemoSession()).toBe(true);
   });
 });

@@ -1,6 +1,34 @@
 'use strict';
 
 const DEMO_ID_PREFIX = 'demo-';
+const DEMO_TOKEN = 'demo-token-local';
+
+function readBrowserToken(): string | null {
+  if (typeof window === 'undefined') return null;
+
+  const storageToken =
+    window.localStorage.getItem('bcost_token') ?? window.localStorage.getItem('bcost_access_token');
+
+  if (storageToken) return storageToken;
+
+  if (typeof document === 'undefined' || !document.cookie) return null;
+
+  const tokenCookie = document.cookie
+    .split('; ')
+    .find((cookie) => cookie.startsWith('bcost_token=') || cookie.startsWith('bcost_access_token='));
+
+  if (!tokenCookie) return null;
+
+  try {
+    return decodeURIComponent(tokenCookie.split('=').slice(1).join('='));
+  } catch {
+    return tokenCookie.split('=').slice(1).join('=');
+  }
+}
+
+function hasExplicitDemoSession(): boolean {
+  return readBrowserToken() === DEMO_TOKEN;
+}
 
 export class DemoFallbackDisabledError extends Error {
   readonly code = 'DEMO_FALLBACK_DISABLED';
@@ -12,6 +40,8 @@ export class DemoFallbackDisabledError extends Error {
 }
 
 export function isOperationalDemoFallbackEnabled(): boolean {
+  if (hasExplicitDemoSession()) return true;
+
   const explicit = process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK;
 
   if (explicit === 'true') return true;

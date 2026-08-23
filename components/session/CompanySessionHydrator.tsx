@@ -178,9 +178,6 @@ function persistCompanyContext(companyId: string, companies: CompanyLike[]) {
 
   if (companyId.startsWith('demo-')) {
     window.localStorage.setItem('bcost_token', DEMO_TOKEN);
-    document.cookie = `bcost_token=${encodeURIComponent(DEMO_TOKEN)}; path=/; SameSite=Lax`;
-    document.cookie = `bcost_access_token=${encodeURIComponent(DEMO_TOKEN)}; path=/; SameSite=Lax`;
-    document.cookie = `bcost_company_id=${encodeURIComponent(companyId)}; path=/; SameSite=Lax`;
   }
 
   window.dispatchEvent(
