@@ -424,6 +424,27 @@ export const bcostSchemaModules: BcostSchemaModule[] = [
     mainActions: ['Ver jobs', 'Reprocessar', 'Cancelar', 'Auditar falha'],
     kpis: ['Na fila', 'Executando', 'Concluídos', 'Falhos'],
   },
+  {
+    slug: 'operational-workflows',
+    title: 'Workflows Operacionais',
+    model: 'OperationalWorkflow',
+    area: 'Automação',
+    status: 'INTEGRATING',
+    priority: 'CRITICAL',
+    description:
+      'Orquestração técnica por serviço para software, API oficial, RPA governamental, backoffice, CRC, agência pública e ação do cliente.',
+    commercialValue:
+      'Transforma o catálogo contábil em execução auditável e reduz o risco de vender serviços sem capacidade produtiva real.',
+    route: '/dashboard/modules/operational-workflows',
+    apiBase: '/operations/workflows',
+    mainActions: [
+      'Gerar workflow',
+      'Validar capacidades',
+      'Mapear evidências',
+      'Acionar CRC/backoffice',
+    ],
+    kpis: ['Etapas', 'Capacidades', 'Evidências', 'Risco operacional'],
+  },
 
   {
     slug: 'command-center',

@@ -105,6 +105,7 @@ function moduleRoute(slug: string) {
     'account-plan': '/dashboard/modules/account-plan',
     'accounting-entries': '/dashboard/modules/accounting-entries',
     'automation-jobs': '/dashboard/modules/automation-jobs',
+    'operational-workflows': '/dashboard/modules/operational-workflows',
     'audit-intelligence': '/dashboard/modules/audit-intelligence',
     'company-formation': '/dashboard/modules/company-formation',
   };
