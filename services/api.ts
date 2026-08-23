@@ -56,6 +56,11 @@ const USER_ALLOWED_KEYS = new Set<string>([
   'companies',
 ]);
 
+export type RequestAuthMetadata = {
+  token: string | null;
+  isDemoRequest: boolean;
+};
+
 export function isDemoModeEnabled(): boolean {
   return process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true' || process.env.NODE_ENV === 'development';
 }
@@ -207,6 +212,22 @@ function lsRemove(keys: readonly string[]): void {
 
 function isDemoId(value?: string | null): boolean {
   return typeof value === 'string' && value.toLowerCase().startsWith('demo-');
+}
+
+export function resolveRequestAuthMetadata(
+  token: string | null,
+  companyId: string | null,
+): RequestAuthMetadata {
+  const hasRealToken = Boolean(token && token !== DEMO_TOKEN);
+  const hasDemoToken = token === DEMO_TOKEN;
+  const hasDemoCompanyWithoutRealToken = !hasRealToken && isDemoId(companyId);
+  const isDemoRequest =
+    isDemoModeEnabled() && (hasDemoToken || hasDemoCompanyWithoutRealToken);
+
+  return {
+    token: isDemoRequest ? DEMO_TOKEN : token,
+    isDemoRequest,
+  };
 }
 
 function clearStoredCompanyData(): void {
@@ -497,12 +518,17 @@ api.interceptors.request.use(
       config.baseURL = runtimeBase;
     }
 
-    const token = getToken();
-    if (token && !config.headers.Authorization) {
-      config.headers.Authorization = `Bearer ${token}`;
+    const companyId = getActiveCompanyId();
+    const authMetadata = resolveRequestAuthMetadata(getToken(), companyId);
+
+    if (authMetadata.token && !config.headers.Authorization) {
+      config.headers.Authorization = `Bearer ${authMetadata.token}`;
     }
 
-    const companyId = getActiveCompanyId();
+    if (authMetadata.isDemoRequest) {
+      config.headers['x-demo-session'] = 'true';
+    }
+
     if (companyId) {
       config.headers['x-company-id'] = companyId;
       config.headers['CompanyId'] = companyId;
