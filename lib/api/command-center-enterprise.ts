@@ -2,6 +2,11 @@
 
 import { api } from '@/services/api';
 import { createDemoEnterpriseCatalog } from '@/lib/api/enterprise-demo';
+import {
+  assertOperationalDemoFallbackEnabled,
+  isDemoEntityId,
+  isOperationalDemoFallbackEnabled,
+} from '@/lib/config/demo-policy';
 
 export type ExecutiveStatus = 'HEALTHY' | 'ATTENTION' | 'CRITICAL' | 'UNAVAILABLE';
 
@@ -271,6 +276,10 @@ function createDemoExecutiveSummary(modules: CommandCenterModuleMetric[]): Execu
 }
 
 function createDemoCommandCenterSummary(companyId: string): CommandCenterSummaryResponse {
+  assertOperationalDemoFallbackEnabled(
+    'Command Center indisponivel e fallback demonstrativo desabilitado neste ambiente.',
+  );
+
   const modules: CommandCenterModuleMetric[] = createDemoEnterpriseCatalog()
     .slice(0, 12)
     .map((item, index) => {
@@ -371,13 +380,16 @@ function createDemoCommandCenterSummary(companyId: string): CommandCenterSummary
   };
 }
 
+function shouldUseCommandCenterFallback(companyId: string): boolean {
+  return isDemoEntityId(companyId) && isOperationalDemoFallbackEnabled();
+}
+
 export const commandCenterEnterpriseApi = {
   summary: async (
     companyId: string,
     query: CommandCenterQuery = {},
   ): Promise<CommandCenterSummaryResponse> => {
-    // Short-circuit for demo companies to avoid unnecessary validation errors on the API (UUID expected)
-    if (typeof companyId === 'string' && companyId.toLowerCase().startsWith('demo-')) {
+    if (shouldUseCommandCenterFallback(companyId)) {
       return createDemoCommandCenterSummary(companyId);
     }
 
@@ -387,8 +399,12 @@ export const commandCenterEnterpriseApi = {
       );
 
       return response.data;
-    } catch {
-      return createDemoCommandCenterSummary(companyId);
+    } catch (error) {
+      if (isDemoEntityId(companyId)) {
+        return createDemoCommandCenterSummary(companyId);
+      }
+
+      throw error;
     }
   },
 
@@ -396,8 +412,7 @@ export const commandCenterEnterpriseApi = {
     companyId: string,
     query: CommandCenterQuery = {},
   ): Promise<CommandCenterRisksResponse> => {
-    // Short-circuit demo company IDs to avoid server-side UUID validation failures
-    if (typeof companyId === 'string' && companyId.toLowerCase().startsWith('demo-')) {
+    if (shouldUseCommandCenterFallback(companyId)) {
       const summary = createDemoCommandCenterSummary(companyId);
       return {
         status: summary.status,
@@ -416,7 +431,11 @@ export const commandCenterEnterpriseApi = {
       );
 
       return response.data;
-    } catch {
+    } catch (error) {
+      if (!isDemoEntityId(companyId)) {
+        throw error;
+      }
+
       const summary = createDemoCommandCenterSummary(companyId);
       return {
         status: summary.status,
@@ -434,8 +453,7 @@ export const commandCenterEnterpriseApi = {
     companyId: string,
     query: CommandCenterQuery = {},
   ): Promise<CommandCenterModulesResponse> => {
-    // Short-circuit demo company IDs to avoid server-side UUID validation failures
-    if (typeof companyId === 'string' && companyId.toLowerCase().startsWith('demo-')) {
+    if (shouldUseCommandCenterFallback(companyId)) {
       const summary = createDemoCommandCenterSummary(companyId);
       return {
         status: summary.status,
@@ -453,7 +471,11 @@ export const commandCenterEnterpriseApi = {
       );
 
       return response.data;
-    } catch {
+    } catch (error) {
+      if (!isDemoEntityId(companyId)) {
+        throw error;
+      }
+
       const summary = createDemoCommandCenterSummary(companyId);
       return {
         status: summary.status,
@@ -470,8 +492,7 @@ export const commandCenterEnterpriseApi = {
     companyId: string,
     query: CommandCenterQuery = {},
   ): Promise<CommandCenterActivityResponse> => {
-    // Short-circuit demo company IDs to avoid server-side UUID validation failures
-    if (typeof companyId === 'string' && companyId.toLowerCase().startsWith('demo-')) {
+    if (shouldUseCommandCenterFallback(companyId)) {
       const summary = createDemoCommandCenterSummary(companyId);
       return {
         status: summary.status,
@@ -489,7 +510,11 @@ export const commandCenterEnterpriseApi = {
       );
 
       return response.data;
-    } catch {
+    } catch (error) {
+      if (!isDemoEntityId(companyId)) {
+        throw error;
+      }
+
       const summary = createDemoCommandCenterSummary(companyId);
       return {
         status: summary.status,
