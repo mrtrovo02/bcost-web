@@ -23,6 +23,12 @@ const isLocalBrowserHost = (): boolean =>
 
 const isValidValue = (v: unknown): v is string =>
   v !== undefined && v !== null && v !== '' && v !== 'null' && v !== 'undefined';
+const isBcostProductionHost = (): boolean => {
+  if (!isBrowser()) return false;
+
+  const hostname = window.location.hostname.toLowerCase();
+  return hostname === 'bcost.com.br' || hostname.endsWith('.bcost.com.br');
+};
 
 // Constantes
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
@@ -57,6 +63,8 @@ const USER_ALLOWED_KEYS = new Set<string>([
 ]);
 
 export function isDemoModeEnabled(): boolean {
+  if (isBcostProductionHost()) return false;
+
   return process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true' || process.env.NODE_ENV === 'development';
 }
 
@@ -72,11 +80,15 @@ function isDemoCompanyContext(): boolean {
 export function isDemoSession(): boolean {
   if (!isBrowser()) return false;
 
-  const token = localStorage.getItem('bcost_token');
+  if (!isDemoModeEnabled()) return false;
+
+  const token = getToken();
   const hasDemoToken = token === DEMO_TOKEN;
   const hasDemoCompanyContext = isDemoCompanyContext();
 
-  return isDemoModeEnabled() && (hasDemoToken || hasDemoCompanyContext || !getToken());
+  if (token && !hasDemoToken) return false;
+
+  return hasDemoToken || hasDemoCompanyContext;
 }
 
 // Tipos publicos

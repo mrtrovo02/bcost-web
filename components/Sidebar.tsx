@@ -28,6 +28,13 @@ import { DEMO_COMPANIES, type DemoCompany } from '@/services/demo-data';
 import { isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
 
 type SidebarCompany = Company & Partial<Pick<DemoCompany, 'role' | 'status' | 'plan'>>;
+type RequestFailureStatus = 401 | 429;
+
+type HttpErrorLike = {
+  response?: {
+    status?: number;
+  };
+};
 
 type NavigationItem = {
   icon: React.ComponentType<{ size?: number; className?: string }>;
@@ -36,6 +43,15 @@ type NavigationItem = {
   desc: string;
   signal?: 'live' | 'new' | 'core';
 };
+
+const COMPANY_LOAD_COOLDOWN_MS = 30_000;
+
+function getRequestFailureStatus(error: unknown): RequestFailureStatus | null {
+  if (!error || typeof error !== 'object') return null;
+
+  const status = (error as HttpErrorLike).response?.status;
+  return status === 401 || status === 429 ? status : null;
+}
 
 export default function Sidebar() {
   const { companies, setCompanies, selectedCompany, setSelectedCompany, isDemoSession } = useCompany();
@@ -57,6 +73,12 @@ export default function Sidebar() {
   // recriar loadCompanies (e o efeito que a dispara) a cada troca de
   // empresa — o que gerava chamadas de rede redundantes.
   const selectedCompanyRef = useRef(selectedCompany);
+  const isLoadingCompaniesRef = useRef(false);
+  const lastCompanyLoadFailureRef = useRef<{
+    status: RequestFailureStatus;
+    timestamp: number;
+  } | null>(null);
+
   useEffect(() => {
     selectedCompanyRef.current = selectedCompany;
   }, [selectedCompany]);
@@ -80,6 +102,13 @@ export default function Sidebar() {
   );
 
   const loadCompanies = useCallback(async () => {
+    if (isLoadingCompaniesRef.current) return;
+
+    const lastFailure = lastCompanyLoadFailureRef.current;
+    if (lastFailure && Date.now() - lastFailure.timestamp < COMPANY_LOAD_COOLDOWN_MS) {
+      return;
+    }
+
     // Sessão demo nunca deve bater na API real — evita o 401 previsível
     // (sempre ignorado pelo interceptor) que polui o console em loop.
     if (isDemoSession) {
@@ -87,19 +116,35 @@ export default function Sidebar() {
       return;
     }
 
+    isLoadingCompaniesRef.current = true;
+
     try {
       const { data } = await api.get<DemoCompany[]>('/company');
       const companiesList = Array.isArray(data) ? data : [];
+      lastCompanyLoadFailureRef.current = null;
       applyCompanies(companiesList);
-    } catch {
+    } catch (error) {
+      const blockedStatus = getRequestFailureStatus(error);
+      if (blockedStatus) {
+        lastCompanyLoadFailureRef.current = {
+          status: blockedStatus,
+          timestamp: Date.now(),
+        };
+      }
+
       if (isOperationalDemoFallbackEnabled()) {
         console.warn('[bCost Sidebar]: API indisponível, usando dados de demonstração.');
         applyCompanies(DEMO_COMPANIES);
         return;
       }
 
-      console.warn('[bCost Sidebar]: API indisponível para carregar empresas da sessão real.');
+      console.warn(
+        '[bCost Sidebar]: API indisponível para carregar empresas da sessão real.',
+        blockedStatus ? `status=${blockedStatus}` : '',
+      );
       applyCompanies([]);
+    } finally {
+      isLoadingCompaniesRef.current = false;
     }
   }, [isDemoSession, applyCompanies]);
 

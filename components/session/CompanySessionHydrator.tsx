@@ -41,12 +41,13 @@ function isDemoCompanyId(value?: string | null) {
 function shouldUseLocalDemo() {
   if (typeof window === 'undefined') return false;
 
-  return (
-    process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true' ||
-    process.env.NODE_ENV === 'development' ||
-    window.location.hostname === 'localhost' ||
-    window.location.hostname === '127.0.0.1'
-  );
+  const hostname = window.location.hostname.toLowerCase();
+  const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
+  const isBcostProductionHost = hostname === 'bcost.com.br' || hostname.endsWith('.bcost.com.br');
+
+  if (process.env.NODE_ENV === 'development' || isLocalHost) return true;
+
+  return process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true' && !isBcostProductionHost;
 }
 
 function resolveApiBase() {
