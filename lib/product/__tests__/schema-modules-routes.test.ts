@@ -66,4 +66,18 @@ describe('bcostSchemaModules routes', () => {
 
     expect(existsSync(legacyWrapper)).toBe(true);
   });
+
+  it('mantem apiBase alinhado aos endpoints enterprise canonicos', () => {
+    const apiBaseBySlug = Object.fromEntries(
+      bcostSchemaModules.map((schemaModule) => [schemaModule.slug, schemaModule.apiBase]),
+    );
+
+    expect(apiBaseBySlug['account-plan']).toBe('/accounting/enterprise/account-plan');
+    expect(apiBaseBySlug['accounting-entries']).toBe('/accounting/enterprise/entries');
+    expect(apiBaseBySlug['balance-locks']).toBe('/accounting/enterprise/locks');
+    expect(apiBaseBySlug.employees).toBe('/payroll/enterprise/employees');
+    expect(apiBaseBySlug['payroll-entries']).toBe('/payroll/enterprise/entries');
+    expect(apiBaseBySlug['tax-obligations']).toBe('/obligations/enterprise/tax');
+    expect(apiBaseBySlug['fiscal-obligations']).toBe('/obligations/enterprise/fiscal');
+  });
 });
