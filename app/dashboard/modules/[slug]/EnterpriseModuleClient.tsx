@@ -12,7 +12,7 @@ import {
 } from '@/lib/api/enterprise-universal';
 import { automationJobsApi } from '@/lib/api/automation-jobs';
 import { isDemoEntityId } from '@/lib/config/demo-policy';
-import { getToken } from '@/services/api';
+import { getToken, isDemoSession } from '@/services/api';
 
 type EnterpriseModuleClientProps = {
   slug: string;
@@ -982,7 +982,8 @@ export default function EnterpriseModuleClient({ slug }: EnterpriseModuleClientP
       const detail = (event as CustomEvent<{ companyId?: string }>).detail;
       const nextCompanyId = detail?.companyId;
 
-      setCompanyId(nextCompanyId && !isDemoEntityId(nextCompanyId) ? nextCompanyId : null);
+      const canUseDemoCompany = Boolean(nextCompanyId && isDemoEntityId(nextCompanyId) && isDemoSession());
+      setCompanyId(nextCompanyId && (!isDemoEntityId(nextCompanyId) || canUseDemoCompany) ? nextCompanyId : null);
       setData(null);
       setError(null);
     };
