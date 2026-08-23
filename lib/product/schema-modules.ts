@@ -626,6 +626,27 @@ export const bcostSchemaModules: BcostSchemaModule[] = [
     kpis: ['Simples', 'Presumido', 'Real', 'Economia estimada'],
   },
   {
+    slug: 'tax-scenarios',
+    title: 'Simulador Tributário',
+    model: 'TaxScenarioSimulation',
+    area: 'Consultoria',
+    status: 'ACTIVE',
+    priority: 'CRITICAL',
+    description:
+      'Simulação orientativa PF x PJ, MEI, Simples Nacional e Lucro Presumido com Fator R e impacto informativo CBS/IBS 2026.',
+    commercialValue:
+      'Cria uma porta consultiva de alto valor para abertura, migração e planejamento tributário assistido, sem substituir parecer CRC.',
+    route: '/dashboard/modules/tax-scenarios',
+    apiBase: '/tax-scenarios',
+    mainActions: [
+      'Simular PF x PJ',
+      'Comparar regimes',
+      'Revisar Fator R',
+      'Gerar próximos passos',
+    ],
+    kpis: ['Melhor regime', 'Carga efetiva', 'Fator R', 'CBS/IBS informativo'],
+  },
+  {
     slug: 'indirect-taxes',
     title: 'ICMS, IPI, ISS e PIS/COFINS',
     model: 'IndirectTaxCalculation',

@@ -123,7 +123,7 @@ export const taxScenariosApi = {
           regime: comparison.model,
           effectiveRate: comparison.estimatedEffectiveRate,
           annualTax: comparison.estimatedTax,
-          monthlyTax: comparison.monthlyNetResult,
+          monthlyTax: Number((comparison.estimatedTax / 12).toFixed(2)),
           breakdown: Object.fromEntries(
             (comparison.components ?? []).map((component) => [component.code, component.amount]),
           ),

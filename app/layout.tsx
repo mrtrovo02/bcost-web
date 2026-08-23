@@ -1,20 +1,9 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 // Importando o Provider para que o useCompany funcione em todas as páginas
 import { CompanyProvider } from '@/app/context/CompanyContext';
 import { QueryProvider } from '@/app/context/QueryProvider';
 import { SkipLink } from '@/components/ui/SkipLink';
-
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
-});
 
 // Metadados atualizados para o seu produto real
 export const metadata: Metadata = {
@@ -53,7 +42,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className="scroll-smooth">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-50 text-slate-900`}
+        className="antialiased bg-slate-50 text-slate-900"
       >
         <SkipLink />
         {/* O QueryProvider fornece cache global e queda de dados moderna. */}

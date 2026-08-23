@@ -67,9 +67,6 @@ export default function TaxScenarioSimulator() {
 
   const bestModel = result?.bestEstimatedModel ?? 'SIMPLES_NACIONAL';
   const bestComparison = result?.comparisons.find((comparison) => comparison.model === bestModel);
-  const currentComparison = result?.comparisons.find(
-    (comparison) => comparison.model === form.currentModel,
-  );
 
   return (
     <section className="bg-[#090d16] border border-white/5 rounded-[2.5rem] p-6 shadow-[0_4px_25px_rgba(0,0,0,0.25)]">
