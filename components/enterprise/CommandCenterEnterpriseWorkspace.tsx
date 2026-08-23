@@ -106,6 +106,7 @@ function moduleRoute(slug: string) {
     'accounting-entries': '/dashboard/modules/accounting-entries',
     'automation-jobs': '/dashboard/modules/automation-jobs',
     'audit-intelligence': '/dashboard/modules/audit-intelligence',
+    'company-formation': '/dashboard/modules/company-formation',
   };
 
   return directRoutes[slug] || `/dashboard/modules/${slug}`;

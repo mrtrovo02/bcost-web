@@ -793,14 +793,21 @@ export const bcostSchemaModules: BcostSchemaModule[] = [
     title: 'Abertura de Empresa',
     model: 'CompanyFormation',
     area: 'Societário',
-    status: 'PLANNED',
+    status: 'INTEGRATING',
     priority: 'HIGH',
-    description: 'CNPJ, contrato social, inscrição municipal e certificado digital.',
-    commercialValue: 'Cria uma porta de entrada comercial para novos clientes contábeis.',
+    description:
+      'Readiness assistido para abertura, migração contábil e MEI para ME com documentos, município, CRC, órgão oficial e dossiê auditável.',
+    commercialValue:
+      'Cria uma porta de entrada comercial para novos clientes contábeis sem prometer protocolo automático antes de evidências e validação técnica.',
     route: '/dashboard/modules/company-formation',
-    apiBase: '/corporate/company-formation',
-    mainActions: ['Abrir processo', 'Controlar CNPJ', 'Gerar contrato', 'Solicitar certificado'],
-    kpis: ['Processos', 'Em análise', 'Concluídos', 'Pendências'],
+    apiBase: '/accounting-platform/setup/readiness',
+    mainActions: [
+      'Avaliar abertura',
+      'Avaliar migração',
+      'Validar MEI para ME',
+      'Montar dossiê',
+    ],
+    kpis: ['Readiness', 'Gates', 'Dossiê', 'Dependências oficiais'],
   },
   {
     slug: 'banking-products',
