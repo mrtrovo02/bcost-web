@@ -36,7 +36,16 @@ const isDevelopment = process.env.NODE_ENV !== 'production';
 const connectSources = [
   "'self'",
   'https://api.bcost.com.br',
-  ...(isDevelopment ? ['http://localhost:5001', 'http://127.0.0.1:5001', 'ws:', 'wss:'] : []),
+  ...(isDevelopment
+    ? [
+        'http://localhost:5000',
+        'http://127.0.0.1:5000',
+        'http://localhost:5001',
+        'http://127.0.0.1:5001',
+        'ws:',
+        'wss:',
+      ]
+    : []),
 ].join(' ');
 
 const nextConfig: NextConfig = {
@@ -75,7 +84,7 @@ const nextConfig: NextConfig = {
   },
 
   async rewrites() {
-    const internalApiUrl = process.env.INTERNAL_API_URL || 'http://127.0.0.1:5001';
+    const internalApiUrl = process.env.INTERNAL_API_URL || 'http://127.0.0.1:5000';
 
     return {
       beforeFiles: [
