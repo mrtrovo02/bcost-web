@@ -10,6 +10,18 @@ type CompanyLike = {
   taxRegime?: string;
 };
 
+type AuthMeLike = {
+  id?: string;
+  email?: string;
+  name?: string;
+  companyId?: string;
+  activeCompanyId?: string;
+  company_id?: string;
+  company?: CompanyLike;
+  companies?: CompanyLike[];
+  user?: AuthMeLike;
+};
+
 const TOKEN_KEYS = ['bcost_token', 'bcost_access_token', 'access_token', 'accessToken', 'token'];
 
 const COMPANY_ID_KEYS = [
@@ -126,6 +138,24 @@ function readCompaniesFromStorage(): CompanyLike[] {
   return [];
 }
 
+function normalizeCompanies(value: unknown): CompanyLike[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.filter((company): company is CompanyLike => {
+    return Boolean(company && typeof company === 'object' && 'id' in company);
+  });
+}
+
+function firstString(...values: unknown[]): string | null {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+
+  return null;
+}
+
 function persistCompanyContext(companyId: string, companies: CompanyLike[]) {
   if (typeof window === 'undefined') return;
 
@@ -135,9 +165,8 @@ function persistCompanyContext(companyId: string, companies: CompanyLike[]) {
       : [
           {
             id: companyId,
-            name: 'Empresa Teste SaaS',
+            name: isDemoCompanyId(companyId) ? 'Empresa Demo' : 'Empresa vinculada',
             role: 'OWNER',
-            taxRegime: 'SIMPLES_NACIONAL',
           },
         ];
 
@@ -212,6 +241,32 @@ async function fetchAuthMe(token: string) {
   return response.json();
 }
 
+async function fetchCompanies(token: string): Promise<CompanyLike[]> {
+  const apiBase = resolveApiBase();
+  const endpoint = apiBase.endsWith('/') ? `${apiBase}company` : `${apiBase}/company`;
+
+  const response = await fetch(endpoint, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+  });
+
+  if (!response.ok) return [];
+
+  const payload: unknown = await response.json();
+
+  if (Array.isArray(payload)) return normalizeCompanies(payload);
+
+  if (payload && typeof payload === 'object' && 'data' in payload) {
+    return normalizeCompanies((payload as { data?: unknown }).data);
+  }
+
+  return [];
+}
+
 export function CompanySessionHydrator() {
   useEffect(() => {
     let cancelled = false;
@@ -251,19 +306,28 @@ export function CompanySessionHydrator() {
         return;
       }
 
-      const authMe = await fetchAuthMe(token).catch(() => null);
+      const authMe = (await fetchAuthMe(token).catch(() => null)) as AuthMeLike | null;
       if (cancelled) return;
 
       const user = authMe?.user || authMe || {};
-      const authCompanies = user?.companies || authMe?.companies || [];
+      let authCompanies = normalizeCompanies(user?.companies || authMe?.companies);
+      if (authCompanies.length === 0 && user?.company?.id) {
+        authCompanies = [user.company];
+      }
 
-      const resolvedCompanyId =
-        user?.companyId ||
-        user?.activeCompanyId ||
-        authMe?.companyId ||
-        authMe?.activeCompanyId ||
-        authCompanies?.[0]?.id ||
-        jwtCompanyId;
+      if (authCompanies.length === 0) {
+        authCompanies = await fetchCompanies(token).catch(() => []);
+        if (cancelled) return;
+      }
+
+      const resolvedCompanyId = firstString(
+        user?.companyId,
+        user?.activeCompanyId,
+        authMe?.companyId,
+        authMe?.activeCompanyId,
+        authCompanies[0]?.id,
+        jwtCompanyId,
+      );
 
       if (!resolvedCompanyId) {
         if (shouldUseLocalDemo()) {
