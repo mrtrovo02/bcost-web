@@ -347,7 +347,7 @@ export default function BillingPlansWidget() {
         });
       }
     } catch (error) {
-      if (!isOperationalDemoFallbackEnabled()) {
+      if (hasRealAuthToken() || !isOperationalDemoFallbackEnabled()) {
         setPlans([]);
         setEntitlements(null);
         setMessage({

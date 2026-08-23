@@ -1,6 +1,6 @@
 'use strict';
 
-import { api } from '@/services/api';
+import { api, getToken } from '@/services/api';
 import { assertOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
 
 export type PlanLevel = 'FREE' | 'PRO' | 'ENTERPRISE';
@@ -84,6 +84,19 @@ export type BillingUpdatePlanResponse = BillingEntitlementsResponse & {
     error?: string;
   };
 };
+
+function hasRealAuthToken(): boolean {
+  const token = getToken();
+  return Boolean(token && token !== 'demo-token-local');
+}
+
+function assertBillingDemoFallbackAllowed(message: string): void {
+  if (hasRealAuthToken()) {
+    throw new Error(message);
+  }
+
+  assertOperationalDemoFallbackEnabled(message);
+}
 
 export const DEMO_BILLING_PLANS: BillingPlan[] = [
   {
@@ -215,7 +228,7 @@ export const billingApi = {
       const response = await api.get<BillingPlansResponse>('/billing/plans');
       return response.data;
     } catch {
-      assertOperationalDemoFallbackEnabled(
+      assertBillingDemoFallbackAllowed(
         'Planos comerciais indisponiveis e fallback demonstrativo desabilitado neste ambiente.',
       );
 
@@ -236,7 +249,7 @@ export const billingApi = {
 
       return response.data;
     } catch {
-      assertOperationalDemoFallbackEnabled(
+      assertBillingDemoFallbackAllowed(
         'Entitlements comerciais indisponiveis e fallback demonstrativo desabilitado neste ambiente.',
       );
 
@@ -260,7 +273,7 @@ export const billingApi = {
 
       return response.data;
     } catch {
-      assertOperationalDemoFallbackEnabled(
+      assertBillingDemoFallbackAllowed(
         'Validacao de feature indisponivel e fallback demonstrativo desabilitado neste ambiente.',
       );
 
@@ -295,7 +308,7 @@ export const billingApi = {
 
       return response.data;
     } catch {
-      assertOperationalDemoFallbackEnabled(
+      assertBillingDemoFallbackAllowed(
         'Alteracao de plano indisponivel e fallback demonstrativo desabilitado neste ambiente.',
       );
 
