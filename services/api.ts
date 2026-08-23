@@ -23,12 +23,6 @@ const isLocalBrowserHost = (): boolean =>
 
 const isValidValue = (v: unknown): v is string =>
   v !== undefined && v !== null && v !== '' && v !== 'null' && v !== 'undefined';
-const isBcostProductionHost = (): boolean => {
-  if (!isBrowser()) return false;
-
-  const hostname = window.location.hostname.toLowerCase();
-  return hostname === 'bcost.com.br' || hostname.endsWith('.bcost.com.br');
-};
 
 // Constantes
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
@@ -63,8 +57,6 @@ const USER_ALLOWED_KEYS = new Set<string>([
 ]);
 
 export function isDemoModeEnabled(): boolean {
-  if (isBcostProductionHost()) return false;
-
   return process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true' || process.env.NODE_ENV === 'development';
 }
 
@@ -253,12 +245,14 @@ export function getToken(): string | null {
   if (!isBrowser()) return null;
   for (const key of TOKEN_KEYS) {
     const v = readCookie(key);
-    if (isValidValue(v)) return v!;
+    if (isValidValue(v)) {
+      lsSet(TOKEN_KEYS, v!);
+      return v!;
+    }
   }
   const legacy = lsGet(TOKEN_KEYS);
   if (legacy) {
     for (const key of TOKEN_KEYS) writeCookie(key, legacy);
-    lsRemove(TOKEN_KEYS);
     return legacy;
   }
   return null;
@@ -266,7 +260,7 @@ export function getToken(): string | null {
 
 export function setToken(token: string): void {
   if (!isBrowser() || !isValidValue(token)) return;
-  lsRemove(TOKEN_KEYS);
+  lsSet(TOKEN_KEYS, token);
   for (const key of TOKEN_KEYS) writeCookie(key, token);
 }
 

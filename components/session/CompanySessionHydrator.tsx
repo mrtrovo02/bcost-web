@@ -97,9 +97,6 @@ function resolveToken(): string | null {
   const legacyToken = readLocalStorage(TOKEN_KEYS);
   if (legacyToken && typeof window !== 'undefined') {
     document.cookie = `bcost_token=${encodeURIComponent(legacyToken)}; path=/; SameSite=Lax`;
-    for (const key of TOKEN_KEYS) {
-      window.localStorage.removeItem(key);
-    }
     return legacyToken;
   }
   return null;
