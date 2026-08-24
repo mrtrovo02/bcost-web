@@ -66,4 +66,44 @@ describe('enterpriseUniversalApi', () => {
     expect(health).toMatchObject({ slug: 'users', companyId: 'demo-001', status: 'OK_WITH_FALLBACK' });
     expect(apiGetMock).not.toHaveBeenCalled();
   });
+
+  it('serves regulated roadmap modules without fake operational records in demo mode', async () => {
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'false';
+
+    const [bankingProducts, balanceSheet] = await Promise.all([
+      enterpriseUniversalApi.getModule('banking-products', 'demo-001'),
+      enterpriseUniversalApi.getModule('balance-sheet', 'demo-001'),
+    ]);
+
+    expect(bankingProducts).toMatchObject({
+      status: 'OK_ROADMAP',
+      total: 0,
+      items: [],
+      summary: {
+        roadmap: true,
+        mode: 'DEMO_ROADMAP',
+        endpoint: '/banking/enterprise/products',
+        canonicalOwner: 'banking-enterprise',
+        automationBoundary: 'ASSISTED_AUTOMATION',
+        operationalGuardrails: expect.arrayContaining([
+          expect.stringContaining('parceiro BaaS homologado'),
+        ]),
+      },
+    });
+    expect(balanceSheet).toMatchObject({
+      status: 'OK_ROADMAP',
+      total: 0,
+      items: [],
+      summary: {
+        roadmap: true,
+        mode: 'DEMO_ROADMAP',
+        canonicalOwner: 'accounting-enterprise',
+        automationBoundary: 'CRC_VALIDATED',
+        operationalGuardrails: expect.arrayContaining([
+          expect.stringContaining('demonstração contábil oficial'),
+        ]),
+      },
+    });
+    expect(apiGetMock).not.toHaveBeenCalled();
+  });
 });

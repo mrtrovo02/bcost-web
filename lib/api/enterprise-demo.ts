@@ -19,6 +19,39 @@ type DemoParams = {
   search?: string;
 };
 
+type DemoRoadmapBoundary =
+  | 'SOFTWARE_ONLY'
+  | 'ASSISTED_AUTOMATION'
+  | 'CRC_VALIDATED'
+  | 'HUMAN_LED';
+
+const ROADMAP_MODULE_SLUGS = new Set([
+  'finance-operations',
+  'command-center',
+  'audit-intelligence',
+  'accounting-journal',
+  'accounting-ledger',
+  'trial-balance',
+  'balance-sheet',
+  'income-statement',
+  'ecd',
+  'ecf',
+  'tax-regime-calculations',
+  'indirect-taxes',
+  'sped-fiscal',
+  'efd-contributions',
+  'federal-obligations',
+  'fiscal-books',
+  'payroll-lifecycle',
+  'sst',
+  'accounting-office',
+  'document-management',
+  'fixed-assets',
+  'company-formation',
+  'banking-products',
+  'consulting-services',
+]);
+
 function daysFromNow(days: number) {
   const date = new Date();
   date.setDate(date.getDate() + days);
@@ -31,6 +64,10 @@ function money(seed: number) {
 
 function normalizeSearch(value?: string) {
   return value?.trim().toLowerCase() ?? '';
+}
+
+function isRoadmapModule(module: BcostSchemaModule): boolean {
+  return ROADMAP_MODULE_SLUGS.has(module.slug);
 }
 
 function moduleInfo(slug: string): BcostSchemaModule {
@@ -201,6 +238,126 @@ function summarize(records: EnterpriseModuleRecord[], module: BcostSchemaModule)
   };
 }
 
+function roadmapCanonicalOwner(module: BcostSchemaModule): string {
+  if (module.slug === 'finance-operations') return 'finance-operations-enterprise';
+  if (module.slug === 'command-center') return 'command-center-enterprise';
+  if (module.slug === 'audit-intelligence') return 'audit-intelligence-enterprise';
+  if (module.slug === 'company-formation') return 'accounting-platform';
+  if (module.slug === 'banking-products') return 'banking-enterprise';
+
+  if (module.area === 'Contábil' || module.area === 'Patrimônio') {
+    return 'accounting-enterprise';
+  }
+
+  if (module.area === 'Fiscal') return 'fiscal-obligations-enterprise';
+  if (module.area === 'Folha') return 'payroll-enterprise';
+
+  if (module.area === 'Escritório') {
+    return module.slug === 'document-management' ? 'document-management' : 'accounting-platform';
+  }
+
+  if (module.area === 'Consultoria') return 'accounting-platform';
+
+  return 'enterprise-roadmap';
+}
+
+function roadmapBoundary(module: BcostSchemaModule): DemoRoadmapBoundary {
+  if (module.slug === 'command-center' || module.slug === 'audit-intelligence') {
+    return 'SOFTWARE_ONLY';
+  }
+
+  if (module.slug === 'company-formation') return 'CRC_VALIDATED';
+  if (module.slug === 'banking-products') return 'ASSISTED_AUTOMATION';
+
+  if (
+    module.area === 'Contábil' ||
+    module.area === 'Fiscal' ||
+    module.area === 'Folha' ||
+    module.area === 'Patrimônio'
+  ) {
+    return 'CRC_VALIDATED';
+  }
+
+  if (module.area === 'Consultoria') return 'HUMAN_LED';
+
+  return 'ASSISTED_AUTOMATION';
+}
+
+function roadmapGuardrails(module: BcostSchemaModule, boundary: DemoRoadmapBoundary): string[] {
+  if (module.slug === 'company-formation') {
+    return [
+      'Não prometer abertura 100% automática sem consulta de viabilidade, CRC responsável e evidências do órgão oficial.',
+      'Toda execução real deve abrir dossiê auditável e workflow operacional por empresa antes de protocolo em Redesim, Junta ou Prefeitura.',
+    ];
+  }
+
+  if (module.slug === 'banking-products') {
+    return [
+      'Não ativar Conta PJ, PIX, boleto ou cartão sem parceiro BaaS homologado, contrato comercial e trilha de consentimento.',
+      'Toda conciliação real deve usar extrato autorizado, evidência auditável e vínculo com empresa/tenant antes de gerar lançamento contábil.',
+    ];
+  }
+
+  if (module.area === 'Contábil' || module.area === 'Patrimônio') {
+    return [
+      'Não emitir demonstração contábil oficial sem escrituração fechada, evidências conciliadas e validação de contador responsável.',
+      'Toda geração de livro, balanço, DRE, razão ou ativo deve manter trilha de auditoria, competência e vínculo com a empresa/tenant.',
+    ];
+  }
+
+  if (module.area === 'Fiscal') {
+    return [
+      'Não declarar guia, SPED ou obrigação acessória como transmitida sem protocolo oficial, certificado válido e evidência arquivada.',
+      'Apurações fiscais em roadmap devem permanecer como prévia assistida até integração com portal oficial, RPA governado ou API homologada.',
+    ];
+  }
+
+  if (module.area === 'Folha') {
+    return [
+      'Não transmitir eSocial, FGTS Digital, DCTFWeb ou eventos trabalhistas sem conferência de folha, certificado válido e protocolo oficial.',
+      'Pró-labore, INSS, FGTS e eventos de SST exigem evidência por competência e aprovação operacional antes de comunicação ao cliente.',
+    ];
+  }
+
+  if (module.area === 'Automação') {
+    return [
+      'Automação pode classificar, priorizar e orquestrar ações, mas não substitui aprovação humana em atos oficiais regulados.',
+      'Toda recomendação executada deve registrar auditoria, origem do sinal, empresa/tenant e resultado verificável.',
+    ];
+  }
+
+  if (module.area === 'Consultoria') {
+    return [
+      'Consultoria e BPO são serviços liderados por especialistas; software organiza escopo, evidências, SLA e aprovação do cliente.',
+      'Não gerar recomendação tributária final sem revisão técnica e registro das premissas usadas na análise.',
+    ];
+  }
+
+  return [
+    `Módulo em ${boundary}; manter contrato técnico, auditoria e escopo explícito antes de venda em produção.`,
+  ];
+}
+
+function summarizeRoadmap(module: BcostSchemaModule) {
+  const boundary = roadmapBoundary(module);
+
+  return {
+    fallback: true,
+    roadmap: true,
+    mode: 'DEMO_ROADMAP',
+    area: module.area,
+    priority: module.priority,
+    endpoint: module.apiBase ?? null,
+    canonicalOwner: roadmapCanonicalOwner(module),
+    automationBoundary: boundary,
+    operationalGuardrails: roadmapGuardrails(module, boundary),
+    nextStep:
+      'Criar modelo persistente, endpoints CRUD, auditoria e regras de permissão para este módulo.',
+    message:
+      'Módulo demonstrativo em roadmap técnico; sem dados fictícios para evitar confusão com execução real.',
+  };
+}
+
 export function getDemoEnterpriseCompanyId() {
   return DEMO_COMPANY_ID;
 }
@@ -211,6 +368,24 @@ export function createDemoEnterpriseResponse(
   params?: DemoParams,
 ): EnterpriseModuleResponse {
   const schemaModule = moduleInfo(slug);
+
+  if (isRoadmapModule(schemaModule)) {
+    return {
+      slug,
+      model: schemaModule.model,
+      label: schemaModule.title,
+      companyId,
+      status: 'OK_ROADMAP',
+      items: [],
+      total: 0,
+      limit: params?.limit ?? 100,
+      offset: params?.offset ?? 0,
+      hasMore: false,
+      summary: summarizeRoadmap(schemaModule),
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
   const allRecords = filterRecords(buildRecords(schemaModule), params?.search);
   const offset = params?.offset ?? 0;
   const limit = params?.limit ?? 100;
