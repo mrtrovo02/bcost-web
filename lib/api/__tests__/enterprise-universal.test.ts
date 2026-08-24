@@ -7,6 +7,8 @@ vi.mock('@/services/api', () => ({
     get: vi.fn(),
   },
   getActiveCompanyId: vi.fn(() => null),
+  getToken: vi.fn(() => null),
+  isDemoSession: vi.fn(() => false),
   setActiveCompanyId: vi.fn(),
 }));
 
@@ -46,5 +48,22 @@ describe('enterpriseUniversalApi', () => {
     await expect(enterpriseUniversalApi.getModule('users', 'company-123')).rejects.toMatchObject({
       code: 'DEMO_FALLBACK_DISABLED',
     });
+  });
+
+  it('serves explicit demo company modules locally even when global fallback is disabled', async () => {
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'false';
+
+    const [module, summary, health] = await Promise.all([
+      enterpriseUniversalApi.getModule('users', 'demo-001'),
+      enterpriseUniversalApi.summary('users', 'demo-001'),
+      enterpriseUniversalApi.health('users', 'demo-001'),
+    ]);
+
+    expect(module.status).toBe('OK_WITH_FALLBACK');
+    expect(module.companyId).toBe('demo-001');
+    expect(module.items.length).toBeGreaterThan(0);
+    expect(summary).toMatchObject({ fallback: true, mode: 'DEMO_OPERATIONAL' });
+    expect(health).toMatchObject({ slug: 'users', companyId: 'demo-001', status: 'OK_WITH_FALLBACK' });
+    expect(apiGetMock).not.toHaveBeenCalled();
   });
 });

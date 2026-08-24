@@ -136,10 +136,6 @@ export function getStoredCompanyId(): string | null {
     const value = safeLocalStorageGet(key);
 
     if (value && value !== 'null' && value !== 'undefined' && value !== 'ID_DA_EMPRESA') {
-      if (isDemoEntityId(value) && !isOperationalDemoFallbackEnabled()) {
-        continue;
-      }
-
       return value;
     }
   }
@@ -235,8 +231,7 @@ export const enterpriseUniversalApi = {
       to?: string;
     },
   ): Promise<EnterpriseModuleResponse> {
-    // Short-circuit if this is a demo company id and operational demo fallback is enabled
-    if (isDemoEntityId(companyId) && isOperationalDemoFallbackEnabled()) {
+    if (isDemoEntityId(companyId)) {
       return createDemoEnterpriseResponse(slug, companyId, params);
     }
 
@@ -285,8 +280,7 @@ export const enterpriseUniversalApi = {
   },
 
   async summary(slug: string, companyId: string) {
-    // Demo short-circuit
-    if (isDemoEntityId(companyId) && isOperationalDemoFallbackEnabled()) {
+    if (isDemoEntityId(companyId)) {
       return createDemoEnterpriseResponse(slug, companyId).summary;
     }
 
@@ -303,8 +297,7 @@ export const enterpriseUniversalApi = {
   },
 
   async health(slug: string, companyId: string) {
-    // Demo short-circuit
-    if (isDemoEntityId(companyId) && isOperationalDemoFallbackEnabled()) {
+    if (isDemoEntityId(companyId)) {
       return {
         slug,
         companyId,
