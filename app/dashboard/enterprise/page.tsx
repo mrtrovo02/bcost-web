@@ -8,6 +8,7 @@ import AccountingSetupReadinessWidget from '@/components/enterprise/AccountingSe
 import AutomationJobsExecutiveWidget from '@/components/enterprise/AutomationJobsExecutiveWidget';
 import BillingPlansWidget from '@/components/enterprise/BillingPlansWidget';
 import CoreTaxPreviewWidget from '@/components/enterprise/CoreTaxPreviewWidget';
+import EnterpriseCatalogGovernanceWidget from '@/components/enterprise/EnterpriseCatalogGovernanceWidget';
 
 function statusLabel(status: string) {
   if (status === 'ACTIVE') return 'Ativo';
@@ -102,6 +103,7 @@ export default function EnterpriseModulesPage() {
       <AccountingSetupReadinessWidget />
       <CoreTaxPreviewWidget />
       <AccountingPlatformCoverageWidget />
+      <EnterpriseCatalogGovernanceWidget />
 
       {bcostModuleAreas.map((area) => {
         const modules = bcostSchemaModules.filter((module) => module.area === area);
