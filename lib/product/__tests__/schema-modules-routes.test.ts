@@ -79,5 +79,7 @@ describe('bcostSchemaModules routes', () => {
     expect(apiBaseBySlug['payroll-entries']).toBe('/payroll/enterprise/entries');
     expect(apiBaseBySlug['tax-obligations']).toBe('/obligations/enterprise/tax');
     expect(apiBaseBySlug['fiscal-obligations']).toBe('/obligations/enterprise/fiscal');
+    expect(apiBaseBySlug['company-formation']).toBe('/accounting-platform/setup/readiness');
+    expect(apiBaseBySlug['banking-products']).toBe('/banking/enterprise/products');
   });
 });
