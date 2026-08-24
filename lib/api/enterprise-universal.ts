@@ -45,6 +45,12 @@ export type EnterpriseCatalogItem = {
   model: string;
   label: string;
   persistence?: 'PRISMA' | 'ROADMAP';
+  endpoint?: string;
+  area?: string;
+  priority?: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+  canonicalOwner?: string;
+  automationBoundary?: 'SOFTWARE_ONLY' | 'ASSISTED_AUTOMATION' | 'CRC_VALIDATED' | 'HUMAN_LED';
+  operationalGuardrails?: string[];
 };
 
 export type EnterpriseModuleViewState = {

@@ -41,6 +41,30 @@ describe('enterpriseUniversalApi', () => {
     expect(response.summary).toMatchObject({ fallback: true, mode: 'DEMO_OPERATIONAL' });
   });
 
+  it('returns enriched catalog metadata when the enterprise catalog endpoint is unavailable', async () => {
+    apiGetMock.mockRejectedValueOnce({ response: { status: 404 } });
+
+    const catalog = await enterpriseUniversalApi.catalog();
+    const bankingProducts = catalog.find((item) => item.slug === 'banking-products');
+    const companies = catalog.find((item) => item.slug === 'companies');
+
+    expect(bankingProducts).toMatchObject({
+      persistence: 'ROADMAP',
+      endpoint: '/banking/enterprise/products',
+      canonicalOwner: 'banking-enterprise',
+      automationBoundary: 'ASSISTED_AUTOMATION',
+      operationalGuardrails: expect.arrayContaining([
+        expect.stringContaining('parceiro BaaS homologado'),
+      ]),
+    });
+    expect(companies).toMatchObject({
+      persistence: 'PRISMA',
+      endpoint: '/enterprise/modules/companies/:companyId',
+      canonicalOwner: 'enterprise-modules',
+      automationBoundary: 'SOFTWARE_ONLY',
+    });
+  });
+
   it('blocks operational demo fallback when the environment disables it', async () => {
     process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'false';
     apiGetMock.mockRejectedValueOnce({ response: { status: 404 } });

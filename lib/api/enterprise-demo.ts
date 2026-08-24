@@ -434,9 +434,35 @@ export function createDemoEnterprisePayload(
 }
 
 export function createDemoEnterpriseCatalog() {
-  return bcostSchemaModules.map((module) => ({
-    slug: module.slug,
-    model: module.model,
-    label: module.title,
-  }));
+  return bcostSchemaModules.map((module) => {
+    if (isRoadmapModule(module)) {
+      const boundary = roadmapBoundary(module);
+
+      return {
+        slug: module.slug,
+        model: module.model,
+        label: module.title,
+        persistence: 'ROADMAP' as const,
+        endpoint: module.apiBase ?? `/enterprise/modules/${module.slug}/:companyId`,
+        area: module.area,
+        priority: module.priority,
+        canonicalOwner: roadmapCanonicalOwner(module),
+        automationBoundary: boundary,
+        operationalGuardrails: roadmapGuardrails(module, boundary),
+      };
+    }
+
+    return {
+      slug: module.slug,
+      model: module.model,
+      label: module.title,
+      persistence: 'PRISMA' as const,
+      endpoint: `/enterprise/modules/${module.slug}/:companyId`,
+      canonicalOwner: 'enterprise-modules',
+      automationBoundary: 'SOFTWARE_ONLY' as const,
+      operationalGuardrails: [
+        'Endpoint persistido exige autenticação JWT, empresa válida e filtros por companyId antes de expor dados.',
+      ],
+    };
+  });
 }
