@@ -1,11 +1,7 @@
 'use strict';
 
-import { api } from '@/services/api';
-import {
-  assertOperationalDemoFallbackEnabled,
-  isDemoEntityId,
-  isOperationalDemoFallbackEnabled,
-} from '@/lib/config/demo-policy';
+import { api, isDemoSession } from '@/services/api';
+import { isDemoEntityId, isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
 import { createDemoEnterpriseResponse } from './enterprise-demo';
 
 export type AutomationJobStatus =
@@ -110,10 +106,6 @@ export type AuditLogListResponse = {
 };
 
 function demoAutomationResponse(companyId: string, params: AutomationJobsQuery = {}) {
-  assertOperationalDemoFallbackEnabled(
-    'Automacoes indisponiveis e fallback demonstrativo desabilitado neste ambiente.',
-  );
-
   const demo = createDemoEnterpriseResponse('automation-jobs', companyId, params);
 
   return {
@@ -129,6 +121,57 @@ function demoAutomationResponse(companyId: string, params: AutomationJobsQuery =
     summary: demo.summary,
     generatedAt: demo.generatedAt,
   } satisfies AutomationJobsListResponse;
+}
+
+function shouldUseAutomationDemo(companyId: string): boolean {
+  return isDemoEntityId(companyId) || (isDemoSession() && isOperationalDemoFallbackEnabled());
+}
+
+function isDemoAutomationJobId(jobId: string): boolean {
+  return /^job-\d{3}$/i.test(jobId);
+}
+
+function makeDemoActionResponse(
+  action: AutomationJobActionResponse['action'],
+  jobId: string,
+): AutomationJobActionResponse {
+  const companyId = 'demo-001';
+  const demo = demoAutomationResponse(companyId);
+  const fallbackJob = demo.items.find((item) => item.id === jobId) || demo.items[0];
+  const generatedAt = new Date().toISOString();
+  const statusByAction: Record<string, AutomationJobStatus> = {
+    retry: 'QUEUED',
+    cancel: 'CANCELLED',
+    acknowledge: 'COMPLETED',
+  };
+  const job: AutomationJobRecord = {
+    ...fallbackJob,
+    status: statusByAction[action] ?? fallbackJob.status,
+    updatedAt: generatedAt,
+    result:
+      action === 'retry'
+        ? { status: 'QUEUED', message: 'Job demo reenfileirado para processamento.' }
+        : fallbackJob.result,
+  };
+
+  return {
+    status: 'OK',
+    action,
+    jobId,
+    companyId,
+    applied: true,
+    message:
+      action === 'retry'
+        ? 'Job demo reenfileirado com sucesso.'
+        : action === 'cancel'
+          ? 'Job demo cancelado com sucesso.'
+          : 'Job demo reconhecido com sucesso.',
+    job,
+    audit: {
+      recorded: true,
+    },
+    generatedAt,
+  };
 }
 
 function buildQuery(params?: Record<string, unknown>): string {
@@ -153,7 +196,7 @@ export const automationJobsApi = {
   ): Promise<AutomationJobsListResponse> => {
     const query = buildQuery(params);
 
-    if (isDemoEntityId(companyId) && isOperationalDemoFallbackEnabled()) {
+    if (shouldUseAutomationDemo(companyId)) {
       return demoAutomationResponse(companyId, params);
     }
 
@@ -173,7 +216,7 @@ export const automationJobsApi = {
   },
 
   detail: async (companyId: string, jobId: string): Promise<AutomationJobDetailResponse> => {
-    if (isDemoEntityId(companyId) && isOperationalDemoFallbackEnabled()) {
+    if (shouldUseAutomationDemo(companyId)) {
       const demo = demoAutomationResponse(companyId);
       const job = demo.items.find((item) => item.id === jobId) || demo.items[0];
 
@@ -213,12 +256,20 @@ export const automationJobsApi = {
   },
 
   retry: async (jobId: string): Promise<AutomationJobActionResponse> => {
+    if (isDemoAutomationJobId(jobId)) {
+      return makeDemoActionResponse('retry', jobId);
+    }
+
     const response = await api.post<AutomationJobActionResponse>(`/automation/jobs/${jobId}/retry`);
 
     return response.data;
   },
 
   cancel: async (jobId: string): Promise<AutomationJobActionResponse> => {
+    if (isDemoAutomationJobId(jobId)) {
+      return makeDemoActionResponse('cancel', jobId);
+    }
+
     const response = await api.post<AutomationJobActionResponse>(
       `/automation/jobs/${jobId}/cancel`,
     );
@@ -227,6 +278,10 @@ export const automationJobsApi = {
   },
 
   acknowledge: async (jobId: string): Promise<AutomationJobActionResponse> => {
+    if (isDemoAutomationJobId(jobId)) {
+      return makeDemoActionResponse('acknowledge', jobId);
+    }
+
     const response = await api.post<AutomationJobActionResponse>(
       `/automation/jobs/${jobId}/acknowledge`,
     );
