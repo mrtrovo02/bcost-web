@@ -35,6 +35,17 @@ type AutomationJobRecord = EnterpriseModuleRecord & {
   companyId?: string;
 };
 
+type RoadmapModuleSummary = {
+  roadmap?: boolean;
+  area?: string;
+  priority?: string;
+  endpoint?: string;
+  canonicalOwner?: string;
+  automationBoundary?: string;
+  operationalGuardrails?: string[];
+  nextStep?: string;
+};
+
 function hasRealAuthToken(): boolean {
   const token = getToken();
   return Boolean(token && token !== 'demo-token-local');
@@ -197,6 +208,29 @@ function isRoadmapData(data: EnterpriseModuleResponse | null) {
   return Boolean(summary?.roadmap);
 }
 
+function getRoadmapSummary(data: EnterpriseModuleResponse | null): RoadmapModuleSummary | null {
+  if (!isRoadmapData(data) || !isObject(data?.summary)) {
+    return null;
+  }
+
+  const summary = data.summary;
+  const guardrails = Array.isArray(summary.operationalGuardrails)
+    ? summary.operationalGuardrails.filter((item): item is string => typeof item === 'string')
+    : [];
+
+  return {
+    roadmap: summary.roadmap === true,
+    area: typeof summary.area === 'string' ? summary.area : undefined,
+    priority: typeof summary.priority === 'string' ? summary.priority : undefined,
+    endpoint: typeof summary.endpoint === 'string' ? summary.endpoint : undefined,
+    canonicalOwner: typeof summary.canonicalOwner === 'string' ? summary.canonicalOwner : undefined,
+    automationBoundary:
+      typeof summary.automationBoundary === 'string' ? summary.automationBoundary : undefined,
+    operationalGuardrails: guardrails,
+    nextStep: typeof summary.nextStep === 'string' ? summary.nextStep : undefined,
+  };
+}
+
 function FallbackNotice({ data }: { data: EnterpriseModuleResponse | null }) {
   if (isRoadmapData(data)) {
     return (
@@ -220,6 +254,91 @@ function FallbackNotice({ data }: { data: EnterpriseModuleResponse | null }) {
         funcional com dados controlados para validar fluxo, campos, KPIs e experiência de uso.
       </p>
     </section>
+  );
+}
+
+function RoadmapModuleView({
+  data,
+  onRefresh,
+}: {
+  data: EnterpriseModuleResponse;
+  onRefresh: () => void;
+}) {
+  const roadmap = getRoadmapSummary(data);
+
+  return (
+    <section className="rounded-3xl border border-blue-200 bg-white p-6 shadow-sm">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-500">
+            Roadmap técnico controlado
+          </p>
+          <h2 className="mt-2 text-2xl font-black text-slate-950">
+            {data.label} está mapeado, mas ainda não opera com persistência própria
+          </h2>
+          <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-600">
+            Este módulo permanece navegável para apresentação executiva e validação de arquitetura,
+            sem simular execução real quando o backend ainda exige integração, dossiê ou operação
+            humana.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={onRefresh}
+          className="rounded-2xl bg-blue-700 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-800"
+        >
+          Atualizar contrato
+        </button>
+      </div>
+
+      <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <RoadmapCard label="Área" value={roadmap?.area ?? '-'} />
+        <RoadmapCard label="Prioridade" value={roadmap?.priority ?? '-'} />
+        <RoadmapCard label="Owner canônico" value={roadmap?.canonicalOwner ?? '-'} />
+        <RoadmapCard label="Boundary" value={roadmap?.automationBoundary ?? '-'} />
+      </div>
+
+      <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+          Endpoint canônico
+        </p>
+        <p className="mt-2 break-all font-mono text-sm font-semibold text-slate-800">
+          {roadmap?.endpoint ?? '/enterprise/modules/:slug/:companyId'}
+        </p>
+      </div>
+
+      {roadmap?.nextStep ? (
+        <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <p className="font-black">Próximo passo de engenharia</p>
+          <p className="mt-1 leading-6">{roadmap.nextStep}</p>
+        </div>
+      ) : null}
+
+      {roadmap?.operationalGuardrails?.length ? (
+        <div className="mt-5 grid gap-3">
+          {roadmap.operationalGuardrails.map((guardrail) => (
+            <div
+              key={guardrail}
+              className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm font-semibold leading-6 text-blue-900"
+            >
+              {guardrail}
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function RoadmapCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">{label}</p>
+      <p className="mt-2 truncate text-sm font-black text-slate-900" title={value}>
+        {value}
+      </p>
+    </div>
   );
 }
 
@@ -860,6 +979,8 @@ function UniversalModuleView({
               Tentar novamente
             </button>
           </section>
+        ) : data && isRoadmapData(data) ? (
+          <RoadmapModuleView data={data} onRefresh={onRefresh} />
         ) : !data?.items?.length ? (
           <section className="rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-sm">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
