@@ -1,12 +1,8 @@
 'use strict';
 
-import { api } from '@/services/api';
+import { api, isDemoSession } from '@/services/api';
 import { createDemoEnterpriseCatalog } from '@/lib/api/enterprise-demo';
-import {
-  assertOperationalDemoFallbackEnabled,
-  isDemoEntityId,
-  isOperationalDemoFallbackEnabled,
-} from '@/lib/config/demo-policy';
+import { isDemoEntityId, isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
 
 export type ExecutiveStatus = 'HEALTHY' | 'ATTENTION' | 'CRITICAL' | 'UNAVAILABLE';
 
@@ -276,10 +272,6 @@ function createDemoExecutiveSummary(modules: CommandCenterModuleMetric[]): Execu
 }
 
 function createDemoCommandCenterSummary(companyId: string): CommandCenterSummaryResponse {
-  assertOperationalDemoFallbackEnabled(
-    'Command Center indisponivel e fallback demonstrativo desabilitado neste ambiente.',
-  );
-
   const modules: CommandCenterModuleMetric[] = createDemoEnterpriseCatalog()
     .slice(0, 12)
     .map((item, index) => {
@@ -381,7 +373,7 @@ function createDemoCommandCenterSummary(companyId: string): CommandCenterSummary
 }
 
 function shouldUseCommandCenterFallback(companyId: string): boolean {
-  return isDemoEntityId(companyId) && isOperationalDemoFallbackEnabled();
+  return isDemoEntityId(companyId) || (isDemoSession() && isOperationalDemoFallbackEnabled());
 }
 
 export const commandCenterEnterpriseApi = {
