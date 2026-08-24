@@ -1,11 +1,7 @@
 'use strict';
 
-import { api } from '@/services/api';
-import {
-  assertOperationalDemoFallbackEnabled,
-  isDemoEntityId,
-  isOperationalDemoFallbackEnabled,
-} from '@/lib/config/demo-policy';
+import { api, isDemoSession } from '@/services/api';
+import { isDemoEntityId, isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
 
 export type FinanceOperationStatus =
   | 'PAID'
@@ -280,10 +276,6 @@ function demoFinanceItem(
 }
 
 function createDemoFinanceSummary(companyId: string): FinanceOperationsSummaryResponse {
-  assertOperationalDemoFallbackEnabled(
-    'Operacoes financeiras indisponiveis e fallback demonstrativo desabilitado neste ambiente.',
-  );
-
   const receivables = [
     demoFinanceItem('rec-001', 'RECEIVABLE', 'Mensalidade SaaS', 24800, 'OPEN', 12, 'LOW'),
     demoFinanceItem('rec-002', 'RECEIVABLE', 'Serviços contábeis recorrentes', 13750, 'DUE_SOON', 5, 'MEDIUM'),
@@ -361,7 +353,7 @@ function fallbackFinanceSummary(companyId: string): FinanceOperationsSummaryResp
 }
 
 function shouldUseFinanceFallback(companyId: string): boolean {
-  return isDemoEntityId(companyId) && isOperationalDemoFallbackEnabled();
+  return isDemoEntityId(companyId) || (isDemoSession() && isOperationalDemoFallbackEnabled());
 }
 
 export const financeOperationsEnterpriseApi = {
