@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   enterpriseUniversalApi,
@@ -1142,6 +1142,7 @@ function UniversalModuleView({
 
 export default function EnterpriseModuleClient({ slug }: EnterpriseModuleClientProps) {
   const [companyId, setCompanyId] = useState<string | null>(null);
+  const companyIdRef = useRef<string | null>(null);
   const [data, setData] = useState<EnterpriseModuleResponse | null>(null);
   const [catalogItem, setCatalogItem] = useState<EnterpriseCatalogItem | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1160,15 +1161,16 @@ export default function EnterpriseModuleClient({ slug }: EnterpriseModuleClientP
 
         setError(null);
 
+        const currentCompanyId = companyIdRef.current;
         const shouldResolveCompany =
-          !companyId || (isDemoEntityId(companyId) && hasRealAuthToken());
+          !currentCompanyId || (isDemoEntityId(currentCompanyId) && hasRealAuthToken());
         const catalogPromise = enterpriseUniversalApi
           .catalog()
           .then((catalog) => catalog.find((item) => item.slug === slug) ?? null)
           .catch(() => null);
         const companyPromise = shouldResolveCompany
           ? resolveEnterpriseCompanyId()
-          : Promise.resolve(companyId);
+          : Promise.resolve(currentCompanyId);
         const [nextCatalogItem, resolvedCompanyId] = await Promise.all([
           catalogPromise,
           companyPromise,
@@ -1184,6 +1186,7 @@ export default function EnterpriseModuleClient({ slug }: EnterpriseModuleClientP
           return;
         }
 
+        companyIdRef.current = resolvedCompanyId;
         setCompanyId(resolvedCompanyId);
 
         const response = await enterpriseUniversalApi.getModule(slug, resolvedCompanyId, {
@@ -1201,7 +1204,7 @@ export default function EnterpriseModuleClient({ slug }: EnterpriseModuleClientP
         setRefreshing(false);
       }
     },
-    [companyId, search, slug],
+    [search, slug],
   );
 
   useEffect(() => {
@@ -1210,7 +1213,11 @@ export default function EnterpriseModuleClient({ slug }: EnterpriseModuleClientP
       const nextCompanyId = detail?.companyId;
 
       const canUseDemoCompany = Boolean(nextCompanyId && isDemoEntityId(nextCompanyId) && isDemoSession());
-      setCompanyId(nextCompanyId && (!isDemoEntityId(nextCompanyId) || canUseDemoCompany) ? nextCompanyId : null);
+      const acceptedCompanyId =
+        nextCompanyId && (!isDemoEntityId(nextCompanyId) || canUseDemoCompany) ? nextCompanyId : null;
+
+      companyIdRef.current = acceptedCompanyId;
+      setCompanyId(acceptedCompanyId);
       setData(null);
       setCatalogItem(null);
       setError(null);
