@@ -1,7 +1,10 @@
 'use strict';
 
-import { api, getToken } from '@/services/api';
-import { assertOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
+import { api, getToken, isDemoSession } from '@/services/api';
+import {
+  assertOperationalDemoFallbackEnabled,
+  isDemoEntityId,
+} from '@/lib/config/demo-policy';
 
 export type PlanLevel = 'FREE' | 'PRO' | 'ENTERPRISE';
 
@@ -91,11 +94,15 @@ function hasRealAuthToken(): boolean {
 }
 
 function assertBillingDemoFallbackAllowed(message: string): void {
-  if (hasRealAuthToken()) {
+  if (hasRealAuthToken() && !isDemoSession()) {
     throw new Error(message);
   }
 
   assertOperationalDemoFallbackEnabled(message);
+}
+
+function isDemoBillingCompany(companyId: string): boolean {
+  return isDemoEntityId(companyId) || isDemoSession();
 }
 
 export const DEMO_BILLING_PLANS: BillingPlan[] = [
@@ -242,6 +249,10 @@ export const billingApi = {
   },
 
   entitlements: async (companyId: string): Promise<BillingEntitlementsResponse> => {
+    if (isDemoBillingCompany(companyId)) {
+      return getDemoBillingEntitlements({ id: companyId }, 'ENTERPRISE');
+    }
+
     try {
       const response = await api.get<BillingEntitlementsResponse>(
         `/billing/entitlements/${companyId}`,
@@ -261,6 +272,24 @@ export const billingApi = {
     companyId: string,
     feature: string,
   ): Promise<BillingFeatureCheckResponse> => {
+    if (isDemoBillingCompany(companyId)) {
+      const demo = getDemoBillingEntitlements({ id: companyId }, 'ENTERPRISE');
+      const found = demo.features.find((item) => item.key === feature);
+
+      return {
+        status: found ? 'ALLOWED_DEMO' : 'UNKNOWN_FEATURE_DEMO',
+        allowed: Boolean(found),
+        companyId,
+        planLevel: demo.planLevel,
+        featureKey: feature,
+        feature: found,
+        message: found
+          ? 'Feature liberada no modo demonstrativo.'
+          : 'Feature não catalogada no modo demonstrativo.',
+        generatedAt: new Date().toISOString(),
+      };
+    }
+
     try {
       const response = await api.get<BillingFeatureCheckResponse>(
         `/billing/features/${companyId}/check`,
@@ -300,6 +329,18 @@ export const billingApi = {
     planLevel: PlanLevel,
     reason?: string,
   ): Promise<BillingUpdatePlanResponse> => {
+    if (isDemoBillingCompany(companyId)) {
+      return {
+        ...getDemoBillingEntitlements({ id: companyId }, planLevel),
+        message: `Plano simulado como ${planLevel}. Conecte a API para persistir a alteração.`,
+        oldPlan: 'ENTERPRISE',
+        newPlan: planLevel,
+        audit: {
+          recorded: true,
+        },
+      };
+    }
+
     try {
       const response = await api.patch<BillingUpdatePlanResponse>(`/billing/plan/${companyId}`, {
         planLevel,
