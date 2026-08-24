@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   enterpriseUniversalApi,
+  EnterpriseCatalogItem,
   EnterpriseModuleRecord,
   EnterpriseModuleResponse,
   getEnterpriseModuleLabel,
@@ -44,6 +45,14 @@ type RoadmapModuleSummary = {
   automationBoundary?: string;
   operationalGuardrails?: string[];
   nextStep?: string;
+};
+
+type ModuleGovernanceDetails = {
+  persistence?: EnterpriseCatalogItem['persistence'];
+  endpoint?: string;
+  canonicalOwner?: string;
+  automationBoundary?: EnterpriseCatalogItem['automationBoundary'] | string;
+  operationalGuardrails: string[];
 };
 
 function hasRealAuthToken(): boolean {
@@ -229,6 +238,84 @@ function getRoadmapSummary(data: EnterpriseModuleResponse | null): RoadmapModule
     operationalGuardrails: guardrails,
     nextStep: typeof summary.nextStep === 'string' ? summary.nextStep : undefined,
   };
+}
+
+function getModuleGovernanceDetails(
+  data: EnterpriseModuleResponse | null,
+  catalogItem: EnterpriseCatalogItem | null,
+): ModuleGovernanceDetails | null {
+  const roadmap = getRoadmapSummary(data);
+  const guardrails = Array.isArray(catalogItem?.operationalGuardrails)
+    ? catalogItem.operationalGuardrails
+    : [];
+
+  if (roadmap) {
+    const roadmapGuardrails = roadmap.operationalGuardrails ?? [];
+
+    return {
+      persistence: catalogItem?.persistence ?? 'ROADMAP',
+      endpoint: roadmap.endpoint ?? catalogItem?.endpoint,
+      canonicalOwner: roadmap.canonicalOwner ?? catalogItem?.canonicalOwner,
+      automationBoundary: roadmap.automationBoundary ?? catalogItem?.automationBoundary,
+      operationalGuardrails: roadmapGuardrails.length
+        ? roadmapGuardrails
+        : guardrails,
+    };
+  }
+
+  if (!catalogItem) {
+    return null;
+  }
+
+  return {
+    persistence: catalogItem.persistence,
+    endpoint: catalogItem.endpoint,
+    canonicalOwner: catalogItem.canonicalOwner,
+    automationBoundary: catalogItem.automationBoundary,
+    operationalGuardrails: guardrails,
+  };
+}
+
+function GovernanceNotice({
+  details,
+  fallbackEndpoint,
+}: {
+  details: ModuleGovernanceDetails | null;
+  fallbackEndpoint: string;
+}) {
+  if (!details) return null;
+
+  return (
+    <section className="mb-6 rounded-3xl border border-emerald-100 bg-emerald-50 p-5 text-sm text-emerald-900 shadow-sm">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <div className="font-black">Governança do contrato enterprise</div>
+          <p className="mt-1 leading-6">
+            Owner: <span className="font-black">{details.canonicalOwner ?? 'enterprise-modules'}</span>{' '}
+            · Boundary:{' '}
+            <span className="font-black">{details.automationBoundary ?? 'SOFTWARE_ONLY'}</span> ·
+            Persistência: <span className="font-black">{details.persistence ?? 'PRISMA'}</span>
+          </p>
+        </div>
+        <div className="break-all rounded-2xl border border-emerald-200 bg-white px-3 py-2 font-mono text-xs font-semibold text-emerald-800">
+          {details.endpoint ?? fallbackEndpoint}
+        </div>
+      </div>
+
+      {details.operationalGuardrails.length ? (
+        <div className="mt-4 grid gap-2">
+          {details.operationalGuardrails.slice(0, 2).map((guardrail) => (
+            <div
+              key={guardrail}
+              className="rounded-2xl border border-emerald-100 bg-white/70 p-3 text-xs font-semibold leading-5 text-emerald-900"
+            >
+              {guardrail}
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
 }
 
 function FallbackNotice({ data }: { data: EnterpriseModuleResponse | null }) {
@@ -850,6 +937,7 @@ function DetailRow({ label, value }: { label: string; value: unknown }) {
 function UniversalModuleView({
   slug,
   data,
+  catalogItem,
   loading,
   refreshing,
   error,
@@ -861,6 +949,7 @@ function UniversalModuleView({
 }: {
   slug: string;
   data: EnterpriseModuleResponse | null;
+  catalogItem: EnterpriseCatalogItem | null;
   loading: boolean;
   refreshing: boolean;
   error: string | null;
@@ -874,6 +963,11 @@ function UniversalModuleView({
   const moduleModel = data?.model || getEnterpriseModuleModel(slug);
   const cards = useMemo(() => summarizeCards(data), [data]);
   const columns = useMemo(() => pickColumns(data?.items || []), [data?.items]);
+  const governance = useMemo(
+    () => getModuleGovernanceDetails(data, catalogItem),
+    [catalogItem, data],
+  );
+  const universalEndpoint = `/enterprise/modules/${slug}/${companyId || ':companyId'}`;
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -926,6 +1020,7 @@ function UniversalModuleView({
         </section>
 
         <FallbackNotice data={data} />
+        <GovernanceNotice details={governance} fallbackEndpoint={universalEndpoint} />
 
         <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -934,7 +1029,7 @@ function UniversalModuleView({
               <p className="text-sm text-slate-500">
                 Endpoint universal:{' '}
                 <span className="font-mono text-xs">
-                  /enterprise/modules/{slug}/{companyId || ':companyId'}
+                  {universalEndpoint}
                 </span>
               </p>
             </div>
@@ -1048,6 +1143,7 @@ function UniversalModuleView({
 export default function EnterpriseModuleClient({ slug }: EnterpriseModuleClientProps) {
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [data, setData] = useState<EnterpriseModuleResponse | null>(null);
+  const [catalogItem, setCatalogItem] = useState<EnterpriseCatalogItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1063,6 +1159,13 @@ export default function EnterpriseModuleClient({ slug }: EnterpriseModuleClientP
         }
 
         setError(null);
+
+        try {
+          const catalog = await enterpriseUniversalApi.catalog();
+          setCatalogItem(catalog.find((item) => item.slug === slug) ?? null);
+        } catch {
+          setCatalogItem(null);
+        }
 
         const shouldResolveCompany =
           !companyId || (isDemoEntityId(companyId) && hasRealAuthToken());
@@ -1106,6 +1209,7 @@ export default function EnterpriseModuleClient({ slug }: EnterpriseModuleClientP
       const canUseDemoCompany = Boolean(nextCompanyId && isDemoEntityId(nextCompanyId) && isDemoSession());
       setCompanyId(nextCompanyId && (!isDemoEntityId(nextCompanyId) || canUseDemoCompany) ? nextCompanyId : null);
       setData(null);
+      setCatalogItem(null);
       setError(null);
     };
 
@@ -1148,6 +1252,7 @@ export default function EnterpriseModuleClient({ slug }: EnterpriseModuleClientP
     <UniversalModuleView
       slug={slug}
       data={data}
+      catalogItem={catalogItem}
       loading={loading}
       refreshing={refreshing}
       error={error}
