@@ -230,6 +230,18 @@ export function resolveRequestAuthMetadata(
   };
 }
 
+export function resolveRequestCompanyId(
+  token: string | null,
+  companyId: string | null,
+): string | null {
+  if (!companyId) return null;
+
+  const hasRealToken = Boolean(token && token !== DEMO_TOKEN);
+  if (hasRealToken && isDemoId(companyId)) return null;
+
+  return companyId;
+}
+
 function clearStoredCompanyData(): void {
   lsRemove([...COMPANY_KEYS, ...COMPANY_DATA_KEYS]);
   deleteCookie('bcost_company_id');
@@ -518,8 +530,10 @@ api.interceptors.request.use(
       config.baseURL = runtimeBase;
     }
 
+    const token = getToken();
     const companyId = getActiveCompanyId();
-    const authMetadata = resolveRequestAuthMetadata(getToken(), companyId);
+    const authMetadata = resolveRequestAuthMetadata(token, companyId);
+    const requestCompanyId = resolveRequestCompanyId(token, companyId);
 
     if (authMetadata.token && !config.headers.Authorization) {
       config.headers.Authorization = `Bearer ${authMetadata.token}`;
@@ -529,9 +543,9 @@ api.interceptors.request.use(
       config.headers['x-demo-session'] = 'true';
     }
 
-    if (companyId) {
-      config.headers['x-company-id'] = companyId;
-      config.headers['CompanyId'] = companyId;
+    if (requestCompanyId) {
+      config.headers['x-company-id'] = requestCompanyId;
+      config.headers['CompanyId'] = requestCompanyId;
     }
     return config;
   },

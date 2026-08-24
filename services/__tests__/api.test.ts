@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { isDemoSession, resolveRequestAuthMetadata } from '../api';
+import { isDemoSession, resolveRequestAuthMetadata, resolveRequestCompanyId } from '../api';
 
 describe('isDemoSession', () => {
   beforeEach(() => {
@@ -30,5 +30,19 @@ describe('isDemoSession', () => {
       token: 'real-jwt-token',
       isDemoRequest: false,
     });
+  });
+
+  it('does not send stale demo company id with real tokens', () => {
+    expect(resolveRequestCompanyId('real-jwt-token', 'demo-001')).toBeNull();
+  });
+
+  it('keeps real company id with real tokens', () => {
+    expect(resolveRequestCompanyId('real-jwt-token', 'company-real-001')).toBe(
+      'company-real-001',
+    );
+  });
+
+  it('keeps demo company id when request has no real token', () => {
+    expect(resolveRequestCompanyId(null, 'demo-001')).toBe('demo-001');
   });
 });
