@@ -35,6 +35,7 @@ describe('enterprise-company resolver', () => {
   });
 
   it('keeps explicit demo company ids stored by the demo session', async () => {
+    isDemoSessionMock.mockReturnValue(true);
     window.localStorage.setItem('bcost_active_company', 'demo-001');
 
     expect(readStoredEnterpriseCompanyId()).toBe('demo-001');
@@ -48,6 +49,23 @@ describe('enterprise-company resolver', () => {
     await expect(resolveEnterpriseCompanyIdWithFallback()).resolves.toBe('demo-001');
     expect(window.localStorage.getItem('bcost_active_company')).toBe('demo-001');
     expect(apiGetMock).not.toHaveBeenCalled();
+  });
+
+  it('ignores stale demo company id in real sessions and resolves auth company', async () => {
+    window.localStorage.setItem('bcost_active_company', 'demo-001');
+    window.localStorage.setItem('bcost_company_id', 'demo-001');
+    apiGetMock.mockResolvedValueOnce({
+      data: {
+        id: 'user-1',
+        email: 'amandacontabil@bcost.com.br',
+        activeCompanyId: 'company-real-001',
+      },
+    });
+
+    await expect(resolveEnterpriseCompanyIdWithFallback()).resolves.toBe('company-real-001');
+    expect(window.localStorage.getItem('bcost_active_company')).toBe('company-real-001');
+    expect(window.localStorage.getItem('bcost_company_id')).toBeNull();
+    expect(apiGetMock).toHaveBeenCalledWith('/auth/me');
   });
 
   it('does not silently create demo company for real sessions without company context', async () => {

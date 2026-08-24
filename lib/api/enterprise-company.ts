@@ -8,11 +8,17 @@ type AuthMeResponse = {
   id: string;
   email: string;
   companyId?: string;
+  activeCompanyId?: string;
+  company_id?: string;
   role?: string;
 };
 
 function isBrowser() {
   return typeof window !== 'undefined';
+}
+
+function isDemoCompanyId(value: string | null): boolean {
+  return Boolean(value && value.toLowerCase().startsWith('demo-'));
 }
 
 export function readStoredEnterpriseCompanyId(): string | null {
@@ -62,11 +68,21 @@ export async function resolveEnterpriseCompanyIdWithFallback(): Promise<string> 
 
   const stored = readStoredEnterpriseCompanyId();
 
-  if (stored) return stored;
+  if (stored && !isDemoCompanyId(stored)) return stored;
+
+  if (stored && isDemoCompanyId(stored) && isBrowser()) {
+    localStorage.removeItem('bcost_active_company');
+    localStorage.removeItem('bcost_company_id');
+    localStorage.removeItem('companyId');
+    localStorage.removeItem('activeCompanyId');
+  }
 
   try {
     const response = await api.get<AuthMeResponse>('/auth/me');
-    const companyId = response.data.companyId;
+    const companyId =
+      response.data.companyId ||
+      response.data.activeCompanyId ||
+      response.data.company_id;
 
     if (companyId) {
       if (isBrowser()) {
