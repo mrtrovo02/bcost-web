@@ -19,6 +19,7 @@ describe('enterpriseUniversalApi', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    enterpriseUniversalApi.clearCatalogCache();
     process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'true';
   });
 
@@ -63,6 +64,62 @@ describe('enterpriseUniversalApi', () => {
       canonicalOwner: 'enterprise-modules',
       automationBoundary: 'SOFTWARE_ONLY',
     });
+  });
+
+  it('caches successful enterprise catalog responses to reduce duplicate requests', async () => {
+    apiGetMock.mockResolvedValueOnce({
+      data: [
+        {
+          slug: 'companies',
+          model: 'Company',
+          label: 'Empresas',
+          persistence: 'PRISMA',
+          endpoint: '/enterprise/modules/companies/:companyId',
+        },
+      ],
+    });
+
+    const [first, second] = await Promise.all([
+      enterpriseUniversalApi.catalog(),
+      enterpriseUniversalApi.catalog(),
+    ]);
+    const third = await enterpriseUniversalApi.catalog();
+
+    expect(first).toHaveLength(1);
+    expect(second).toHaveLength(1);
+    expect(third).toHaveLength(1);
+    expect(apiGetMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('force refresh bypasses enterprise catalog cache', async () => {
+    apiGetMock
+      .mockResolvedValueOnce({
+        data: [
+          {
+            slug: 'companies',
+            model: 'Company',
+            label: 'Empresas',
+            persistence: 'PRISMA',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            slug: 'banking-products',
+            model: 'BankingProduct',
+            label: 'Banking e Fintech',
+            persistence: 'ROADMAP',
+          },
+        ],
+      });
+
+    const first = await enterpriseUniversalApi.catalog();
+    const refreshed = await enterpriseUniversalApi.catalog({ forceRefresh: true });
+
+    expect(first[0]?.slug).toBe('companies');
+    expect(refreshed[0]?.slug).toBe('banking-products');
+    expect(apiGetMock).toHaveBeenCalledTimes(2);
   });
 
   it('blocks operational demo fallback when the environment disables it', async () => {

@@ -53,11 +53,25 @@ export type EnterpriseCatalogItem = {
   operationalGuardrails?: string[];
 };
 
+export type EnterpriseCatalogOptions = {
+  forceRefresh?: boolean;
+};
+
 export type EnterpriseModuleViewState = {
   loading: boolean;
   error: string | null;
   data: EnterpriseModuleResponse | null;
 };
+
+type EnterpriseCatalogCache = {
+  items: EnterpriseCatalogItem[];
+  expiresAt: number;
+};
+
+const ENTERPRISE_CATALOG_CACHE_TTL_MS = 60_000;
+
+let enterpriseCatalogCache: EnterpriseCatalogCache | null = null;
+let enterpriseCatalogRequest: Promise<EnterpriseCatalogItem[]> | null = null;
 
 export const ENTERPRISE_MODULE_LABELS: Record<string, string> = {
   users: 'Usuários',
@@ -206,23 +220,57 @@ export async function resolveEnterpriseCompanyId(): Promise<string | null> {
 }
 
 export const enterpriseUniversalApi = {
-  async catalog(): Promise<EnterpriseCatalogItem[]> {
-    try {
-      const response = await api.get('/enterprise/modules');
-      return Array.isArray(response.data) ? response.data : createDemoEnterpriseCatalog();
-    } catch (error) {
-      assertOperationalDemoFallbackEnabled(
-        'Catalogo enterprise indisponivel e fallback demonstrativo desabilitado neste ambiente.',
-      );
+  async catalog(options: EnterpriseCatalogOptions = {}): Promise<EnterpriseCatalogItem[]> {
+    const now = Date.now();
 
-      const status =
-        typeof error === 'object' && error !== null && 'response' in error
-          ? (error as { response?: { status?: number } }).response?.status
-          : undefined;
-
-      trackEvent('enterprise_catalog_fallback', { status });
-      return createDemoEnterpriseCatalog();
+    if (
+      !options.forceRefresh &&
+      enterpriseCatalogCache &&
+      enterpriseCatalogCache.expiresAt > now
+    ) {
+      return enterpriseCatalogCache.items;
     }
+
+    if (!options.forceRefresh && enterpriseCatalogRequest) {
+      return enterpriseCatalogRequest;
+    }
+
+    enterpriseCatalogRequest = (async () => {
+      try {
+        const response = await api.get('/enterprise/modules');
+        const items = Array.isArray(response.data)
+          ? (response.data as EnterpriseCatalogItem[])
+          : createDemoEnterpriseCatalog();
+
+        enterpriseCatalogCache = {
+          items,
+          expiresAt: Date.now() + ENTERPRISE_CATALOG_CACHE_TTL_MS,
+        };
+
+        return items;
+      } catch (error) {
+        assertOperationalDemoFallbackEnabled(
+          'Catalogo enterprise indisponivel e fallback demonstrativo desabilitado neste ambiente.',
+        );
+
+        const status =
+          typeof error === 'object' && error !== null && 'response' in error
+            ? (error as { response?: { status?: number } }).response?.status
+            : undefined;
+
+        trackEvent('enterprise_catalog_fallback', { status });
+        return createDemoEnterpriseCatalog();
+      } finally {
+        enterpriseCatalogRequest = null;
+      }
+    })();
+
+    return enterpriseCatalogRequest;
+  },
+
+  clearCatalogCache(): void {
+    enterpriseCatalogCache = null;
+    enterpriseCatalogRequest = null;
   },
 
   async getModule(

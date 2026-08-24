@@ -69,11 +69,11 @@ function sortCriticalRoadmap(items: EnterpriseCatalogItem[]) {
 export default function EnterpriseCatalogGovernanceWidget() {
   const [state, setState] = useState<CatalogState>(INITIAL_STATE);
 
-  async function load() {
+  async function load(forceRefresh = false) {
     setState((current) => ({ ...current, loading: true, error: null }));
 
     try {
-      const items = await enterpriseUniversalApi.catalog();
+      const items = await enterpriseUniversalApi.catalog({ forceRefresh });
       setState({ loading: false, error: null, items });
     } catch (error) {
       setState({
@@ -129,7 +129,7 @@ export default function EnterpriseCatalogGovernanceWidget() {
 
         <button
           type="button"
-          onClick={() => void load()}
+          onClick={() => void load(true)}
           disabled={state.loading}
           className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
         >
