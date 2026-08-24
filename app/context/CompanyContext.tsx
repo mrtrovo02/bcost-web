@@ -1,7 +1,13 @@
 'use client';
 
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { api, isDemoSession as detectDemoSession } from '@/services/api';
+import {
+  api,
+  clearActiveCompanyId,
+  getActiveCompanyId,
+  isDemoSession as detectDemoSession,
+  setActiveCompanyId,
+} from '@/services/api';
 import {
   safeJsonParse,
   safeLocalStorageGet,
@@ -51,7 +57,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     const hydrate = () => {
       try {
         const saved = safeLocalStorageGet('bcost_active_company_data');
-        const savedId = safeLocalStorageGet('bcost_active_company');
+        const savedId = getActiveCompanyId();
         const storedCompanies = safeJsonParse<Company[]>(safeLocalStorageGet('bcost_companies'), []);
         const isDemo = detectDemoSession();
 
@@ -62,16 +68,14 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
           if (parsedCompany?.id) {
             if (isDemoEntityId(parsedCompany.id) && !isDemo) {
               safeLocalStorageRemove('bcost_active_company_data');
-              safeLocalStorageRemove('bcost_active_company');
-              safeLocalStorageRemove('bcost_company_id');
-              safeLocalStorageRemove('companyId');
+              clearActiveCompanyId();
               setSelectedCompany(null);
               return;
             }
 
             if (isDemoEntityId(parsedCompany.id) && !isOperationalDemoFallbackEnabled()) {
               safeLocalStorageRemove('bcost_active_company_data');
-              safeLocalStorageRemove('bcost_active_company');
+              clearActiveCompanyId();
               setIsLoading(false);
               return;
             }
@@ -107,7 +111,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
           if (Array.isArray(storedCompanies) && storedCompanies.length > 0) {
             const demoCompany = storedCompanies[0];
             safeLocalStorageSet('bcost_active_company_data', JSON.stringify(demoCompany));
-            safeLocalStorageSet('bcost_active_company', demoCompany.id);
+            setActiveCompanyId(demoCompany.id);
             setSelectedCompany(demoCompany);
             if (demoCompany.id) {
               api.defaults.headers.common['x-company-id'] = demoCompany.id;
@@ -139,7 +143,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       setIsDemoSession(detectDemoSession());
 
       if (nextCompany?.id) {
-        safeLocalStorageSet('bcost_active_company', nextCompany.id);
+        setActiveCompanyId(nextCompany.id);
         safeLocalStorageSet('bcost_active_company_data', JSON.stringify(nextCompany));
         api.defaults.headers.common['x-company-id'] = nextCompany.id;
         trackEvent('company_context_updated', { companyId: nextCompany.id });
@@ -162,7 +166,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
 
     // Persistimos o objeto completo para a UI e o ID para o Interceptor
     safeLocalStorageSet('bcost_active_company_data', JSON.stringify(company));
-    safeLocalStorageSet('bcost_active_company', company.id);
+    setActiveCompanyId(company.id);
     trackEvent('company_selected', { companyId: company.id });
 
     // Injeção em tempo real na instância do Axios

@@ -23,7 +23,7 @@ import {
   WalletCards,
 } from 'lucide-react';
 import { useCompany, type Company } from '@/app/context/CompanyContext';
-import { api, deleteCookie } from '@/services/api';
+import { api, deleteCookie, getActiveCompanyId, setActiveCompanyId } from '@/services/api';
 import { DEMO_COMPANIES, type DemoCompany } from '@/services/demo-data';
 import { isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
 
@@ -89,12 +89,12 @@ export default function Sidebar() {
       setCompanies(companiesList);
 
       if (companiesList.length > 0 && !selectedCompanyRef.current) {
-        const savedId = localStorage.getItem('bcost_active_company');
+        const savedId = getActiveCompanyId();
         const restored =
           companiesList.find((c) => c.id === savedId) || companiesList[0];
 
         setSelectedCompany(restored);
-        localStorage.setItem('bcost_active_company', restored.id);
+        setActiveCompanyId(restored.id);
         localStorage.setItem('bcost_active_company_data', JSON.stringify(restored));
       }
     },
@@ -154,7 +154,7 @@ export default function Sidebar() {
 
   const handleCompanyChange = (company: SidebarCompany) => {
     setSelectedCompany(company);
-    localStorage.setItem('bcost_active_company', company.id);
+    setActiveCompanyId(company.id);
     localStorage.setItem('bcost_active_company_data', JSON.stringify(company));
     window.dispatchEvent(new Event('storage'));
   };

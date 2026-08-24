@@ -1,6 +1,6 @@
 'use strict';
 
-import { api, isDemoSession } from './api';
+import { api, getActiveCompanyId, setActiveCompanyId, isDemoSession } from './api';
 import { DEMO_COMPANIES } from './demo-data';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -120,19 +120,13 @@ export const companyService = {
    * Salva no LocalStorage para que o interceptor do api.ts envie o x-company-id correto.
    */
   setActiveCompany(companyId: string): void {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('bcost_active_company', companyId);
-      // Opcional: Recarregar a página ou notificar o estado global (Zustand/Redux)
-    }
+    setActiveCompanyId(companyId);
   },
 
   /**
    * 🛡️ Get Active Context: Recupera o ID da empresa atual.
    */
   getActiveCompanyId(): string | null {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('bcost_active_company');
-    }
-    return null;
+    return getActiveCompanyId();
   },
 };
