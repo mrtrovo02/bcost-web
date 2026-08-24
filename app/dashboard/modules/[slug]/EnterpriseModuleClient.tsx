@@ -1160,18 +1160,21 @@ export default function EnterpriseModuleClient({ slug }: EnterpriseModuleClientP
 
         setError(null);
 
-        try {
-          const catalog = await enterpriseUniversalApi.catalog();
-          setCatalogItem(catalog.find((item) => item.slug === slug) ?? null);
-        } catch {
-          setCatalogItem(null);
-        }
-
         const shouldResolveCompany =
           !companyId || (isDemoEntityId(companyId) && hasRealAuthToken());
-        const resolvedCompanyId = shouldResolveCompany
-          ? await resolveEnterpriseCompanyId()
-          : companyId;
+        const catalogPromise = enterpriseUniversalApi
+          .catalog()
+          .then((catalog) => catalog.find((item) => item.slug === slug) ?? null)
+          .catch(() => null);
+        const companyPromise = shouldResolveCompany
+          ? resolveEnterpriseCompanyId()
+          : Promise.resolve(companyId);
+        const [nextCatalogItem, resolvedCompanyId] = await Promise.all([
+          catalogPromise,
+          companyPromise,
+        ]);
+
+        setCatalogItem(nextCatalogItem);
 
         if (!resolvedCompanyId) {
           setData(null);
