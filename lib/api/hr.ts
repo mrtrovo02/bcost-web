@@ -5,12 +5,11 @@
  */
 
 import { payrollEnterpriseApi } from './payroll-enterprise';
+import { getActiveCompanyId, getToken, resolveRequestCompanyId } from '@/services/api';
 import type { PayrollRecord } from '@/types/hr';
 
 const resolveCompanyId = (): string | null => {
-  if (typeof window === 'undefined') return null;
-
-  const activeCompanyId = localStorage.getItem('bcost_active_company');
+  const activeCompanyId = resolveRequestCompanyId(getToken(), getActiveCompanyId());
 
   if (!activeCompanyId || activeCompanyId === 'ID_DA_EMPRESA') {
     console.error('⚠️ [bCost HR API]: companyId ausente ou inválido.');

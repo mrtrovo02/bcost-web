@@ -1,6 +1,6 @@
 'use strict';
 
-import { api } from '@/services/api';
+import { api, getActiveCompanyId, getToken, resolveRequestCompanyId } from '@/services/api';
 import {
   FiscalDashboardStats,
   MonthlyPerformance,
@@ -17,9 +17,7 @@ import {
 } from '../types/fiscal';
 
 const resolveCompanyId = (id?: string): string => {
-  if (typeof window === 'undefined') return id || '';
-
-  const activeId = id || localStorage.getItem('bcost_active_company');
+  const activeId = id || resolveRequestCompanyId(getToken(), getActiveCompanyId());
 
   if (!activeId || activeId === 'ID_DA_EMPRESA') {
     console.error('⚠️ [bCost]: Requisição bloqueada - companyId ausente ou inválido.');
