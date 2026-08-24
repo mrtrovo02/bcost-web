@@ -1,12 +1,16 @@
 'use strict';
 
-import { api } from '@/services/api';
+import { api, isDemoSession } from '@/services/api';
 import {
   BcostSchemaModule,
   BcostModuleStatus,
   getSchemaModuleBySlug,
 } from '@/lib/product/schema-modules';
 import { createDemoEnterprisePayload } from '@/lib/api/enterprise-demo';
+import {
+  assertOperationalDemoFallbackEnabled,
+  isDemoEntityId,
+} from '@/lib/config/demo-policy';
 
 export type EnterpriseEndpointStrategy = {
   slug: string;
@@ -55,6 +59,14 @@ function resolveCompanyId(input?: string | null): string | null {
   }
 
   return null;
+}
+
+function assertEnterpriseDemoPayloadAllowed(companyId: string | null): void {
+  if (isDemoSession() || isDemoEntityId(companyId)) return;
+
+  assertOperationalDemoFallbackEnabled(
+    'Módulo enterprise indisponível e fallback demonstrativo desabilitado neste ambiente.',
+  );
 }
 
 function replaceCompanyId(path: string, companyId: string | null): string {
@@ -298,6 +310,9 @@ export const enterpriseApi = {
     const strategy = getEnterpriseEndpointStrategy(moduleInfo.slug);
 
     if (!strategy || !strategy.enabled) {
+      const resolvedCompanyId = resolveCompanyId(companyId);
+      assertEnterpriseDemoPayloadAllowed(resolvedCompanyId);
+
       return createDemoEnterprisePayload(moduleInfo, strategy?.path ?? moduleInfo.apiBase ?? null);
     }
 
@@ -320,6 +335,9 @@ export const enterpriseApi = {
         generatedAt: new Date().toISOString(),
       };
     } catch {
+      const resolvedCompanyId = resolveCompanyId(companyId);
+      assertEnterpriseDemoPayloadAllowed(resolvedCompanyId);
+
       return createDemoEnterprisePayload(moduleInfo, strategy.path);
     }
   },
