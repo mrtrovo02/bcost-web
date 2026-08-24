@@ -7,10 +7,10 @@ import { CBS_IBS_TRANSITION, TAX_REFORM_OFFICIAL_SOURCES } from '@/lib/tax-refor
 /**
  * Banner informativo de calibração CBS/IBS.
  *
- * CORRIGIDO: o período de 2026 tem recolhimento DISPENSADO (apuração
- * meramente informativa), conforme Decreto Federal 12.955/2026, Livro I,
- * art. 464. Este componente NÃO deve comunicar urgência de "prazo/multa" —
- * usa tom informativo (azul/âmbar neutro), nunca vermelho de alerta crítico.
+ * CORRIGIDO: o período de 2026 tem recolhimento dispensado quando o
+ * contribuinte cumpre as obrigações acessórias e notas técnicas vigentes.
+ * Este componente usa tom informativo, mas não remove o risco operacional de
+ * desconformidade documental.
  */
 
 const CBS_RATE = CBS_IBS_TRANSITION.cbsRate;
@@ -62,8 +62,7 @@ export default function CbsIbsAlertBanner({
 
   const impact = estimatedMonthlyRevenue > 0 ? calcularCbsIbs(estimatedMonthlyRevenue) : null;
 
-  // Tom sempre informativo (âmbar/azul) — nunca vermelho de "risco iminente",
-  // já que o recolhimento é dispensado em 2026 (apuração informativa).
+  // Tom informativo (âmbar/azul): é fase de teste, mas com controle de conformidade.
   const toneClass = 'border-blue-500/30 bg-blue-500/10';
   const badgeClass = 'bg-blue-500 text-white';
   const iconClass = 'text-blue-400';

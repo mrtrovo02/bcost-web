@@ -44,25 +44,36 @@ const PRIORITY_WEIGHT: Record<ReadinessPriority, number> = {
 export const DEFAULT_TAX_REFORM_READINESS_ITEMS: TaxReformReadinessItem[] = [
   {
     id: 'nfe-schema',
-    title: 'Validar schema NF-e com campos CBS/IBS',
+    title: 'Validar documentos fiscais com campos CBS/IBS',
     description:
-      'Confirmar que o fluxo de emissão, importação e leitura de XML reconhece os destaques CBS e IBS da fase de teste.',
+      'Confirmar que emissão, importação e leitura de XML reconhecem os destaques CBS e IBS nos documentos eletrônicos exigidos em 2026.',
     owner: 'Tecnologia',
     priority: 'critical',
     status: 'in-progress',
     dueDate: CBS_IBS_TRANSITION.displayStartDate,
-    evidence: 'XML homologado com tags da Reforma Tributária',
+    evidence: `XML homologado com tags da Reforma Tributária: ${CBS_IBS_TRANSITION.requiredElectronicDocuments2026.join(', ')}`,
   },
   {
     id: 'tax-calculation',
     title: 'Conciliar cálculo 0,9% CBS + 0,1% IBS',
     description:
-      'Comparar o motor bCost com amostra de notas reais para garantir destaque operacional sem afetar recolhimento definitivo em 2026.',
+      'Comparar o motor bCost com amostra de notas reais para garantir destaque operacional, dispensa condicionada e tratamento de desconformidade em 2026.',
     owner: 'Fiscal',
     priority: 'critical',
     status: 'in-progress',
     dueDate: CBS_IBS_TRANSITION.displayStartDate,
     evidence: 'Planilha de conciliação por documento fiscal',
+  },
+  {
+    id: 'nfse-conformity',
+    title: 'Controlar desconformidade de NFS-e em 2026',
+    description:
+      'Registrar NFS-e sem IBS/CBS ou com preenchimento incompleto como desconformidade fiscal, ainda que o sistema nacional não rejeite automaticamente até 31/12/2026.',
+    owner: 'Fiscal',
+    priority: 'critical',
+    status: 'not-started',
+    dueDate: '31/12/2026',
+    evidence: 'Relatório de NFS-e emitidas, rejeitadas, corrigidas e pendentes por empresa',
   },
   {
     id: 'accountant-approval',
