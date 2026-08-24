@@ -151,9 +151,11 @@ describe('enterpriseUniversalApi', () => {
   it('serves regulated roadmap modules without fake operational records in demo mode', async () => {
     process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'false';
 
-    const [bankingProducts, balanceSheet] = await Promise.all([
+    const [bankingProducts, balanceSheet, operationalWorkflows, taxScenarios] = await Promise.all([
       enterpriseUniversalApi.getModule('banking-products', 'demo-001'),
       enterpriseUniversalApi.getModule('balance-sheet', 'demo-001'),
+      enterpriseUniversalApi.getModule('operational-workflows', 'demo-001'),
+      enterpriseUniversalApi.getModule('tax-scenarios', 'demo-001'),
     ]);
 
     expect(bankingProducts).toMatchObject({
@@ -182,6 +184,36 @@ describe('enterpriseUniversalApi', () => {
         automationBoundary: 'CRC_VALIDATED',
         operationalGuardrails: expect.arrayContaining([
           expect.stringContaining('demonstração contábil oficial'),
+        ]),
+      },
+    });
+    expect(operationalWorkflows).toMatchObject({
+      status: 'OK_ROADMAP',
+      total: 0,
+      items: [],
+      summary: {
+        roadmap: true,
+        mode: 'DEMO_ROADMAP',
+        endpoint: '/operations/workflows',
+        canonicalOwner: 'operational-workflows',
+        automationBoundary: 'ASSISTED_AUTOMATION',
+        operationalGuardrails: expect.arrayContaining([
+          expect.stringContaining('dossiê operacional'),
+        ]),
+      },
+    });
+    expect(taxScenarios).toMatchObject({
+      status: 'OK_ROADMAP',
+      total: 0,
+      items: [],
+      summary: {
+        roadmap: true,
+        mode: 'DEMO_ROADMAP',
+        endpoint: '/tax-scenarios/simulate',
+        canonicalOwner: 'tax-scenarios',
+        automationBoundary: 'ASSISTED_AUTOMATION',
+        operationalGuardrails: expect.arrayContaining([
+          expect.stringContaining('Fator R'),
         ]),
       },
     });

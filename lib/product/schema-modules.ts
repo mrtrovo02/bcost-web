@@ -658,7 +658,7 @@ export const bcostSchemaModules: BcostSchemaModule[] = [
     commercialValue:
       'Cria uma porta consultiva de alto valor para abertura, migração e planejamento tributário assistido, sem substituir parecer CRC.',
     route: '/dashboard/modules/tax-scenarios',
-    apiBase: '/tax-scenarios',
+    apiBase: '/tax-scenarios/simulate',
     mainActions: [
       'Simular PF x PJ',
       'Comparar regimes',

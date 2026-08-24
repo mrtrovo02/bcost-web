@@ -27,6 +27,7 @@ type DemoRoadmapBoundary =
 
 const ROADMAP_MODULE_SLUGS = new Set([
   'finance-operations',
+  'operational-workflows',
   'command-center',
   'audit-intelligence',
   'accounting-journal',
@@ -37,6 +38,7 @@ const ROADMAP_MODULE_SLUGS = new Set([
   'ecd',
   'ecf',
   'tax-regime-calculations',
+  'tax-scenarios',
   'indirect-taxes',
   'sped-fiscal',
   'efd-contributions',
@@ -240,10 +242,12 @@ function summarize(records: EnterpriseModuleRecord[], module: BcostSchemaModule)
 
 function roadmapCanonicalOwner(module: BcostSchemaModule): string {
   if (module.slug === 'finance-operations') return 'finance-operations-enterprise';
+  if (module.slug === 'operational-workflows') return 'operational-workflows';
   if (module.slug === 'command-center') return 'command-center-enterprise';
   if (module.slug === 'audit-intelligence') return 'audit-intelligence-enterprise';
   if (module.slug === 'company-formation') return 'accounting-platform';
   if (module.slug === 'banking-products') return 'banking-enterprise';
+  if (module.slug === 'tax-scenarios') return 'tax-scenarios';
 
   if (module.area === 'Contábil' || module.area === 'Patrimônio') {
     return 'accounting-enterprise';
@@ -266,6 +270,10 @@ function roadmapBoundary(module: BcostSchemaModule): DemoRoadmapBoundary {
     return 'SOFTWARE_ONLY';
   }
 
+  if (module.slug === 'operational-workflows' || module.slug === 'tax-scenarios') {
+    return 'ASSISTED_AUTOMATION';
+  }
+
   if (module.slug === 'company-formation') return 'CRC_VALIDATED';
   if (module.slug === 'banking-products') return 'ASSISTED_AUTOMATION';
 
@@ -284,6 +292,20 @@ function roadmapBoundary(module: BcostSchemaModule): DemoRoadmapBoundary {
 }
 
 function roadmapGuardrails(module: BcostSchemaModule, boundary: DemoRoadmapBoundary): string[] {
+  if (module.slug === 'operational-workflows') {
+    return [
+      'Workflows reais devem gerar dossiê operacional, responsável interno e trilha de auditoria antes de qualquer protocolo externo.',
+      'Toda automação que dependa de portal público, certificado digital ou robô deve expor status, evidência e etapa de validação humana quando aplicável.',
+    ];
+  }
+
+  if (module.slug === 'tax-scenarios') {
+    return [
+      'Simulações tributárias são estimativas gerenciais e devem explicitar premissas, período, regime comparado e evidência de revisão quando usadas comercialmente.',
+      'Cenários de Reforma Tributária, Fator R, Simples Nacional, Lucro Presumido e Lucro Real devem manter trilha de premissas antes de orientar migração de regime.',
+    ];
+  }
+
   if (module.slug === 'company-formation') {
     return [
       'Não prometer abertura 100% automática sem consulta de viabilidade, CRC responsável e evidências do órgão oficial.',
