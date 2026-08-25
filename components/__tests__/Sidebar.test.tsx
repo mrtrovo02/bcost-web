@@ -20,8 +20,14 @@ vi.mock('@/app/context/CompanyContext', () => ({
 }));
 
 vi.mock('@/services/api', () => ({
-  api: { get: vi.fn() },
+  api: {
+    defaults: { headers: { common: {} } },
+    get: vi.fn(),
+  },
+  clearActiveCompanyId: vi.fn(),
   deleteCookie: vi.fn(),
+  getActiveCompanyId: vi.fn(() => '1'),
+  setActiveCompanyId: vi.fn(),
 }));
 
 describe('Sidebar', () => {

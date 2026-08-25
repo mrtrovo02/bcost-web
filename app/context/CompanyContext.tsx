@@ -42,6 +42,23 @@ type CompanyContextUpdateEvent = CustomEvent<{
   companies?: Company[];
 }>;
 
+const COMPANY_CONTEXT_STORAGE_KEYS = [
+  'bcost_active_company_data',
+  'bcost_companies',
+  'companies',
+  'bcost_company_id',
+  'bcost_active_company',
+  'companyId',
+  'activeCompanyId',
+] as const;
+
+function clearCompanyContextStorage(): void {
+  COMPANY_CONTEXT_STORAGE_KEYS.forEach((key) => safeLocalStorageRemove(key));
+  clearActiveCompanyId();
+  delete api.defaults.headers.common['x-company-id'];
+  delete api.defaults.headers.common['CompanyId'];
+}
+
 export function CompanyProvider({ children }: { children: ReactNode }) {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
@@ -58,7 +75,10 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       try {
         const saved = safeLocalStorageGet('bcost_active_company_data');
         const savedId = getActiveCompanyId();
-        const storedCompanies = safeJsonParse<Company[]>(safeLocalStorageGet('bcost_companies'), []);
+        const storedCompanies = safeJsonParse<Company[]>(
+          safeLocalStorageGet('bcost_companies'),
+          [],
+        );
         const isDemo = detectDemoSession();
 
         setIsDemoSession(isDemo);
@@ -67,15 +87,16 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
           const parsedCompany = safeJsonParse<Company | null>(saved, null);
           if (parsedCompany?.id) {
             if (isDemoEntityId(parsedCompany.id) && !isDemo) {
-              safeLocalStorageRemove('bcost_active_company_data');
-              clearActiveCompanyId();
+              clearCompanyContextStorage();
               setSelectedCompany(null);
+              setCompanies([]);
               return;
             }
 
             if (isDemoEntityId(parsedCompany.id) && !isOperationalDemoFallbackEnabled()) {
-              safeLocalStorageRemove('bcost_active_company_data');
-              clearActiveCompanyId();
+              clearCompanyContextStorage();
+              setSelectedCompany(null);
+              setCompanies([]);
               setIsLoading(false);
               return;
             }
@@ -93,6 +114,9 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
             storedCompanies[0];
 
           if (isDemoEntityId(restored.id) && !isOperationalDemoFallbackEnabled()) {
+            clearCompanyContextStorage();
+            setSelectedCompany(null);
+            setCompanies([]);
             setIsLoading(false);
             return;
           }
@@ -138,9 +162,25 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       const nextCompany =
         nextCompanies.find((company) => company.id === companyId) ?? nextCompanies[0] ?? null;
 
+      const isDemo = detectDemoSession();
+      const containsStaleDemoContext = Boolean(
+        nextCompany?.id && isDemoEntityId(nextCompany.id) && !isDemo,
+      );
+
+      if (
+        containsStaleDemoContext ||
+        (nextCompany?.id && isDemoEntityId(nextCompany.id) && !isOperationalDemoFallbackEnabled())
+      ) {
+        clearCompanyContextStorage();
+        setCompanies([]);
+        setSelectedCompany(null);
+        setIsDemoSession(isDemo);
+        return;
+      }
+
       setCompanies(nextCompanies);
       setSelectedCompany(nextCompany);
-      setIsDemoSession(detectDemoSession());
+      setIsDemoSession(isDemo);
 
       if (nextCompany?.id) {
         setActiveCompanyId(nextCompany.id);
@@ -162,6 +202,13 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
    * Sempre que a empresa for trocada, atualizamos o LocalStorage e o Header Global.
    */
   const handleSetSelected = (company: Company) => {
+    if (isDemoEntityId(company.id) && !detectDemoSession() && !isOperationalDemoFallbackEnabled()) {
+      clearCompanyContextStorage();
+      setSelectedCompany(null);
+      setCompanies([]);
+      return;
+    }
+
     setSelectedCompany(company);
 
     // Persistimos o objeto completo para a UI e o ID para o Interceptor

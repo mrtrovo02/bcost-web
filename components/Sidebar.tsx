@@ -23,7 +23,13 @@ import {
   WalletCards,
 } from 'lucide-react';
 import { useCompany, type Company } from '@/app/context/CompanyContext';
-import { api, deleteCookie, getActiveCompanyId, setActiveCompanyId } from '@/services/api';
+import {
+  api,
+  clearActiveCompanyId,
+  deleteCookie,
+  getActiveCompanyId,
+  setActiveCompanyId,
+} from '@/services/api';
 import { DEMO_COMPANIES, type DemoCompany } from '@/services/demo-data';
 import { isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
 
@@ -45,6 +51,15 @@ type NavigationItem = {
 };
 
 const COMPANY_LOAD_COOLDOWN_MS = 30_000;
+const COMPANY_CONTEXT_STORAGE_KEYS = [
+  'bcost_active_company_data',
+  'bcost_companies',
+  'companies',
+  'bcost_company_id',
+  'bcost_active_company',
+  'companyId',
+  'activeCompanyId',
+] as const;
 
 function getRequestFailureStatus(error: unknown): RequestFailureStatus | null {
   if (!error || typeof error !== 'object') return null;
@@ -54,11 +69,19 @@ function getRequestFailureStatus(error: unknown): RequestFailureStatus | null {
 }
 
 export default function Sidebar() {
-  const { companies, setCompanies, selectedCompany, setSelectedCompany, isDemoSession } = useCompany();
+  const { companies, setCompanies, selectedCompany, setSelectedCompany, isDemoSession } =
+    useCompany();
   const pathname = usePathname();
   const router = useRouter();
 
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const clearCompanyContext = useCallback(() => {
+    COMPANY_CONTEXT_STORAGE_KEYS.forEach((key) => localStorage.removeItem(key));
+    clearActiveCompanyId();
+    delete api.defaults.headers.common['x-company-id'];
+    delete api.defaults.headers.common['CompanyId'];
+  }, []);
 
   // Evita setState após desmontagem (StrictMode / navegação rápida entre rotas).
   const isMountedRef = useRef(true);
@@ -88,17 +111,22 @@ export default function Sidebar() {
       if (!isMountedRef.current) return;
       setCompanies(companiesList);
 
-      if (companiesList.length > 0 && !selectedCompanyRef.current) {
+      if (companiesList.length === 0) {
+        selectedCompanyRef.current = null;
+        clearCompanyContext();
+        return;
+      }
+
+      if (!selectedCompanyRef.current) {
         const savedId = getActiveCompanyId();
-        const restored =
-          companiesList.find((c) => c.id === savedId) || companiesList[0];
+        const restored = companiesList.find((c) => c.id === savedId) || companiesList[0];
 
         setSelectedCompany(restored);
         setActiveCompanyId(restored.id);
         localStorage.setItem('bcost_active_company_data', JSON.stringify(restored));
       }
     },
-    [setCompanies, setSelectedCompany],
+    [clearCompanyContext, setCompanies, setSelectedCompany],
   );
 
   const loadCompanies = useCallback(async () => {
