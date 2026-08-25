@@ -28,7 +28,7 @@ import {
   getDemoBillingEntitlements,
   PlanLevel,
 } from '@/lib/api/billing';
-import { isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
+import { isDemoEntityId, isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
 import { resolveEnterpriseCompanyIdWithFallback } from '@/lib/api/enterprise-company';
 import { getToken } from '@/services/api';
 
@@ -279,7 +279,10 @@ export default function BillingPlansWidget() {
         return;
       }
 
-      const fallbackCompany = { id: companyId || 'demo-001', name: 'Empresa Demo' };
+      const fallbackCompany = {
+        id: isDemoEntityId(companyId) ? companyId : 'demo-001',
+        name: 'Empresa Demo',
+      };
       setCompanyId(fallbackCompany.id);
       setPlans(DEMO_BILLING_PLANS);
       setEntitlements(getDemoBillingEntitlements(fallbackCompany, 'ENTERPRISE'));
