@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { api, isDemoSession } from '@/services/api';
-import { isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
+import { api } from '@/services/api';
 import { notificationsEnterpriseApi } from '../notifications-enterprise';
 
 vi.mock('@/services/api', () => ({
@@ -9,27 +8,21 @@ vi.mock('@/services/api', () => ({
     post: vi.fn(),
     patch: vi.fn(),
   },
-  isDemoSession: vi.fn(() => false),
 }));
 
 vi.mock('@/lib/config/demo-policy', () => ({
   isDemoEntityId: (value?: string | null) =>
     typeof value === 'string' && value.toLowerCase().startsWith('demo-'),
-  isOperationalDemoFallbackEnabled: vi.fn(() => false),
 }));
 
 const apiGetMock = vi.mocked(api.get);
 const apiPostMock = vi.mocked(api.post);
 const apiPatchMock = vi.mocked(api.patch);
-const isDemoSessionMock = vi.mocked(isDemoSession);
-const isFallbackEnabledMock = vi.mocked(isOperationalDemoFallbackEnabled);
 
 describe('notificationsEnterpriseApi demo mode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.clear();
-    isDemoSessionMock.mockReturnValue(false);
-    isFallbackEnabledMock.mockReturnValue(false);
   });
 
   it('serves summary, notifications, webhooks and audit locally for demo companies', async () => {
@@ -76,8 +69,14 @@ describe('notificationsEnterpriseApi demo mode', () => {
       events: ['webhook.test', 'billing.plan.updated'],
       active: true,
     });
-    const disabled = await notificationsEnterpriseApi.disableWebhook('demo-001', created.item?.id || '');
-    const enabled = await notificationsEnterpriseApi.enableWebhook('demo-001', created.item?.id || '');
+    const disabled = await notificationsEnterpriseApi.disableWebhook(
+      'demo-001',
+      created.item?.id || '',
+    );
+    const enabled = await notificationsEnterpriseApi.enableWebhook(
+      'demo-001',
+      created.item?.id || '',
+    );
     const tested = await notificationsEnterpriseApi.testWebhook('demo-001', created.item?.id || '');
     const dispatched = await notificationsEnterpriseApi.dispatchWebhook('demo-001', {
       event: 'webhook.test',
@@ -110,6 +109,42 @@ describe('notificationsEnterpriseApi demo mode', () => {
 
     expect(response.companyId).toBe('real-company');
     expect(apiGetMock).toHaveBeenCalledWith('/notifications/enterprise/summary/real-company');
+  });
+
+  it('does not create local demo notifications for real companies', async () => {
+    apiPostMock.mockResolvedValueOnce({
+      data: {
+        status: 'OK',
+        message: 'Notificação criada',
+        companyId: 'real-company',
+        item: {
+          id: 'real-notification-001',
+          companyId: 'real-company',
+          type: 'COMPLIANCE_ISSUE',
+          title: 'Alerta real',
+          message: 'Mensagem real',
+          channel: 'WEBSOCKET',
+          status: 'PENDING',
+          severity: 'WARNING',
+          read: false,
+          acknowledged: false,
+        },
+        generatedAt: '2026-08-24T00:00:00.000Z',
+      },
+    });
+
+    const response = await notificationsEnterpriseApi.createNotification('real-company', {
+      title: 'Alerta real',
+      message: 'Mensagem real',
+      severity: 'WARNING',
+    });
+
+    expect(response.companyId).toBe('real-company');
+    expect(apiPostMock).toHaveBeenCalledWith('/notifications/enterprise/real-company', {
+      title: 'Alerta real',
+      message: 'Mensagem real',
+      severity: 'WARNING',
+    });
   });
 });
 

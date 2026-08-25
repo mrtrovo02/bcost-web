@@ -1,7 +1,7 @@
 'use strict';
 
-import { api, isDemoSession } from '@/services/api';
-import { isDemoEntityId, isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
+import { api } from '@/services/api';
+import { isDemoEntityId } from '@/lib/config/demo-policy';
 
 export type NotificationType =
   | 'TAX_READY'
@@ -224,7 +224,7 @@ type DemoNotificationsStore = {
 const DEMO_STORE_VERSION = 'v1';
 
 function isDemoCompany(companyId: string): boolean {
-  return isDemoEntityId(companyId) || (isDemoSession() && isOperationalDemoFallbackEnabled());
+  return isDemoEntityId(companyId);
 }
 
 function isBrowserRuntime(): boolean {
@@ -274,9 +274,30 @@ function makeNotification(
 
 function makeDemoStore(companyId: string): DemoNotificationsStore {
   const notifications = [
-    makeNotification(companyId, 'demo-notification-001', 'Certificado digital vence em 15 dias', 'WARNING', 'SENT', false),
-    makeNotification(companyId, 'demo-notification-002', 'Pendência crítica de compliance fiscal', 'CRITICAL', 'PENDING', false),
-    makeNotification(companyId, 'demo-notification-003', 'Fator R acima do limite de atenção', 'INFO', 'READ', true),
+    makeNotification(
+      companyId,
+      'demo-notification-001',
+      'Certificado digital vence em 15 dias',
+      'WARNING',
+      'SENT',
+      false,
+    ),
+    makeNotification(
+      companyId,
+      'demo-notification-002',
+      'Pendência crítica de compliance fiscal',
+      'CRITICAL',
+      'PENDING',
+      false,
+    ),
+    makeNotification(
+      companyId,
+      'demo-notification-003',
+      'Fator R acima do limite de atenção',
+      'INFO',
+      'READ',
+      true,
+    ),
   ];
   const webhooks: WebhookEnterpriseRecord[] = [
     {
@@ -317,7 +338,9 @@ function readStore(companyId: string): DemoNotificationsStore {
   try {
     const parsed = JSON.parse(raw) as DemoNotificationsStore;
     return {
-      notifications: Array.isArray(parsed.notifications) ? parsed.notifications : fallback.notifications,
+      notifications: Array.isArray(parsed.notifications)
+        ? parsed.notifications
+        : fallback.notifications,
       webhooks: Array.isArray(parsed.webhooks) ? parsed.webhooks : fallback.webhooks,
       audits: Array.isArray(parsed.audits) ? parsed.audits : [],
     };
@@ -416,7 +439,8 @@ function filterNotifications(
     if (params.type && params.type !== 'ALL' && item.type !== params.type) return false;
     if (params.channel && params.channel !== 'ALL' && item.channel !== params.channel) return false;
     if (params.status && params.status !== 'ALL' && item.status !== params.status) return false;
-    if (params.severity && params.severity !== 'ALL' && item.severity !== params.severity) return false;
+    if (params.severity && params.severity !== 'ALL' && item.severity !== params.severity)
+      return false;
     if (params.read === 'true' && !item.read) return false;
     if (params.read === 'false' && item.read) return false;
     if (!term) return true;
@@ -424,7 +448,10 @@ function filterNotifications(
   });
 }
 
-function filterWebhooks(items: WebhookEnterpriseRecord[], params: NotificationQuery): WebhookEnterpriseRecord[] {
+function filterWebhooks(
+  items: WebhookEnterpriseRecord[],
+  params: NotificationQuery,
+): WebhookEnterpriseRecord[] {
   const term = params.search?.trim().toLowerCase();
   return items.filter((item) => {
     if (params.active === 'true' && !item.active) return false;
@@ -711,7 +738,12 @@ export const notificationsEnterpriseApi = {
       const current = store.webhooks.find((item) => item.id === webhookId);
       if (!current) throw new Error(`Webhook demo não encontrado: ${webhookId}`);
       Object.assign(current, payload, {
-        operationalStatus: payload.active === undefined ? current.operationalStatus : payload.active ? 'ACTIVE' : 'INACTIVE',
+        operationalStatus:
+          payload.active === undefined
+            ? current.operationalStatus
+            : payload.active
+              ? 'ACTIVE'
+              : 'INACTIVE',
       });
       appendAudit(store, companyId, 'webhooks', 'update', webhookId, payload);
       writeStore(companyId, store);
@@ -789,10 +821,19 @@ export const notificationsEnterpriseApi = {
       );
       appendAudit(store, companyId, 'webhooks', 'dispatch', 'bulk', payload);
       writeStore(companyId, store);
-      return actionResponse<WebhookEnterpriseRecord>(companyId, 'Evento demo despachado.', undefined, {
-        totals: { delivered: activeTargets.length, failed: 0, skipped: store.webhooks.length - activeTargets.length },
-        results: activeTargets.map((item) => ({ webhookId: item.id, status: 'DELIVERED' })),
-      });
+      return actionResponse<WebhookEnterpriseRecord>(
+        companyId,
+        'Evento demo despachado.',
+        undefined,
+        {
+          totals: {
+            delivered: activeTargets.length,
+            failed: 0,
+            skipped: store.webhooks.length - activeTargets.length,
+          },
+          results: activeTargets.map((item) => ({ webhookId: item.id, status: 'DELIVERED' })),
+        },
+      );
     }
 
     const response = await api.post<ActionResponse<WebhookEnterpriseRecord>>(
