@@ -132,10 +132,10 @@ function isDemoAutomationJobId(jobId: string): boolean {
 }
 
 function makeDemoActionResponse(
+  companyId: string,
   action: AutomationJobActionResponse['action'],
   jobId: string,
 ): AutomationJobActionResponse {
-  const companyId = 'demo-001';
   const demo = demoAutomationResponse(companyId);
   const fallbackJob = demo.items.find((item) => item.id === jobId) || demo.items[0];
   const generatedAt = new Date().toISOString();
@@ -255,9 +255,9 @@ export const automationJobsApi = {
     }
   },
 
-  retry: async (jobId: string): Promise<AutomationJobActionResponse> => {
-    if (isDemoAutomationJobId(jobId)) {
-      return makeDemoActionResponse('retry', jobId);
+  retry: async (companyId: string, jobId: string): Promise<AutomationJobActionResponse> => {
+    if (shouldUseAutomationDemo(companyId) && isDemoAutomationJobId(jobId)) {
+      return makeDemoActionResponse(companyId, 'retry', jobId);
     }
 
     const response = await api.post<AutomationJobActionResponse>(`/automation/jobs/${jobId}/retry`);
@@ -265,9 +265,9 @@ export const automationJobsApi = {
     return response.data;
   },
 
-  cancel: async (jobId: string): Promise<AutomationJobActionResponse> => {
-    if (isDemoAutomationJobId(jobId)) {
-      return makeDemoActionResponse('cancel', jobId);
+  cancel: async (companyId: string, jobId: string): Promise<AutomationJobActionResponse> => {
+    if (shouldUseAutomationDemo(companyId) && isDemoAutomationJobId(jobId)) {
+      return makeDemoActionResponse(companyId, 'cancel', jobId);
     }
 
     const response = await api.post<AutomationJobActionResponse>(
@@ -277,9 +277,9 @@ export const automationJobsApi = {
     return response.data;
   },
 
-  acknowledge: async (jobId: string): Promise<AutomationJobActionResponse> => {
-    if (isDemoAutomationJobId(jobId)) {
-      return makeDemoActionResponse('acknowledge', jobId);
+  acknowledge: async (companyId: string, jobId: string): Promise<AutomationJobActionResponse> => {
+    if (shouldUseAutomationDemo(companyId) && isDemoAutomationJobId(jobId)) {
+      return makeDemoActionResponse(companyId, 'acknowledge', jobId);
     }
 
     const response = await api.post<AutomationJobActionResponse>(

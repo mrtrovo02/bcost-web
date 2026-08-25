@@ -337,6 +337,17 @@ export default function AutomationJobsPage() {
     async (job: AutomationJobRecord, action: 'retry' | 'cancel' | 'acknowledge') => {
       if (!job.id) return;
 
+      const actionCompanyId = companyId || job.companyId;
+
+      if (!actionCompanyId) {
+        setMessage({
+          type: 'error',
+          title: 'Empresa ativa não resolvida',
+          description: 'Recarregue o painel para restaurar o contexto multi-tenant antes de agir.',
+        });
+        return;
+      }
+
       setActionLoading(`${action}:${job.id}`);
       setMessage(null);
 
@@ -344,11 +355,11 @@ export default function AutomationJobsPage() {
         let response: AutomationJobActionResponse;
 
         if (action === 'retry') {
-          response = await automationJobsApi.retry(job.id);
+          response = await automationJobsApi.retry(actionCompanyId, job.id);
         } else if (action === 'cancel') {
-          response = await automationJobsApi.cancel(job.id);
+          response = await automationJobsApi.cancel(actionCompanyId, job.id);
         } else {
-          response = await automationJobsApi.acknowledge(job.id);
+          response = await automationJobsApi.acknowledge(actionCompanyId, job.id);
         }
 
         setMessage({
@@ -376,7 +387,7 @@ export default function AutomationJobsPage() {
         setActionLoading(null);
       }
     },
-    [loadJobs, loadAudits],
+    [companyId, loadJobs, loadAudits],
   );
 
   const selectJob = useCallback(

@@ -257,9 +257,7 @@ function getModuleGovernanceDetails(
       endpoint: roadmap.endpoint ?? catalogItem?.endpoint,
       canonicalOwner: roadmap.canonicalOwner ?? catalogItem?.canonicalOwner,
       automationBoundary: roadmap.automationBoundary ?? catalogItem?.automationBoundary,
-      operationalGuardrails: roadmapGuardrails.length
-        ? roadmapGuardrails
-        : guardrails,
+      operationalGuardrails: roadmapGuardrails.length ? roadmapGuardrails : guardrails,
     };
   }
 
@@ -291,8 +289,9 @@ function GovernanceNotice({
         <div>
           <div className="font-black">Governança do contrato enterprise</div>
           <p className="mt-1 leading-6">
-            Owner: <span className="font-black">{details.canonicalOwner ?? 'enterprise-modules'}</span>{' '}
-            · Boundary:{' '}
+            Owner:{' '}
+            <span className="font-black">{details.canonicalOwner ?? 'enterprise-modules'}</span> ·
+            Boundary:{' '}
             <span className="font-black">{details.automationBoundary ?? 'SOFTWARE_ONLY'}</span> ·
             Persistência: <span className="font-black">{details.persistence ?? 'PRISMA'}</span>
           </p>
@@ -324,8 +323,8 @@ function FallbackNotice({ data }: { data: EnterpriseModuleResponse | null }) {
       <section className="mb-6 rounded-3xl border border-blue-200 bg-blue-50 p-5 text-sm text-blue-900 shadow-sm">
         <div className="font-black">Módulo em roadmap técnico</div>
         <p className="mt-1 leading-6">
-          Este domínio já está navegável e padronizado, mas ainda precisa de persistência,
-          endpoints CRUD, auditoria e regras de permissão antes de operar com dados reais.
+          Este domínio já está navegável e padronizado, mas ainda precisa de persistência, endpoints
+          CRUD, auditoria e regras de permissão antes de operar com dados reais.
         </p>
       </section>
     );
@@ -560,11 +559,22 @@ function AutomationJobsView({
     if (!selectedJob?.id) return;
 
     const jobId = String(selectedJob.id);
+    const actionCompanyId = companyId || String(selectedJob.companyId || '');
+
+    if (!actionCompanyId) {
+      setActionMessage({
+        type: 'error',
+        title: 'Empresa ativa não resolvida',
+        description: 'Atualize o módulo para restaurar o contexto multi-tenant antes do retry.',
+      });
+      return;
+    }
+
     setActionLoading(`retry:${jobId}`);
     setActionMessage(null);
 
     try {
-      const response = await automationJobsApi.retry(jobId);
+      const response = await automationJobsApi.retry(actionCompanyId, jobId);
       setActionMessage({
         type: response.status === 'OK' ? 'success' : 'warning',
         title: response.message || 'Job reenfileirado para reprocessamento.',
@@ -581,7 +591,7 @@ function AutomationJobsView({
     } finally {
       setActionLoading(null);
     }
-  }, [onRefresh, selectedJob?.id]);
+  }, [companyId, onRefresh, selectedJob]);
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -1027,10 +1037,7 @@ function UniversalModuleView({
             <div>
               <h2 className="text-lg font-black text-slate-950">Dados do módulo</h2>
               <p className="text-sm text-slate-500">
-                Endpoint universal:{' '}
-                <span className="font-mono text-xs">
-                  {universalEndpoint}
-                </span>
+                Endpoint universal: <span className="font-mono text-xs">{universalEndpoint}</span>
               </p>
             </div>
 
@@ -1212,9 +1219,13 @@ export default function EnterpriseModuleClient({ slug }: EnterpriseModuleClientP
       const detail = (event as CustomEvent<{ companyId?: string }>).detail;
       const nextCompanyId = detail?.companyId;
 
-      const canUseDemoCompany = Boolean(nextCompanyId && isDemoEntityId(nextCompanyId) && isDemoSession());
+      const canUseDemoCompany = Boolean(
+        nextCompanyId && isDemoEntityId(nextCompanyId) && isDemoSession(),
+      );
       const acceptedCompanyId =
-        nextCompanyId && (!isDemoEntityId(nextCompanyId) || canUseDemoCompany) ? nextCompanyId : null;
+        nextCompanyId && (!isDemoEntityId(nextCompanyId) || canUseDemoCompany)
+          ? nextCompanyId
+          : null;
 
       companyIdRef.current = acceptedCompanyId;
       setCompanyId(acceptedCompanyId);

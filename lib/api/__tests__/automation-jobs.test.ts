@@ -41,9 +41,9 @@ describe('automationJobsApi demo mode', () => {
 
   it('serves retry, cancel and acknowledge actions locally for demo job ids', async () => {
     const [retry, cancel, acknowledge] = await Promise.all([
-      automationJobsApi.retry('job-001'),
-      automationJobsApi.cancel('job-002'),
-      automationJobsApi.acknowledge('job-003'),
+      automationJobsApi.retry('demo-001', 'job-001'),
+      automationJobsApi.cancel('demo-001', 'job-002'),
+      automationJobsApi.acknowledge('demo-001', 'job-003'),
     ]);
 
     expect(retry.applied).toBe(true);
@@ -71,7 +71,7 @@ describe('automationJobsApi demo mode', () => {
       },
     });
 
-    const response = await automationJobsApi.retry('real-job-uuid');
+    const response = await automationJobsApi.retry('real-company', 'real-job-uuid');
 
     expect(response.jobId).toBe('real-job-uuid');
     expect(apiPostMock).toHaveBeenCalledWith('/automation/jobs/real-job-uuid/retry');
