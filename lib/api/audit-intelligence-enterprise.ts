@@ -1,7 +1,7 @@
 'use strict';
 
-import { api, isDemoSession } from '@/services/api';
-import { isDemoEntityId, isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
+import { api } from '@/services/api';
+import { isDemoEntityId } from '@/lib/config/demo-policy';
 
 export type AuditQualityStatus = 'HEALTHY' | 'ATTENTION' | 'CRITICAL';
 
@@ -147,7 +147,7 @@ function buildQuery(params?: AuditIntelligenceExecutiveQuery): string {
 }
 
 function isDemoCompany(companyId: string): boolean {
-  return isDemoEntityId(companyId) || (isDemoSession() && isOperationalDemoFallbackEnabled());
+  return isDemoEntityId(companyId);
 }
 
 function nowIso(): string {
@@ -218,7 +218,8 @@ function createDemoAuditIntelligenceResponse(
   const historicalNoise = 4;
   const serverErrors = 1;
   const clientErrors = 3;
-  const qualityScore = 100 - criticalEvents * 10 - warningEvents * 2 - serverErrors * 6 - clientErrors * 2;
+  const qualityScore =
+    100 - criticalEvents * 10 - warningEvents * 2 - serverErrors * 6 - clientErrors * 2;
   const qualityStatus: AuditQualityStatus =
     qualityScore >= 85 ? 'HEALTHY' : qualityScore >= 60 ? 'ATTENTION' : 'CRITICAL';
 
@@ -275,7 +276,11 @@ function createDemoAuditIntelligenceResponse(
     },
     totals: {
       records: recordsAnalyzed,
-      statusBuckets: { OK: recordsAnalyzed - activeSignals, WARNING: warningEvents, CRITICAL: criticalEvents },
+      statusBuckets: {
+        OK: recordsAnalyzed - activeSignals,
+        WARNING: warningEvents,
+        CRITICAL: criticalEvents,
+      },
       severityBuckets: { INFO: 18, WARNING: warningEvents, CRITICAL: criticalEvents },
       modules: 7,
       actions: 14,

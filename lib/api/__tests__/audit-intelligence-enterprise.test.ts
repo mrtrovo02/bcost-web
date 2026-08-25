@@ -1,30 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { api, isDemoSession } from '@/services/api';
-import { isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
+import { api } from '@/services/api';
 import { auditIntelligenceEnterpriseApi } from '../audit-intelligence-enterprise';
 
 vi.mock('@/services/api', () => ({
   api: {
     get: vi.fn(),
   },
-  isDemoSession: vi.fn(() => false),
 }));
 
 vi.mock('@/lib/config/demo-policy', () => ({
   isDemoEntityId: (value?: string | null) =>
     typeof value === 'string' && value.toLowerCase().startsWith('demo-'),
-  isOperationalDemoFallbackEnabled: vi.fn(() => false),
 }));
 
 const apiGetMock = vi.mocked(api.get);
-const isDemoSessionMock = vi.mocked(isDemoSession);
-const isFallbackEnabledMock = vi.mocked(isOperationalDemoFallbackEnabled);
 
 describe('auditIntelligenceEnterpriseApi demo mode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    isDemoSessionMock.mockReturnValue(false);
-    isFallbackEnabledMock.mockReturnValue(false);
   });
 
   it('serves executive audit intelligence locally for demo companies', async () => {
