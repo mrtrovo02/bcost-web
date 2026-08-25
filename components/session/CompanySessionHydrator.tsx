@@ -51,17 +51,21 @@ function shouldUseLocalDemo() {
 }
 
 function resolveApiBase() {
+  const configuredBase =
+    process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || null;
+
   if (
     typeof window !== 'undefined' &&
     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
   ) {
-    return 'http://localhost:5001/api/v1';
+    return configuredBase || 'http://localhost:5000/api/v1';
   }
 
   return (
-    process.env.NEXT_PUBLIC_API_URL ||
-    process.env.NEXT_PUBLIC_API_BASE_URL ||
-    (process.env.NODE_ENV === 'development' ? 'http://localhost:5001/api/v1' : 'https://api.bcost.com.br/api/v1')
+    configuredBase ||
+    (process.env.NODE_ENV === 'development'
+      ? 'http://localhost:5000/api/v1'
+      : 'https://api.bcost.com.br/api/v1')
   );
 }
 
@@ -193,11 +197,7 @@ function persistCompanyContext(companyId: string, companies: CompanyLike[]) {
 function clearCompanyContext() {
   if (typeof window === 'undefined') return;
 
-  for (const key of [
-    ...COMPANY_ID_KEYS,
-    ...COMPANY_LIST_KEYS,
-    'bcost_active_company_data',
-  ]) {
+  for (const key of [...COMPANY_ID_KEYS, ...COMPANY_LIST_KEYS, 'bcost_active_company_data']) {
     window.localStorage.removeItem(key);
   }
 }
