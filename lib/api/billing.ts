@@ -1,10 +1,7 @@
 'use strict';
 
 import { api, getToken, isDemoSession } from '@/services/api';
-import {
-  assertOperationalDemoFallbackEnabled,
-  isDemoEntityId,
-} from '@/lib/config/demo-policy';
+import { assertOperationalDemoFallbackEnabled, isDemoEntityId } from '@/lib/config/demo-policy';
 
 export type PlanLevel = 'FREE' | 'PRO' | 'ENTERPRISE';
 
@@ -101,8 +98,16 @@ function assertBillingDemoFallbackAllowed(message: string): void {
   assertOperationalDemoFallbackEnabled(message);
 }
 
+function assertBillingCompanyDemoFallbackAllowed(companyId: string, message: string): void {
+  if (!isDemoEntityId(companyId)) {
+    throw new Error(message);
+  }
+
+  assertBillingDemoFallbackAllowed(message);
+}
+
 function isDemoBillingCompany(companyId: string): boolean {
-  return isDemoEntityId(companyId) || isDemoSession();
+  return isDemoEntityId(companyId);
 }
 
 export const DEMO_BILLING_PLANS: BillingPlan[] = [
@@ -260,7 +265,8 @@ export const billingApi = {
 
       return response.data;
     } catch {
-      assertBillingDemoFallbackAllowed(
+      assertBillingCompanyDemoFallbackAllowed(
+        companyId,
         'Entitlements comerciais indisponiveis e fallback demonstrativo desabilitado neste ambiente.',
       );
 
@@ -302,7 +308,8 @@ export const billingApi = {
 
       return response.data;
     } catch {
-      assertBillingDemoFallbackAllowed(
+      assertBillingCompanyDemoFallbackAllowed(
+        companyId,
         'Validacao de feature indisponivel e fallback demonstrativo desabilitado neste ambiente.',
       );
 
@@ -344,12 +351,14 @@ export const billingApi = {
     try {
       const response = await api.patch<BillingUpdatePlanResponse>(`/billing/plan/${companyId}`, {
         planLevel,
-        reason: reason || `Alteração de plano solicitada via Dashboard Enterprise para ${planLevel}`,
+        reason:
+          reason || `Alteração de plano solicitada via Dashboard Enterprise para ${planLevel}`,
       });
 
       return response.data;
     } catch {
-      assertBillingDemoFallbackAllowed(
+      assertBillingCompanyDemoFallbackAllowed(
+        companyId,
         'Alteracao de plano indisponivel e fallback demonstrativo desabilitado neste ambiente.',
       );
 

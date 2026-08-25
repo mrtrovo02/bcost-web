@@ -111,4 +111,14 @@ describe('billingApi demo mode', () => {
     expect(response.companyId).toBe('real-company');
     expect(apiGetMock).toHaveBeenCalledWith('/billing/entitlements/real-company');
   });
+
+  it('does not return demo entitlements for real companies in demo sessions', async () => {
+    getTokenMock.mockReturnValue('demo-token-local');
+    isDemoSessionMock.mockReturnValue(true);
+    apiGetMock.mockRejectedValueOnce({ response: { status: 404 } });
+
+    await expect(billingApi.entitlements('real-company')).rejects.toThrow(
+      'Entitlements comerciais indisponiveis e fallback demonstrativo desabilitado neste ambiente.',
+    );
+  });
 });
