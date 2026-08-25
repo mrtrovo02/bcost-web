@@ -1,7 +1,7 @@
 'use strict';
 
-import { api, isDemoSession } from '@/services/api';
-import { isDemoEntityId, isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
+import { api } from '@/services/api';
+import { isDemoEntityId } from '@/lib/config/demo-policy';
 
 export type CertificateStatus = 'ACTIVE' | 'EXPIRED' | 'REVOKED';
 
@@ -145,7 +145,7 @@ type DemoCertificatesStore = {
 const DEMO_STORE_VERSION = 'v1';
 
 function isDemoCompany(companyId: string): boolean {
-  return isDemoEntityId(companyId) || (isDemoSession() && isOperationalDemoFallbackEnabled());
+  return isDemoEntityId(companyId);
 }
 
 function isBrowserRuntime(): boolean {

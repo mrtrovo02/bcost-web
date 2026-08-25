@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { api, isDemoSession } from '@/services/api';
-import { isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
+import { api } from '@/services/api';
 import { digitalCertificatesApi } from '../digital-certificates';
 
 vi.mock('@/services/api', () => ({
@@ -10,28 +9,22 @@ vi.mock('@/services/api', () => ({
     patch: vi.fn(),
     delete: vi.fn(),
   },
-  isDemoSession: vi.fn(() => false),
 }));
 
 vi.mock('@/lib/config/demo-policy', () => ({
   isDemoEntityId: (value?: string | null) =>
     typeof value === 'string' && value.toLowerCase().startsWith('demo-'),
-  isOperationalDemoFallbackEnabled: vi.fn(() => false),
 }));
 
 const apiGetMock = vi.mocked(api.get);
 const apiPostMock = vi.mocked(api.post);
 const apiPatchMock = vi.mocked(api.patch);
 const apiDeleteMock = vi.mocked(api.delete);
-const isDemoSessionMock = vi.mocked(isDemoSession);
-const isFallbackEnabledMock = vi.mocked(isOperationalDemoFallbackEnabled);
 
 describe('digitalCertificatesApi demo mode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.clear();
-    isDemoSessionMock.mockReturnValue(false);
-    isFallbackEnabledMock.mockReturnValue(false);
   });
 
   it('serves list, summary, detail and audit locally for demo companies', async () => {
@@ -104,5 +97,40 @@ describe('digitalCertificatesApi demo mode', () => {
 
     expect(response.companyId).toBe('real-company');
     expect(apiGetMock).toHaveBeenCalledWith('/digital-certificates/enterprise/real-company');
+  });
+
+  it('does not use local demo store for real companies', async () => {
+    apiPostMock.mockResolvedValueOnce({
+      data: {
+        status: 'OK',
+        message: 'Certificado criado',
+        companyId: 'real-company',
+        item: {
+          id: 'real-cert-001',
+          companyId: 'real-company',
+          issuer: 'AC Produção',
+          validFrom: '2026-01-01T00:00:00.000Z',
+          validTo: '2026-12-31T23:59:59.000Z',
+          status: 'ACTIVE',
+        },
+        audit: { recorded: true },
+        generatedAt: '2026-08-24T00:00:00.000Z',
+      },
+    });
+
+    const response = await digitalCertificatesApi.create('real-company', {
+      issuer: 'AC Produção',
+      validFrom: '2026-01-01T00:00:00.000Z',
+      validTo: '2026-12-31T23:59:59.000Z',
+      status: 'ACTIVE',
+    });
+
+    expect(response.companyId).toBe('real-company');
+    expect(apiPostMock).toHaveBeenCalledWith('/digital-certificates/enterprise/real-company', {
+      issuer: 'AC Produção',
+      validFrom: '2026-01-01T00:00:00.000Z',
+      validTo: '2026-12-31T23:59:59.000Z',
+      status: 'ACTIVE',
+    });
   });
 });
