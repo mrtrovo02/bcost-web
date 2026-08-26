@@ -1,8 +1,8 @@
 'use strict';
 
-import { api, isDemoSession } from '@/services/api';
+import { api } from '@/services/api';
 import { createDemoEnterpriseCatalog } from '@/lib/api/enterprise-demo';
-import { isDemoEntityId, isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
+import { isDemoEntityId } from '@/lib/config/demo-policy';
 
 export type ExecutiveStatus = 'HEALTHY' | 'ATTENTION' | 'CRITICAL' | 'UNAVAILABLE';
 
@@ -373,7 +373,7 @@ function createDemoCommandCenterSummary(companyId: string): CommandCenterSummary
 }
 
 function shouldUseCommandCenterFallback(companyId: string): boolean {
-  return isDemoEntityId(companyId) || (isDemoSession() && isOperationalDemoFallbackEnabled());
+  return isDemoEntityId(companyId);
 }
 
 export const commandCenterEnterpriseApi = {

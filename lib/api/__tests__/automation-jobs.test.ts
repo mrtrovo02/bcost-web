@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { api, isDemoSession } from '@/services/api';
-import { isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
+import { api } from '@/services/api';
 import { automationJobsApi } from '../automation-jobs';
 
 vi.mock('@/services/api', () => ({
@@ -8,25 +7,19 @@ vi.mock('@/services/api', () => ({
     get: vi.fn(),
     post: vi.fn(),
   },
-  isDemoSession: vi.fn(() => false),
 }));
 
 vi.mock('@/lib/config/demo-policy', () => ({
   isDemoEntityId: (value?: string | null) =>
     typeof value === 'string' && value.toLowerCase().startsWith('demo-'),
-  isOperationalDemoFallbackEnabled: vi.fn(() => false),
 }));
 
 const apiGetMock = vi.mocked(api.get);
 const apiPostMock = vi.mocked(api.post);
-const isDemoSessionMock = vi.mocked(isDemoSession);
-const isFallbackEnabledMock = vi.mocked(isOperationalDemoFallbackEnabled);
 
 describe('automationJobsApi demo mode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    isDemoSessionMock.mockReturnValue(false);
-    isFallbackEnabledMock.mockReturnValue(false);
   });
 
   it('serves list and detail locally for demo companies when fallback is disabled', async () => {
@@ -75,5 +68,13 @@ describe('automationJobsApi demo mode', () => {
 
     expect(response.jobId).toBe('real-job-uuid');
     expect(apiPostMock).toHaveBeenCalledWith('/automation/jobs/real-job-uuid/retry');
+  });
+
+  it('does not fallback to automation demo list for real companies', async () => {
+    apiGetMock.mockRejectedValueOnce({ response: { status: 503 } });
+
+    await expect(automationJobsApi.list('real-company')).rejects.toMatchObject({
+      response: { status: 503 },
+    });
   });
 });

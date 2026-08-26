@@ -1,19 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { api, isDemoSession } from '@/services/api';
-import { isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
+import { api } from '@/services/api';
 import { commandCenterEnterpriseApi } from '../command-center-enterprise';
 
 vi.mock('@/services/api', () => ({
   api: {
     get: vi.fn(),
   },
-  isDemoSession: vi.fn(() => false),
 }));
 
 vi.mock('@/lib/config/demo-policy', () => ({
   isDemoEntityId: (value?: string | null) =>
     typeof value === 'string' && value.toLowerCase().startsWith('demo-'),
-  isOperationalDemoFallbackEnabled: vi.fn(() => false),
 }));
 
 vi.mock('@/lib/api/enterprise-demo', () => ({
@@ -26,14 +23,10 @@ vi.mock('@/lib/api/enterprise-demo', () => ({
 }));
 
 const apiGetMock = vi.mocked(api.get);
-const isDemoSessionMock = vi.mocked(isDemoSession);
-const isFallbackEnabledMock = vi.mocked(isOperationalDemoFallbackEnabled);
 
 describe('commandCenterEnterpriseApi demo mode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    isDemoSessionMock.mockReturnValue(false);
-    isFallbackEnabledMock.mockReturnValue(false);
   });
 
   it('serves command center views locally for demo companies when global fallback is disabled', async () => {
@@ -100,5 +93,13 @@ describe('commandCenterEnterpriseApi demo mode', () => {
     expect(apiGetMock).toHaveBeenCalledWith(
       '/operations/command-center/real-company?includeSamples=false&includeAudit=true&includeHealth=true&limit=15',
     );
+  });
+
+  it('does not fallback to command center demo data for real companies', async () => {
+    apiGetMock.mockRejectedValueOnce({ response: { status: 503 } });
+
+    await expect(commandCenterEnterpriseApi.summary('real-company')).rejects.toMatchObject({
+      response: { status: 503 },
+    });
   });
 });

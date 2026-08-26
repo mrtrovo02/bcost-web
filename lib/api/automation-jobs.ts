@@ -1,7 +1,7 @@
 'use strict';
 
-import { api, isDemoSession } from '@/services/api';
-import { isDemoEntityId, isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
+import { api } from '@/services/api';
+import { isDemoEntityId } from '@/lib/config/demo-policy';
 import { createDemoEnterpriseResponse } from './enterprise-demo';
 
 export type AutomationJobStatus =
@@ -124,7 +124,7 @@ function demoAutomationResponse(companyId: string, params: AutomationJobsQuery =
 }
 
 function shouldUseAutomationDemo(companyId: string): boolean {
-  return isDemoEntityId(companyId) || (isDemoSession() && isOperationalDemoFallbackEnabled());
+  return isDemoEntityId(companyId);
 }
 
 function isDemoAutomationJobId(jobId: string): boolean {
