@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { api, isDemoSession } from '@/services/api';
+import { api } from '@/services/api';
 import { bankingEnterpriseApi } from '../banking-enterprise';
 
 vi.mock('@/services/api', () => ({
@@ -8,23 +8,21 @@ vi.mock('@/services/api', () => ({
     post: vi.fn(),
     patch: vi.fn(),
   },
-  isDemoSession: vi.fn(() => true),
 }));
 
 vi.mock('@/lib/config/demo-policy', () => ({
-  isOperationalDemoFallbackEnabled: vi.fn(() => true),
+  isDemoEntityId: (value?: string | null) =>
+    typeof value === 'string' && value.toLowerCase().startsWith('demo-'),
 }));
 
 const apiGetMock = vi.mocked(api.get);
 const apiPostMock = vi.mocked(api.post);
 const apiPatchMock = vi.mocked(api.patch);
-const isDemoSessionMock = vi.mocked(isDemoSession);
 
 describe('bankingEnterpriseApi demo mode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.clear();
-    isDemoSessionMock.mockReturnValue(true);
   });
 
   it('serves banking summary, accounts and transactions locally', async () => {
@@ -82,5 +80,42 @@ describe('bankingEnterpriseApi demo mode', () => {
     expect(undone.item?.reconciled).toBe(false);
     expect(apiPostMock).not.toHaveBeenCalled();
     expect(apiPatchMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps real companies on backend banking endpoints', async () => {
+    apiGetMock.mockResolvedValueOnce({
+      data: {
+        status: 'success',
+        module: 'banking-enterprise-summary',
+        companyId: 'real-company',
+        accounts: {
+          count: 0,
+          active: 0,
+          deleted: 0,
+          totalBalance: 0,
+          byBank: {},
+        },
+        transactions: {
+          count: 0,
+          credits: 0,
+          debits: 0,
+          totalCredit: 0,
+          totalDebit: 0,
+          netAmount: 0,
+          reconciled: 0,
+          pending: 0,
+          reconciliationRate: 0,
+          byType: {},
+          byStatus: {},
+          byBankAccountId: {},
+        },
+        generatedAt: '2026-08-24T00:00:00.000Z',
+      },
+    });
+
+    const response = await bankingEnterpriseApi.summary('real-company');
+
+    expect(response.companyId).toBe('real-company');
+    expect(apiGetMock).toHaveBeenCalledWith('/banking/enterprise/summary/real-company');
   });
 });
