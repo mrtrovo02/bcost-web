@@ -1,30 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { api, isDemoSession } from '@/services/api';
-import { isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
+import { api } from '@/services/api';
 import { financeOperationsEnterpriseApi } from '../finance-operations-enterprise';
 
 vi.mock('@/services/api', () => ({
   api: {
     get: vi.fn(),
   },
-  isDemoSession: vi.fn(() => false),
 }));
 
 vi.mock('@/lib/config/demo-policy', () => ({
   isDemoEntityId: (value?: string | null) =>
     typeof value === 'string' && value.toLowerCase().startsWith('demo-'),
-  isOperationalDemoFallbackEnabled: vi.fn(() => false),
 }));
 
 const apiGetMock = vi.mocked(api.get);
-const isDemoSessionMock = vi.mocked(isDemoSession);
-const isFallbackEnabledMock = vi.mocked(isOperationalDemoFallbackEnabled);
 
 describe('financeOperationsEnterpriseApi demo mode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    isDemoSessionMock.mockReturnValue(false);
-    isFallbackEnabledMock.mockReturnValue(false);
   });
 
   it('serves finance operations locally for demo companies even when global fallback is disabled', async () => {
@@ -89,7 +82,17 @@ describe('financeOperationsEnterpriseApi demo mode', () => {
     const response = await financeOperationsEnterpriseApi.summary('real-company');
 
     expect(response.companyId).toBe('real-company');
-    expect(apiGetMock).toHaveBeenCalledWith('/finance/operations/real-company?limit=50&includeRaw=false');
+    expect(apiGetMock).toHaveBeenCalledWith(
+      '/finance/operations/real-company?limit=50&includeRaw=false',
+    );
+  });
+
+  it('does not fallback to demo finance data for real companies', async () => {
+    apiGetMock.mockRejectedValueOnce({ response: { status: 503 } });
+
+    await expect(financeOperationsEnterpriseApi.summary('real-company')).rejects.toMatchObject({
+      response: { status: 503 },
+    });
   });
 });
 

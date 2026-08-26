@@ -1,7 +1,7 @@
 'use strict';
 
-import { api, isDemoSession } from '@/services/api';
-import { isDemoEntityId, isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
+import { api } from '@/services/api';
+import { isDemoEntityId } from '@/lib/config/demo-policy';
 
 export type FinanceOperationStatus =
   | 'PAID'
@@ -260,7 +260,8 @@ function demoFinanceItem(
   return {
     id,
     type,
-    source: type === 'PAYABLE' ? 'Obrigação fiscal' : type === 'RECEIVABLE' ? 'Nota fiscal' : 'Banco',
+    source:
+      type === 'PAYABLE' ? 'Obrigação fiscal' : type === 'RECEIVABLE' ? 'Nota fiscal' : 'Banco',
     title,
     description: 'Registro operacional demonstrativo enquanto a API real não retorna dados.',
     amount,
@@ -278,7 +279,15 @@ function demoFinanceItem(
 function createDemoFinanceSummary(companyId: string): FinanceOperationsSummaryResponse {
   const receivables = [
     demoFinanceItem('rec-001', 'RECEIVABLE', 'Mensalidade SaaS', 24800, 'OPEN', 12, 'LOW'),
-    demoFinanceItem('rec-002', 'RECEIVABLE', 'Serviços contábeis recorrentes', 13750, 'DUE_SOON', 5, 'MEDIUM'),
+    demoFinanceItem(
+      'rec-002',
+      'RECEIVABLE',
+      'Serviços contábeis recorrentes',
+      13750,
+      'DUE_SOON',
+      5,
+      'MEDIUM',
+    ),
     demoFinanceItem('rec-003', 'RECEIVABLE', 'Projeto de implantação', 9100, 'OVERDUE', -9, 'HIGH'),
   ];
   const payables = [
@@ -353,7 +362,7 @@ function fallbackFinanceSummary(companyId: string): FinanceOperationsSummaryResp
 }
 
 function shouldUseFinanceFallback(companyId: string): boolean {
-  return isDemoEntityId(companyId) || (isDemoSession() && isOperationalDemoFallbackEnabled());
+  return isDemoEntityId(companyId);
 }
 
 export const financeOperationsEnterpriseApi = {
