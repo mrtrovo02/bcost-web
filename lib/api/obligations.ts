@@ -1,6 +1,7 @@
 'use strict';
 
-import { api, isDemoSession } from '@/services/api';
+import { api } from '@/services/api';
+import { isDemoEntityId } from '@/lib/config/demo-policy';
 
 export type TaxObligationStatus = 'PENDING' | 'PAID' | 'OVERDUE' | 'CANCELLED' | 'PARTIAL';
 
@@ -257,7 +258,7 @@ type DemoObligationsStore = {
 const DEMO_STORE_VERSION = 'v1';
 
 function isDemoCompany(companyId: string): boolean {
-  return companyId.toLowerCase().startsWith('demo-') || isDemoSession();
+  return isDemoEntityId(companyId);
 }
 
 function isBrowserRuntime(): boolean {

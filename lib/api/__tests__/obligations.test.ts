@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { api, isDemoSession } from '@/services/api';
+import { api } from '@/services/api';
 import { obligationsApi } from '../obligations';
 
 vi.mock('@/services/api', () => ({
@@ -8,19 +8,21 @@ vi.mock('@/services/api', () => ({
     post: vi.fn(),
     patch: vi.fn(),
   },
-  isDemoSession: vi.fn(() => true),
+}));
+
+vi.mock('@/lib/config/demo-policy', () => ({
+  isDemoEntityId: (value?: string | null) =>
+    typeof value === 'string' && value.toLowerCase().startsWith('demo-'),
 }));
 
 const apiGetMock = vi.mocked(api.get);
 const apiPostMock = vi.mocked(api.post);
 const apiPatchMock = vi.mocked(api.patch);
-const isDemoSessionMock = vi.mocked(isDemoSession);
 
 describe('obligationsApi demo mode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.clear();
-    isDemoSessionMock.mockReturnValue(true);
   });
 
   it('serves fiscal and tax obligations locally for demo companies', async () => {
@@ -78,5 +80,40 @@ describe('obligationsApi demo mode', () => {
     expect(submitted.item?.status).toBe('SUBMITTED');
     expect(accepted.item?.status).toBe('ACCEPTED');
     expect(apiPostMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps real companies on backend obligations endpoints', async () => {
+    apiGetMock.mockResolvedValueOnce({
+      data: {
+        status: 'success',
+        module: 'tax-obligations',
+        model: 'TaxObligation',
+        companyId: 'real-company',
+        items: [],
+        total: 0,
+        limit: 100,
+        offset: 0,
+        hasMore: false,
+        summary: {
+          count: 0,
+          pending: 0,
+          paid: 0,
+          overdue: 0,
+          cancelled: 0,
+          partial: 0,
+          totalAmount: 0,
+          pendingAmount: 0,
+          overdueAmount: 0,
+          nextDue: null,
+          status: {},
+        },
+        generatedAt: '2026-08-24T00:00:00.000Z',
+      },
+    });
+
+    const response = await obligationsApi.listTax('real-company');
+
+    expect(response.companyId).toBe('real-company');
+    expect(apiGetMock).toHaveBeenCalledWith('/obligations/enterprise/tax/real-company');
   });
 });

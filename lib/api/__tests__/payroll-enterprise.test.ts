@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { api, isDemoSession } from '@/services/api';
+import { api } from '@/services/api';
 import { payrollEnterpriseApi } from '../payroll-enterprise';
 
 vi.mock('@/services/api', () => ({
@@ -8,19 +8,21 @@ vi.mock('@/services/api', () => ({
     post: vi.fn(),
     patch: vi.fn(),
   },
-  isDemoSession: vi.fn(() => true),
+}));
+
+vi.mock('@/lib/config/demo-policy', () => ({
+  isDemoEntityId: (value?: string | null) =>
+    typeof value === 'string' && value.toLowerCase().startsWith('demo-'),
 }));
 
 const apiGetMock = vi.mocked(api.get);
 const apiPostMock = vi.mocked(api.post);
 const apiPatchMock = vi.mocked(api.patch);
-const isDemoSessionMock = vi.mocked(isDemoSession);
 
 describe('payrollEnterpriseApi demo mode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.clear();
-    isDemoSessionMock.mockReturnValue(true);
   });
 
   it('serves summary and lists from the local demo store without calling the backend', async () => {
@@ -60,5 +62,51 @@ describe('payrollEnterpriseApi demo mode', () => {
     expect(payrollResponse.entries?.length).toBeGreaterThan(0);
     expect(apiPostMock).not.toHaveBeenCalled();
     expect(apiPatchMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps real companies on backend payroll endpoints', async () => {
+    apiGetMock.mockResolvedValueOnce({
+      data: {
+        status: 'success',
+        module: 'payroll-enterprise-summary',
+        companyId: 'real-company',
+        employees: {
+          count: 0,
+          active: 0,
+          inactive: 0,
+          deleted: 0,
+          totalBaseSalary: 0,
+          averageBaseSalary: 0,
+          byRegime: {},
+          byRole: {},
+        },
+        payrolls: {
+          count: 0,
+          salariesAmount: 0,
+          proLaboreAmount: 0,
+          totalAmount: 0,
+          byPeriod: {},
+        },
+        entries: {
+          count: 0,
+          baseSalary: 0,
+          inssEmployee: 0,
+          inssEmployer: 0,
+          irrf: 0,
+          fgts: 0,
+          otherBenefits: 0,
+          otherDeductions: 0,
+          netSalary: 0,
+          employerCost: 0,
+          byRegime: {},
+        },
+        generatedAt: '2026-08-24T00:00:00.000Z',
+      },
+    });
+
+    const response = await payrollEnterpriseApi.summary('real-company');
+
+    expect(response.companyId).toBe('real-company');
+    expect(apiGetMock).toHaveBeenCalledWith('/payroll/enterprise/summary/real-company');
   });
 });
