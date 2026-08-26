@@ -25,33 +25,13 @@ type DemoRoadmapBoundary =
   | 'CRC_VALIDATED'
   | 'HUMAN_LED';
 
-const ROADMAP_MODULE_SLUGS = new Set([
+const NON_PRISMA_ROADMAP_MODULE_SLUGS = new Set([
   'finance-operations',
   'operational-workflows',
   'command-center',
   'audit-intelligence',
-  'accounting-journal',
-  'accounting-ledger',
-  'trial-balance',
-  'balance-sheet',
-  'income-statement',
-  'ecd',
-  'ecf',
-  'tax-regime-calculations',
   'tax-scenarios',
-  'indirect-taxes',
-  'sped-fiscal',
-  'efd-contributions',
-  'federal-obligations',
-  'fiscal-books',
-  'payroll-lifecycle',
-  'sst',
-  'accounting-office',
-  'document-management',
-  'fixed-assets',
   'company-formation',
-  'banking-products',
-  'consulting-services',
 ]);
 
 function daysFromNow(days: number) {
@@ -69,7 +49,10 @@ function normalizeSearch(value?: string) {
 }
 
 function isRoadmapModule(module: BcostSchemaModule): boolean {
-  return ROADMAP_MODULE_SLUGS.has(module.slug);
+  return (
+    module.status === 'PLANNED' ||
+    NON_PRISMA_ROADMAP_MODULE_SLUGS.has(module.slug)
+  );
 }
 
 function moduleInfo(slug: string): BcostSchemaModule {
