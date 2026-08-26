@@ -22,6 +22,7 @@ vi.mock('@/services/api', async () => {
 vi.mock('../payroll-enterprise', () => ({
   payrollEnterpriseApi: {
     listPayrolls: vi.fn(),
+    summary: vi.fn(),
   },
 }));
 
@@ -29,6 +30,7 @@ const apiGetMock = vi.mocked(api.get);
 const getActiveCompanyIdMock = vi.mocked(getActiveCompanyId);
 const getTokenMock = vi.mocked(getToken);
 const listPayrollsMock = vi.mocked(payrollEnterpriseApi.listPayrolls);
+const payrollSummaryMock = vi.mocked(payrollEnterpriseApi.summary);
 
 describe('tenant company resolution for legacy frontend APIs', () => {
   beforeEach(() => {
@@ -111,5 +113,65 @@ describe('tenant company resolution for legacy frontend APIs', () => {
 
     await expect(hrApi.getPayroll()).resolves.toEqual([]);
     expect(listPayrollsMock).not.toHaveBeenCalled();
+  });
+
+  it('uses payroll enterprise summary for HR employee metrics', async () => {
+    payrollSummaryMock.mockResolvedValueOnce({
+      status: 'OK',
+      module: 'payroll-enterprise-summary',
+      companyId: 'company-real-001',
+      employees: {
+        count: 3,
+        active: 2,
+        inactive: 1,
+        deleted: 0,
+        totalBaseSalary: 21000,
+        averageBaseSalary: 7000,
+        byRegime: { CLT: 2, SOCIO_ADMINISTRADOR: 1 },
+        byRole: { Analista: 2, Socio: 1 },
+      },
+      payrolls: {
+        count: 1,
+        salariesAmount: 14000,
+        proLaboreAmount: 7000,
+        totalAmount: 21000,
+        byPeriod: { '2026-08': 21000 },
+      },
+      entries: {
+        count: 2,
+        baseSalary: 14000,
+        inssEmployee: 1200,
+        inssEmployer: 2800,
+        irrf: 900,
+        fgts: 1120,
+        otherBenefits: 600,
+        otherDeductions: 100,
+        netSalary: 12400,
+        employerCost: 17920,
+        byRegime: { CLT: 2 },
+      },
+      generatedAt: '2026-08-26T12:00:00.000Z',
+    });
+
+    await expect(hrApi.getEmployeeMetrics()).resolves.toMatchObject({
+      employees: {
+        total: 3,
+        active: 2,
+        totalBaseSalary: 21000,
+      },
+      payroll: {
+        payrolls: 1,
+        totalAmount: 21000,
+        employerCost: 17920,
+      },
+    });
+    expect(payrollSummaryMock).toHaveBeenCalledWith('company-real-001');
+  });
+
+  it('does not call payroll summary with stale demo company id when token is real', async () => {
+    getActiveCompanyIdMock.mockReturnValue('demo-001');
+
+    await expect(hrApi.getEmployeeMetrics()).resolves.toBeNull();
+    expect(payrollSummaryMock).not.toHaveBeenCalled();
   });
 });

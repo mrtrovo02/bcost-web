@@ -8,6 +8,26 @@ import { payrollEnterpriseApi } from './payroll-enterprise';
 import { getActiveCompanyId, getToken, resolveRequestCompanyId } from '@/services/api';
 import type { PayrollRecord } from '@/types/hr';
 
+export type EmployeeMetrics = {
+  employees: {
+    total: number;
+    active: number;
+    inactive: number;
+    totalBaseSalary: number;
+    averageBaseSalary: number;
+    byRegime: Record<string, number>;
+  };
+  payroll: {
+    payrolls: number;
+    salariesAmount: number;
+    proLaboreAmount: number;
+    totalAmount: number;
+    employerCost: number;
+    netSalary: number;
+  };
+  generatedAt: string;
+};
+
 const resolveCompanyId = (): string | null => {
   const activeCompanyId = resolveRequestCompanyId(getToken(), getActiveCompanyId());
 
@@ -39,13 +59,36 @@ export const hrApi = {
     }
   },
 
-  /**
-   * Placeholder para futuras integrações de RH (ex: gestão de benefícios, férias)
-   * Atualmente não há implementação correspondente no payrollEnterpriseApi.
-   */
-  getEmployeeMetrics: async (): Promise<Record<string, unknown> | null> => {
-    console.warn('⚠️ [bCost HR API]: getEmployeeMetrics não implementado na API de payroll enterprise.');
-    return null;
+  getEmployeeMetrics: async (): Promise<EmployeeMetrics | null> => {
+    try {
+      const companyId = resolveCompanyId();
+      if (!companyId) return null;
+
+      const summary = await payrollEnterpriseApi.summary(companyId);
+
+      return {
+        employees: {
+          total: summary.employees.count,
+          active: summary.employees.active,
+          inactive: summary.employees.inactive,
+          totalBaseSalary: summary.employees.totalBaseSalary,
+          averageBaseSalary: summary.employees.averageBaseSalary,
+          byRegime: summary.employees.byRegime,
+        },
+        payroll: {
+          payrolls: summary.payrolls.count,
+          salariesAmount: summary.payrolls.salariesAmount,
+          proLaboreAmount: summary.payrolls.proLaboreAmount,
+          totalAmount: summary.payrolls.totalAmount,
+          employerCost: summary.entries.employerCost,
+          netSalary: summary.entries.netSalary,
+        },
+        generatedAt: summary.generatedAt,
+      };
+    } catch (error) {
+      console.error('🔴 [bCost HR API Error]: Falha ao recuperar métricas de RH', error);
+      return null;
+    }
   },
 };
 
