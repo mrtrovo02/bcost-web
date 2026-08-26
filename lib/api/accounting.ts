@@ -1,7 +1,7 @@
 'use strict';
 
-import { api, isDemoSession } from '@/services/api';
-import { isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
+import { api } from '@/services/api';
+import { isDemoEntityId } from '@/lib/config/demo-policy';
 
 export type AccountType =
   | 'ATIVO'
@@ -307,10 +307,7 @@ const DEFAULT_DEMO_ACCOUNTS: DemoAccountSeed[] = [
 ];
 
 function isDemoCompany(companyId: string): boolean {
-  return (
-    companyId.toLowerCase().startsWith('demo-') ||
-    (isDemoSession() && isOperationalDemoFallbackEnabled())
-  );
+  return isDemoEntityId(companyId);
 }
 
 function isBrowserRuntime(): boolean {

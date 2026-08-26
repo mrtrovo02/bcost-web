@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { api, isDemoSession } from '@/services/api';
+import { api } from '@/services/api';
 import { accountingApi } from '../accounting';
 
 vi.mock('@/services/api', () => ({
@@ -9,24 +9,22 @@ vi.mock('@/services/api', () => ({
     patch: vi.fn(),
     delete: vi.fn(),
   },
-  isDemoSession: vi.fn(() => true),
 }));
 
 vi.mock('@/lib/config/demo-policy', () => ({
-  isOperationalDemoFallbackEnabled: vi.fn(() => true),
+  isDemoEntityId: (value?: string | null) =>
+    typeof value === 'string' && value.toLowerCase().startsWith('demo-'),
 }));
 
 const apiGetMock = vi.mocked(api.get);
 const apiPostMock = vi.mocked(api.post);
 const apiPatchMock = vi.mocked(api.patch);
 const apiDeleteMock = vi.mocked(api.delete);
-const isDemoSessionMock = vi.mocked(isDemoSession);
 
 describe('accountingApi demo mode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.clear();
-    isDemoSessionMock.mockReturnValue(true);
   });
 
   it('serves account plan and accounting entries locally for demo companies', async () => {
@@ -82,5 +80,35 @@ describe('accountingApi demo mode', () => {
     expect(locksAfterUnlock.total).toBe(0);
     expect(apiPatchMock).not.toHaveBeenCalled();
     expect(apiDeleteMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps real companies on backend accounting endpoints', async () => {
+    apiGetMock.mockResolvedValueOnce({
+      data: {
+        status: 'success',
+        module: 'account-plan',
+        model: 'AccountPlan',
+        companyId: 'real-company',
+        items: [],
+        total: 0,
+        limit: 100,
+        offset: 0,
+        hasMore: false,
+        summary: {
+          count: 0,
+          active: 0,
+          inactive: 0,
+          companySpecific: 0,
+          global: 0,
+          type: {},
+        },
+        generatedAt: '2026-08-24T00:00:00.000Z',
+      },
+    });
+
+    const response = await accountingApi.listAccountPlan('real-company');
+
+    expect(response.companyId).toBe('real-company');
+    expect(apiGetMock).toHaveBeenCalledWith('/accounting/enterprise/account-plan/real-company');
   });
 });
