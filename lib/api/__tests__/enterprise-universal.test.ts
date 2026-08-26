@@ -31,15 +31,12 @@ describe('enterpriseUniversalApi', () => {
     }
   });
 
-  it('returns an operational demo fallback when the enterprise module endpoint is unavailable', async () => {
+  it('does not return module demo data for real companies when the endpoint is unavailable', async () => {
     apiGetMock.mockRejectedValueOnce({ response: { status: 404 } });
 
-    const response = await enterpriseUniversalApi.getModule('users', 'company-123');
-
-    expect(response.status).toBe('OK_WITH_FALLBACK');
-    expect(response.items.length).toBeGreaterThan(0);
-    expect(response.total).toBeGreaterThan(0);
-    expect(response.summary).toMatchObject({ fallback: true, mode: 'DEMO_OPERATIONAL' });
+    await expect(enterpriseUniversalApi.getModule('users', 'company-123')).rejects.toThrow(
+      'Modulo enterprise indisponivel e fallback demonstrativo desabilitado neste ambiente.',
+    );
   });
 
   it('returns enriched catalog metadata when the enterprise catalog endpoint is unavailable', async () => {
@@ -126,9 +123,20 @@ describe('enterpriseUniversalApi', () => {
     process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'false';
     apiGetMock.mockRejectedValueOnce({ response: { status: 404 } });
 
-    await expect(enterpriseUniversalApi.getModule('users', 'company-123')).rejects.toMatchObject({
-      code: 'DEMO_FALLBACK_DISABLED',
-    });
+    await expect(enterpriseUniversalApi.getModule('users', 'company-123')).rejects.toThrow(
+      'Modulo enterprise indisponivel e fallback demonstrativo desabilitado neste ambiente.',
+    );
+  });
+
+  it('does not return summary or health demo data for real companies', async () => {
+    apiGetMock.mockRejectedValue({ response: { status: 404 } });
+
+    await expect(enterpriseUniversalApi.summary('users', 'company-123')).rejects.toThrow(
+      'Resumo enterprise indisponivel e fallback demonstrativo desabilitado neste ambiente.',
+    );
+    await expect(enterpriseUniversalApi.health('users', 'company-123')).rejects.toThrow(
+      'Health enterprise indisponivel e fallback demonstrativo desabilitado neste ambiente.',
+    );
   });
 
   it('serves explicit demo company modules locally even when global fallback is disabled', async () => {
@@ -144,7 +152,11 @@ describe('enterpriseUniversalApi', () => {
     expect(module.companyId).toBe('demo-001');
     expect(module.items.length).toBeGreaterThan(0);
     expect(summary).toMatchObject({ fallback: true, mode: 'DEMO_OPERATIONAL' });
-    expect(health).toMatchObject({ slug: 'users', companyId: 'demo-001', status: 'OK_WITH_FALLBACK' });
+    expect(health).toMatchObject({
+      slug: 'users',
+      companyId: 'demo-001',
+      status: 'OK_WITH_FALLBACK',
+    });
     expect(apiGetMock).not.toHaveBeenCalled();
   });
 
@@ -212,9 +224,7 @@ describe('enterpriseUniversalApi', () => {
         endpoint: '/tax-scenarios/simulate',
         canonicalOwner: 'tax-scenarios',
         automationBoundary: 'ASSISTED_AUTOMATION',
-        operationalGuardrails: expect.arrayContaining([
-          expect.stringContaining('Fator R'),
-        ]),
+        operationalGuardrails: expect.arrayContaining([expect.stringContaining('Fator R')]),
       },
     });
     expect(apiGetMock).not.toHaveBeenCalled();

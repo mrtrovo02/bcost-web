@@ -15,11 +15,7 @@ import {
   createDemoEnterpriseResponse,
   getDemoEnterpriseCompanyId,
 } from '@/lib/api/enterprise-demo';
-import {
-  assertOperationalDemoFallbackEnabled,
-  isDemoEntityId,
-  isOperationalDemoFallbackEnabled,
-} from '@/lib/config/demo-policy';
+import { assertOperationalDemoFallbackEnabled, isDemoEntityId } from '@/lib/config/demo-policy';
 
 export type EnterpriseModuleStatus = 'OK' | 'OK_WITH_FALLBACK' | 'ERROR' | 'EMPTY' | string;
 
@@ -168,6 +164,14 @@ function hasRealAuthToken(): boolean {
   return Boolean(token && token !== 'demo-token-local');
 }
 
+function assertEnterpriseModuleDemoAllowed(companyId: string, message: string): void {
+  if (!isDemoEntityId(companyId)) {
+    throw new Error(message);
+  }
+
+  assertOperationalDemoFallbackEnabled(message);
+}
+
 export async function resolveEnterpriseCompanyId(): Promise<string | null> {
   if (isDemoSession()) {
     const demoCompanyId = getDemoEnterpriseCompanyId();
@@ -223,11 +227,7 @@ export const enterpriseUniversalApi = {
   async catalog(options: EnterpriseCatalogOptions = {}): Promise<EnterpriseCatalogItem[]> {
     const now = Date.now();
 
-    if (
-      !options.forceRefresh &&
-      enterpriseCatalogCache &&
-      enterpriseCatalogCache.expiresAt > now
-    ) {
+    if (!options.forceRefresh && enterpriseCatalogCache && enterpriseCatalogCache.expiresAt > now) {
       return enterpriseCatalogCache.items;
     }
 
@@ -318,7 +318,8 @@ export const enterpriseUniversalApi = {
         generatedAt: data.generatedAt || new Date().toISOString(),
       };
     } catch (error) {
-      assertOperationalDemoFallbackEnabled(
+      assertEnterpriseModuleDemoAllowed(
+        companyId,
         'Modulo enterprise indisponivel e fallback demonstrativo desabilitado neste ambiente.',
       );
 
@@ -342,7 +343,8 @@ export const enterpriseUniversalApi = {
       const response = await api.get(`/enterprise/modules/${slug}/${companyId}/summary`);
       return response.data;
     } catch {
-      assertOperationalDemoFallbackEnabled(
+      assertEnterpriseModuleDemoAllowed(
+        companyId,
         'Resumo enterprise indisponivel e fallback demonstrativo desabilitado neste ambiente.',
       );
 
@@ -364,7 +366,8 @@ export const enterpriseUniversalApi = {
       const response = await api.get(`/enterprise/modules/${slug}/${companyId}/health`);
       return response.data;
     } catch {
-      assertOperationalDemoFallbackEnabled(
+      assertEnterpriseModuleDemoAllowed(
+        companyId,
         'Health enterprise indisponivel e fallback demonstrativo desabilitado neste ambiente.',
       );
 
