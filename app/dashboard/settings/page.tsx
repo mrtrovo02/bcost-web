@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { isDemoSession } from '@/services/api';
 import { useCompany } from '@/app/context/CompanyContext';
+import { isDemoEntityId } from '@/lib/config/demo-policy';
 import {
   billingApi,
   DEMO_BILLING_PLANS,
@@ -51,6 +52,9 @@ function formatLimit(value: number): string {
 
 function BillingSection() {
   const { selectedCompany } = useCompany();
+  const isDemoBillingContext = Boolean(
+    selectedCompany?.id && (isDemoEntityId(selectedCompany.id) || isDemoSession()),
+  );
   const [plans, setPlans] = useState<BillingPlan[]>([]);
   const [entitlements, setEntitlements] = useState<BillingEntitlementsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -63,7 +67,7 @@ function BillingSection() {
     setLoading(true);
     setError(null);
     try {
-      if (isDemoSession()) {
+      if (isDemoBillingContext) {
         setPlans(DEMO_BILLING_PLANS);
         setEntitlements(getDemoBillingEntitlements(selectedCompany));
         return;
@@ -77,22 +81,31 @@ function BillingSection() {
       setEntitlements(entitlementsRes ?? null);
     } catch (err) {
       console.error('[Settings/Billing] load failed:', err);
-      setPlans(DEMO_BILLING_PLANS);
-      setEntitlements(getDemoBillingEntitlements(selectedCompany));
+      if (isDemoBillingContext) {
+        setPlans(DEMO_BILLING_PLANS);
+        setEntitlements(getDemoBillingEntitlements(selectedCompany));
+        setError(
+          'Não foi possível carregar o plano em tempo real. Exibindo a configuração local de demonstração.',
+        );
+        return;
+      }
+
+      setPlans([]);
+      setEntitlements(null);
       setError(
-        'Não foi possível carregar o plano em tempo real. Exibindo a configuração local de assinatura.',
+        'Não foi possível carregar o plano em tempo real para esta empresa. Verifique a API de billing antes de alterar assinatura em produção.',
       );
     } finally {
       setLoading(false);
     }
-  }, [selectedCompany]);
+  }, [isDemoBillingContext, selectedCompany]);
 
   useEffect(() => {
     load();
   }, [load]);
 
   const handleChangePlan = async (planLevel: PlanLevel) => {
-    if (!selectedCompany?.id || isDemoSession()) return;
+    if (!selectedCompany?.id || isDemoBillingContext) return;
     if (entitlements?.planLevel === planLevel) return;
 
     setUpdating(planLevel);
@@ -129,7 +142,7 @@ function BillingSection() {
 
   return (
     <div className="space-y-8">
-      {isDemoSession() && (
+      {isDemoBillingContext && (
         <div className="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold rounded-lg px-4 py-3">
           Você está em uma sessão de demonstração. Mudanças de plano estão desabilitadas.
         </div>
@@ -220,7 +233,7 @@ function BillingSection() {
 
                 <button
                   onClick={() => handleChangePlan(plan.level)}
-                  disabled={isCurrent || isDemoSession() || updating !== null}
+                  disabled={isCurrent || isDemoBillingContext || updating !== null}
                   className={`w-full mt-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
                     isCurrent
                       ? 'bg-white/5 text-slate-500 cursor-default'
@@ -342,7 +355,9 @@ function SettingsField({ label, value }: { label: string; value?: string | numbe
   return (
     <div className="bg-white/[0.02] border border-white/5 rounded-xl px-4 py-3">
       <p className="text-[9px] font-black uppercase tracking-wider text-slate-500">{label}</p>
-      <p className="text-sm font-bold text-slate-200 mt-1 break-words">{value || 'Não informado'}</p>
+      <p className="text-sm font-bold text-slate-200 mt-1 break-words">
+        {value || 'Não informado'}
+      </p>
     </div>
   );
 }
@@ -373,7 +388,10 @@ function CompanySection() {
     >
       <SettingsField label="Razão social / Nome" value={selectedCompany?.name} />
       <SettingsField label="CNPJ" value={selectedCompany?.cnpj} />
-      <SettingsField label="Regime tributário" value={formatTaxRegime(selectedCompany?.taxRegime)} />
+      <SettingsField
+        label="Regime tributário"
+        value={formatTaxRegime(selectedCompany?.taxRegime)}
+      />
       <SettingsField label="CNAE principal" value={selectedCompany?.cnae} />
       <SettingsField label="ID do tenant" value={selectedCompany?.id} />
     </SettingsInfoCard>
@@ -392,7 +410,10 @@ function UsersSection() {
       <SettingsField label="Usuário autenticado" value={user?.email || user?.name} />
       <SettingsField label="Empresas vinculadas no contexto" value={companies.length} />
       <SettingsField label="Escopo operacional" value="Tenant ativo isolado por x-company-id" />
-      <SettingsField label="Governança" value="Convites, papéis e remoções exigem endpoint auditado" />
+      <SettingsField
+        label="Governança"
+        value="Convites, papéis e remoções exigem endpoint auditado"
+      />
     </SettingsInfoCard>
   );
 }
