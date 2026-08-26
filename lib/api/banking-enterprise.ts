@@ -6,6 +6,11 @@ import { isDemoEntityId } from '@/lib/config/demo-policy';
 export type TransactionType = 'CREDIT' | 'DEBIT';
 
 export type ReconciliationTargetType = 'INVOICE' | 'TAX_OBLIGATION';
+export type BankingReconciliationStatus =
+  | 'RECONCILED_INVOICE'
+  | 'RECONCILED_TAX'
+  | 'RECONCILED_MANUAL'
+  | 'PENDING';
 
 export type BankAccountEnterpriseRecord = {
   id: string;
@@ -36,7 +41,7 @@ export type BankTransactionEnterpriseRecord = {
   metadata?: Record<string, unknown> | null;
   createdAt?: string | null;
   version?: number;
-  reconciliationStatus?: string;
+  reconciliationStatus?: BankingReconciliationStatus;
   bankAccount?: BankAccountEnterpriseRecord;
   invoice?: Record<string, unknown> | null;
   taxObligation?: Record<string, unknown> | null;
@@ -335,7 +340,7 @@ function makeDemoStore(companyId: string): DemoBankingStore {
       occurredAt: addDays(-1),
       reconciled: true,
       taxObligationId: 'demo-tax-das-current',
-      reconciliationStatus: 'RECONCILED',
+      reconciliationStatus: 'RECONCILED_TAX',
       metadata: { source: 'demo-open-finance' },
       bankAccount: accounts[0],
       createdAt: nowIso(),
@@ -457,7 +462,9 @@ function transactionSummary(
     if (transaction.reconciled) reconciled += 1;
 
     byType[transaction.type] = (byType[transaction.type] || 0) + 1;
-    const status = transaction.reconciled ? 'RECONCILED' : 'PENDING';
+    const status = transaction.reconciled
+      ? transaction.reconciliationStatus || 'RECONCILED_MANUAL'
+      : 'PENDING';
     byStatus[status] = (byStatus[status] || 0) + 1;
     byBankAccountId[transaction.bankAccountId] =
       (byBankAccountId[transaction.bankAccountId] || 0) + 1;
@@ -981,7 +988,10 @@ export const bankingEnterpriseApi = {
       const transaction: BankTransactionEnterpriseRecord = {
         ...current,
         reconciled: true,
-        reconciliationStatus: 'RECONCILED',
+        reconciliationStatus:
+          payload.targetType === 'INVOICE'
+            ? 'RECONCILED_INVOICE'
+            : 'RECONCILED_TAX',
         invoiceId: payload.targetType === 'INVOICE' ? payload.targetId : current.invoiceId,
         taxObligationId:
           payload.targetType === 'TAX_OBLIGATION' ? payload.targetId : current.taxObligationId,
@@ -1047,7 +1057,10 @@ export const bankingEnterpriseApi = {
         return {
           ...transaction,
           reconciled: true,
-          reconciliationStatus: 'RECONCILED',
+          reconciliationStatus:
+            candidate.targetType === 'INVOICE'
+              ? 'RECONCILED_INVOICE'
+              : 'RECONCILED_TAX',
           invoiceId:
             candidate.targetType === 'INVOICE' ? candidate.targetId : transaction.invoiceId,
           taxObligationId:
