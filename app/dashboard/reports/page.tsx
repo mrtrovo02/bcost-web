@@ -11,6 +11,8 @@ import type {
 } from '@/domain/contabil/contabil.contracts';
 import { formatCurrency } from '@/lib/formatters';
 import { isDemoSession } from '@/services/api';
+import { useCompany } from '@/app/context/CompanyContext';
+import { isDemoEntityId } from '@/lib/config/demo-policy';
 
 // ---------------------------------------------------------------------------
 // Tipos e helpers
@@ -36,16 +38,6 @@ const MESES = [
 const ANO_ATUAL = new Date().getFullYear();
 const MES_ATUAL = new Date().getMonth() + 1;
 const ANOS = Array.from({ length: 5 }, (_, i) => ANO_ATUAL - i);
-
-function readCompanyId(): string {
-  if (typeof window === 'undefined') return '';
-  return (
-    localStorage.getItem('bcost_active_company') ||
-    localStorage.getItem('bcost_company_id') ||
-    localStorage.getItem('companyId') ||
-    ''
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Demo data
@@ -666,6 +658,7 @@ function RazaoView({ data }: { data: RazaoContabilResult }) {
 // ---------------------------------------------------------------------------
 
 export default function ReportsPage() {
+  const { selectedCompany } = useCompany();
   const [tab, setTab] = useState<ReportTab>('dre');
   const [ano, setAno] = useState(ANO_ATUAL);
   const [mes, setMes] = useState(MES_ATUAL);
@@ -678,14 +671,24 @@ export default function ReportsPage() {
   const [balanceteData, setBalanceteData] = useState<BalanceteResult | null>(null);
   const [razaoData, setRazaoData] = useState<RazaoContabilResult | null>(null);
 
-  const companyId = useMemo(() => readCompanyId(), []);
+  const companyId = selectedCompany?.id ?? '';
+  const isDemoReportContext = Boolean(companyId && (isDemoEntityId(companyId) || isDemoSession()));
 
   const fetchReport = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      if (isDemoSession() || !companyId) {
+      if (!companyId) {
+        setDreData(null);
+        setBalancoData(null);
+        setBalanceteData(null);
+        setRazaoData(null);
+        setError('Selecione uma empresa para gerar relatórios contábeis oficiais.');
+        return;
+      }
+
+      if (isDemoReportContext) {
         await new Promise((r) => setTimeout(r, 600));
         if (tab === 'dre') setDreData(getDemoDRE(ano, mes));
         if (tab === 'balanco') setBalancoData(getDemoBalanco(ano));
@@ -727,7 +730,7 @@ export default function ReportsPage() {
     } finally {
       setLoading(false);
     }
-  }, [tab, ano, mes, contaCodigo, companyId]);
+  }, [tab, ano, mes, contaCodigo, companyId, isDemoReportContext]);
 
   useEffect(() => {
     fetchReport();
@@ -805,7 +808,7 @@ export default function ReportsPage() {
           </div>
         )}
 
-        {(isDemoSession() || !companyId) && (
+        {isDemoReportContext && (
           <div className="flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl">
             <span className="text-amber-400 text-xs font-black uppercase tracking-widest">
               Demo Mode
