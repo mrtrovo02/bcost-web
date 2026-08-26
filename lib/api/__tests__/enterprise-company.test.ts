@@ -64,8 +64,26 @@ describe('enterprise-company resolver', () => {
 
     await expect(resolveEnterpriseCompanyIdWithFallback()).resolves.toBe('company-real-001');
     expect(window.localStorage.getItem('bcost_active_company')).toBe('company-real-001');
-    expect(window.localStorage.getItem('bcost_company_id')).toBeNull();
+    expect(window.localStorage.getItem('bcost_company_id')).toBe('company-real-001');
+    expect(window.localStorage.getItem('companyId')).toBe('company-real-001');
+    expect(window.localStorage.getItem('activeCompanyId')).toBe('company-real-001');
     expect(apiGetMock).toHaveBeenCalledWith('/auth/me');
+  });
+
+  it('prefers authenticated company over stale real company stored locally', async () => {
+    window.localStorage.setItem('bcost_active_company', 'company-old-001');
+    window.localStorage.setItem('bcost_company_id', 'company-old-001');
+    apiGetMock.mockResolvedValueOnce({
+      data: {
+        id: 'user-2',
+        email: 'novo@bcost.com.br',
+        activeCompanyId: 'company-new-001',
+      },
+    });
+
+    await expect(resolveEnterpriseCompanyIdWithFallback()).resolves.toBe('company-new-001');
+    expect(window.localStorage.getItem('bcost_active_company')).toBe('company-new-001');
+    expect(window.localStorage.getItem('bcost_company_id')).toBe('company-new-001');
   });
 
   it('does not silently create demo company for real sessions without company context', async () => {
