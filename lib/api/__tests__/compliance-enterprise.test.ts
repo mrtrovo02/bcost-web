@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { api, isDemoSession } from '@/services/api';
+import { api } from '@/services/api';
 import { complianceEnterpriseApi } from '../compliance-enterprise';
 
 vi.mock('@/services/api', () => ({
@@ -8,23 +8,21 @@ vi.mock('@/services/api', () => ({
     post: vi.fn(),
     patch: vi.fn(),
   },
-  isDemoSession: vi.fn(() => true),
 }));
 
 vi.mock('@/lib/config/demo-policy', () => ({
-  isOperationalDemoFallbackEnabled: vi.fn(() => true),
+  isDemoEntityId: (value?: string | null) =>
+    typeof value === 'string' && value.toLowerCase().startsWith('demo-'),
 }));
 
 const apiGetMock = vi.mocked(api.get);
 const apiPostMock = vi.mocked(api.post);
 const apiPatchMock = vi.mocked(api.patch);
-const isDemoSessionMock = vi.mocked(isDemoSession);
 
 describe('complianceEnterpriseApi demo mode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.clear();
-    isDemoSessionMock.mockReturnValue(true);
   });
 
   it('serves summary, rules and checks locally for demo companies', async () => {
@@ -79,5 +77,40 @@ describe('complianceEnterpriseApi demo mode', () => {
     expect(Number(response.totals?.findings || 0)).toBeGreaterThan(0);
     expect(response.audit?.recorded).toBe(true);
     expect(apiPostMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps real companies on backend compliance endpoints', async () => {
+    apiGetMock.mockResolvedValueOnce({
+      data: {
+        status: 'success',
+        module: 'compliance-enterprise-summary',
+        companyId: 'real-company',
+        rules: {
+          count: 0,
+          enabled: 0,
+          disabled: 0,
+          totalTriggerCount: 0,
+        },
+        checks: {
+          count: 0,
+          open: 0,
+          resolved: 0,
+          ignored: 0,
+          inProgress: 0,
+          info: 0,
+          warning: 0,
+          critical: 0,
+          riskScore: 100,
+          bySeverity: {},
+          byStatus: {},
+        },
+        generatedAt: '2026-08-24T00:00:00.000Z',
+      },
+    });
+
+    const response = await complianceEnterpriseApi.summary('real-company');
+
+    expect(response.companyId).toBe('real-company');
+    expect(apiGetMock).toHaveBeenCalledWith('/compliance/enterprise/summary/real-company');
   });
 });

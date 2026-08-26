@@ -1,7 +1,7 @@
 'use strict';
 
-import { api, isDemoSession } from '@/services/api';
-import { isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
+import { api } from '@/services/api';
+import { isDemoEntityId } from '@/lib/config/demo-policy';
 
 export type ComplianceSeverity = 'INFO' | 'WARNING' | 'CRITICAL';
 export type ComplianceStatus = 'OPEN' | 'RESOLVED' | 'IGNORED' | 'IN_PROGRESS';
@@ -198,10 +198,7 @@ type DemoComplianceStore = {
 const DEMO_STORE_VERSION = 'v1';
 
 function isDemoCompany(companyId: string): boolean {
-  return (
-    companyId.toLowerCase().startsWith('demo-') ||
-    (isDemoSession() && isOperationalDemoFallbackEnabled())
-  );
+  return isDemoEntityId(companyId);
 }
 
 function nowIso(): string {
