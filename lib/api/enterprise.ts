@@ -2,15 +2,16 @@
 
 import { api, isDemoSession } from '@/services/api';
 import {
+  readStoredEnterpriseCompanyId,
+  resolveEnterpriseCompanyIdWithFallback,
+} from '@/lib/api/enterprise-company';
+import {
   BcostSchemaModule,
   BcostModuleStatus,
   getSchemaModuleBySlug,
 } from '@/lib/product/schema-modules';
 import { createDemoEnterprisePayload } from '@/lib/api/enterprise-demo';
-import {
-  assertOperationalDemoFallbackEnabled,
-  isDemoEntityId,
-} from '@/lib/config/demo-policy';
+import { assertOperationalDemoFallbackEnabled, isDemoEntityId } from '@/lib/config/demo-policy';
 
 export type EnterpriseEndpointStrategy = {
   slug: string;
@@ -34,31 +35,22 @@ export type EnterpriseModulePayload = {
   generatedAt: string;
 };
 
-function readActiveCompanyIdFromStorage(): string | null {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  return (
-    localStorage.getItem('bcost_company_id') ||
-    localStorage.getItem('bcost_active_company') ||
-    localStorage.getItem('companyId') ||
-    null
-  );
-}
-
-function resolveCompanyId(input?: string | null): string | null {
+async function resolveCompanyId(input?: string | null): Promise<string | null> {
   if (input && input !== 'ID_DA_EMPRESA') {
     return input;
   }
 
-  const storedCompanyId = readActiveCompanyIdFromStorage();
+  const storedCompanyId = readStoredEnterpriseCompanyId();
 
   if (storedCompanyId && storedCompanyId !== 'ID_DA_EMPRESA') {
     return storedCompanyId;
   }
 
-  return null;
+  try {
+    return await resolveEnterpriseCompanyIdWithFallback();
+  } catch {
+    return null;
+  }
 }
 
 function assertEnterpriseDemoPayloadAllowed(companyId: string | null): void {
@@ -310,14 +302,14 @@ export const enterpriseApi = {
     const strategy = getEnterpriseEndpointStrategy(moduleInfo.slug);
 
     if (!strategy || !strategy.enabled) {
-      const resolvedCompanyId = resolveCompanyId(companyId);
+      const resolvedCompanyId = await resolveCompanyId(companyId);
       assertEnterpriseDemoPayloadAllowed(resolvedCompanyId);
 
       return createDemoEnterprisePayload(moduleInfo, strategy?.path ?? moduleInfo.apiBase ?? null);
     }
 
     try {
-      const resolvedCompanyId = resolveCompanyId(companyId);
+      const resolvedCompanyId = await resolveCompanyId(companyId);
       const endpoint = replaceCompanyId(strategy.path, resolvedCompanyId);
       const raw = await callStrategy(strategy, resolvedCompanyId);
       const records = asArray(raw);
@@ -335,7 +327,7 @@ export const enterpriseApi = {
         generatedAt: new Date().toISOString(),
       };
     } catch {
-      const resolvedCompanyId = resolveCompanyId(companyId);
+      const resolvedCompanyId = await resolveCompanyId(companyId);
       assertEnterpriseDemoPayloadAllowed(resolvedCompanyId);
 
       return createDemoEnterprisePayload(moduleInfo, strategy.path);
