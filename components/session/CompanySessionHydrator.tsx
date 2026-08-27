@@ -23,6 +23,8 @@ type AuthMeLike = {
 };
 
 const TOKEN_KEYS = ['bcost_token', 'bcost_access_token', 'access_token', 'accessToken', 'token'];
+const REFRESH_TOKEN_KEYS = ['bcost_refresh_token', 'refresh_token', 'refreshToken'];
+const USER_KEYS = ['bcost_user', 'user', 'auth_user'];
 
 const COMPANY_ID_KEYS = [
   'bcost_active_company',
@@ -90,6 +92,12 @@ function readCookie(name: string): string | null {
 
   const value = decodeURIComponent(row.split('=').slice(1).join('=') || '');
   return value.trim().length > 0 ? value.trim() : null;
+}
+
+function deleteCookie(name: string): void {
+  if (typeof document === 'undefined') return;
+
+  document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
 }
 
 function resolveToken(): string | null {
@@ -206,6 +214,18 @@ function clearCompanyContext() {
   }
 }
 
+function clearAuthContext() {
+  if (typeof window === 'undefined') return;
+
+  for (const key of [...TOKEN_KEYS, ...REFRESH_TOKEN_KEYS, ...USER_KEYS]) {
+    window.localStorage.removeItem(key);
+  }
+
+  for (const key of [...TOKEN_KEYS, ...REFRESH_TOKEN_KEYS]) {
+    deleteCookie(key);
+  }
+}
+
 function companyContextAlreadyExists() {
   const companyId = readLocalStorage(COMPANY_ID_KEYS);
   const companies = readCompaniesFromStorage();
@@ -235,7 +255,8 @@ async function fetchAuthMe(token: string) {
     if (response.status === 401) {
       // Se a requisição de hidratação falhar por não estar autorizada, limpa traços antigos
       if (typeof window !== 'undefined') {
-        for (const key of COMPANY_ID_KEYS) window.localStorage.removeItem(key);
+        clearAuthContext();
+        clearCompanyContext();
       }
     }
     return null;
