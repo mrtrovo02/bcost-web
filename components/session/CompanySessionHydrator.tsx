@@ -226,6 +226,14 @@ function clearAuthContext() {
   }
 }
 
+function redirectToExpiredLogin(): void {
+  if (typeof window === 'undefined') return;
+  if (window.location.pathname.startsWith('/login')) return;
+
+  const redirect = encodeURIComponent(`${window.location.pathname}${window.location.search}`);
+  window.location.replace(`/login?session=expired&redirect=${redirect}`);
+}
+
 function companyContextAlreadyExists() {
   const companyId = readLocalStorage(COMPANY_ID_KEYS);
   const companies = readCompaniesFromStorage();
@@ -257,6 +265,7 @@ async function fetchAuthMe(token: string) {
       if (typeof window !== 'undefined') {
         clearAuthContext();
         clearCompanyContext();
+        redirectToExpiredLogin();
       }
     }
     return null;
