@@ -41,20 +41,32 @@ describe('tenant company resolution for legacy frontend APIs', () => {
   });
 
   it('uses the canonical active company resolver for revenue URLs', async () => {
-    apiGetMock.mockResolvedValueOnce({ data: { mrr: 1000 } });
+    apiGetMock
+      .mockResolvedValueOnce({
+        data: {
+          id: 'user-1',
+          email: 'amandacontabil@bcost.com.br',
+          activeCompanyId: 'company-real-001',
+        },
+      })
+      .mockResolvedValueOnce({ data: { mrr: 1000 } });
 
     await revenueApi.getStats();
 
-    expect(apiGetMock).toHaveBeenCalledWith('/revenue/stats/company-real-001');
+    expect(apiGetMock).toHaveBeenNthCalledWith(1, '/auth/me');
+    expect(apiGetMock).toHaveBeenNthCalledWith(2, '/revenue/stats/company-real-001');
   });
 
   it('blocks stale demo company ids in revenue when token is real', async () => {
     getActiveCompanyIdMock.mockReturnValue('demo-001');
+    window.localStorage.setItem('bcost_active_company', 'demo-001');
+    window.localStorage.setItem('bcost_company_id', 'demo-001');
+    apiGetMock.mockRejectedValueOnce({ response: { status: 401 } });
 
     await expect(revenueApi.getContracts()).rejects.toThrow(
-      'Empresa ativa não encontrada para consultar receitas.',
+      'Nenhuma empresa real ativa foi encontrada',
     );
-    expect(apiGetMock).not.toHaveBeenCalled();
+    expect(apiGetMock).toHaveBeenCalledWith('/auth/me');
   });
 
   it('uses the canonical active company resolver for fiscal URLs', async () => {

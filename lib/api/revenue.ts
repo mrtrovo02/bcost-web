@@ -1,11 +1,12 @@
 /**
  * bCost Engine - Revenue & Growth Service
  */
-import { api, getActiveCompanyId, getToken, resolveRequestCompanyId } from '@/services/api';
+import { resolveEnterpriseCompanyIdWithFallback } from '@/lib/api/enterprise-company';
+import { api } from '@/services/api';
 import { RevenueStats } from '../types/global';
 
-function requireRevenueCompanyId(): string {
-  const companyId = resolveRequestCompanyId(getToken(), getActiveCompanyId());
+async function requireRevenueCompanyId(): Promise<string> {
+  const companyId = await resolveEnterpriseCompanyIdWithFallback();
 
   if (!companyId || companyId === 'ID_DA_EMPRESA') {
     throw new Error('Empresa ativa não encontrada para consultar receitas.');
@@ -16,13 +17,13 @@ function requireRevenueCompanyId(): string {
 
 export const revenueApi = {
   getStats: async (): Promise<RevenueStats> => {
-    const companyId = requireRevenueCompanyId();
+    const companyId = await requireRevenueCompanyId();
     const { data } = await api.get(`/revenue/stats/${companyId}`);
     return data;
   },
 
   getContracts: async () => {
-    const companyId = requireRevenueCompanyId();
+    const companyId = await requireRevenueCompanyId();
     const { data } = await api.get(`/revenue/contracts/${companyId}`);
     return data;
   },
