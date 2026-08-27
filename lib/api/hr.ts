@@ -5,7 +5,7 @@
  */
 
 import { payrollEnterpriseApi } from './payroll-enterprise';
-import { getActiveCompanyId, getToken, resolveRequestCompanyId } from '@/services/api';
+import { resolveEnterpriseCompanyIdWithFallback } from '@/lib/api/enterprise-company';
 import type { PayrollRecord } from '@/types/hr';
 
 export type EmployeeMetrics = {
@@ -28,15 +28,14 @@ export type EmployeeMetrics = {
   generatedAt: string;
 };
 
-const resolveCompanyId = (): string | null => {
-  const activeCompanyId = resolveRequestCompanyId(getToken(), getActiveCompanyId());
-
-  if (!activeCompanyId || activeCompanyId === 'ID_DA_EMPRESA') {
+const resolveCompanyId = async (): Promise<string | null> => {
+  try {
+    const activeCompanyId = await resolveEnterpriseCompanyIdWithFallback();
+    return activeCompanyId && activeCompanyId !== 'ID_DA_EMPRESA' ? activeCompanyId : null;
+  } catch {
     console.error('⚠️ [bCost HR API]: companyId ausente ou inválido.');
     return null;
   }
-
-  return activeCompanyId;
 };
 
 export const hrApi = {
@@ -46,7 +45,7 @@ export const hrApi = {
    */
   getPayroll: async (): Promise<PayrollRecord[]> => {
     try {
-      const companyId = resolveCompanyId();
+      const companyId = await resolveCompanyId();
       if (!companyId) return [];
 
       const response = await payrollEnterpriseApi.listPayrolls(companyId);
@@ -61,7 +60,7 @@ export const hrApi = {
 
   getEmployeeMetrics: async (): Promise<EmployeeMetrics | null> => {
     try {
-      const companyId = resolveCompanyId();
+      const companyId = await resolveCompanyId();
       if (!companyId) return null;
 
       const summary = await payrollEnterpriseApi.summary(companyId);

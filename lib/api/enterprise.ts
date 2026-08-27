@@ -40,16 +40,11 @@ async function resolveCompanyId(input?: string | null): Promise<string | null> {
     return input;
   }
 
-  const storedCompanyId = readStoredEnterpriseCompanyId();
-
-  if (storedCompanyId && storedCompanyId !== 'ID_DA_EMPRESA') {
-    return storedCompanyId;
-  }
-
   try {
     return await resolveEnterpriseCompanyIdWithFallback();
   } catch {
-    return null;
+    const storedCompanyId = readStoredEnterpriseCompanyId();
+    return storedCompanyId && storedCompanyId !== 'ID_DA_EMPRESA' ? storedCompanyId : null;
   }
 }
 

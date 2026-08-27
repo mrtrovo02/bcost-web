@@ -1,6 +1,7 @@
 'use strict';
 
-import { api, getActiveCompanyId, getToken, resolveRequestCompanyId } from '@/services/api';
+import { resolveEnterpriseCompanyIdWithFallback } from '@/lib/api/enterprise-company';
+import { api } from '@/services/api';
 import {
   FiscalDashboardStats,
   MonthlyPerformance,
@@ -16,8 +17,8 @@ import {
   TaxReformXmlBuildResult,
 } from '../types/fiscal';
 
-const resolveCompanyId = (id?: string): string => {
-  const activeId = id || resolveRequestCompanyId(getToken(), getActiveCompanyId());
+const resolveCompanyId = async (id?: string): Promise<string> => {
+  const activeId = id || (await resolveEnterpriseCompanyIdWithFallback());
 
   if (!activeId || activeId === 'ID_DA_EMPRESA') {
     console.error('⚠️ [bCost]: Requisição bloqueada - companyId ausente ou inválido.');
@@ -110,7 +111,7 @@ export const fiscalApi = {
     month?: number,
     year?: number,
   ): Promise<FiscalDashboardStats> => {
-    const id = resolveCompanyId(companyId);
+    const id = await resolveCompanyId(companyId);
     const { data } = await api.get(`/fiscal/status/${id}`, {
       params: { month, year },
     });
@@ -118,7 +119,7 @@ export const fiscalApi = {
   },
 
   getPerformance: async (companyId?: string, year?: number): Promise<MonthlyPerformance[]> => {
-    const id = resolveCompanyId(companyId);
+    const id = await resolveCompanyId(companyId);
     const { data } = await api.get(`/fiscal/analytics/pnl/${id}`, {
       params: { year },
     });
@@ -126,13 +127,13 @@ export const fiscalApi = {
   },
 
   getPayrollDiagnostics: async (companyId?: string): Promise<PayrollDiagnostic> => {
-    const id = resolveCompanyId(companyId);
+    const id = await resolveCompanyId(companyId);
     const { data } = await api.get(`/fiscal/diagnostics/${id}`);
     return data;
   },
 
   getInvoices: async (companyId?: string): Promise<Invoice[]> => {
-    const id = resolveCompanyId(companyId);
+    const id = await resolveCompanyId(companyId);
     const { data } = await api.get(`/fiscal/invoices/${id}`);
     return Array.isArray(data) ? data.map((row) => normalizeInvoice(row)) : [];
   },
@@ -141,7 +142,7 @@ export const fiscalApi = {
     projectedRevenue: number,
     companyId?: string,
   ): Promise<CbsIbsSimulationResult> => {
-    const id = resolveCompanyId(companyId);
+    const id = await resolveCompanyId(companyId);
     const { data } = await api.post('/tax/simulate-cbs-ibs', {
       companyId: id,
       projectedRevenue,
@@ -163,7 +164,7 @@ export const fiscalApi = {
   }> => {
     const { data } = await api.post('/tax/simulate-reform-2026/resolved', {
       ...input,
-      companyId: input.companyId ?? resolveCompanyId(companyId),
+      companyId: input.companyId ?? (await resolveCompanyId(companyId)),
     });
     return data;
   },
@@ -179,7 +180,7 @@ export const fiscalApi = {
     companyId?: string,
   ): Promise<TaxReformResolvedParameters> => {
     const { data } = await api.get('/tax/reform-parameters', {
-      params: { ...params, companyId: resolveCompanyId(companyId) },
+      params: { ...params, companyId: await resolveCompanyId(companyId) },
     });
     return data;
   },
@@ -194,7 +195,7 @@ export const fiscalApi = {
     type: XmlDocumentType = XmlDocumentType.NFE,
     companyId?: string,
   ): Promise<BatchUploadResponse> => {
-    const id = resolveCompanyId(companyId);
+    const id = await resolveCompanyId(companyId);
     const formData = new FormData();
     files.forEach((file) => formData.append('files', file));
 
@@ -209,7 +210,7 @@ export const fiscalApi = {
     format: 'DOMINIO' | 'QUESTOR' | 'ALTERDATA',
     companyId?: string,
   ): Promise<Blob> => {
-    const id = resolveCompanyId(companyId);
+    const id = await resolveCompanyId(companyId);
     const { data } = await api.get(`/fiscal/export/${id}`, {
       params: { format },
       responseType: 'blob',
@@ -218,7 +219,7 @@ export const fiscalApi = {
   },
 
   seedDemo: async (companyId?: string): Promise<{ message: string }> => {
-    const id = resolveCompanyId(companyId);
+    const id = await resolveCompanyId(companyId);
     const { data } = await api.post(`/fiscal/seed-demo/${id}`);
     return data;
   },

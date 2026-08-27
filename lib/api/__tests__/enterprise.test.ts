@@ -34,7 +34,9 @@ describe('enterpriseApi legacy module resolver', () => {
   it('blocks silent demo payloads for real sessions when endpoint fails', async () => {
     apiGetMock.mockRejectedValueOnce({ response: { status: 404 } });
 
-    await expect(enterpriseApi.getModuleData('companies', 'company-real-001')).rejects.toMatchObject({
+    await expect(
+      enterpriseApi.getModuleData('companies', 'company-real-001'),
+    ).rejects.toMatchObject({
       code: 'DEMO_FALLBACK_DISABLED',
     });
   });
@@ -69,5 +71,38 @@ describe('enterpriseApi legacy module resolver', () => {
     expect(payload.connected).toBe(true);
     expect(payload.records).toHaveLength(1);
     expect(payload.records[0]).toMatchObject({ id: 'company-real-001' });
+  });
+
+  it('resolves authenticated company before stale local storage when company id is implicit', async () => {
+    window.localStorage.setItem('bcost_active_company', 'company-old-001');
+    window.localStorage.setItem('bcost_company_id', 'company-old-001');
+
+    apiGetMock
+      .mockResolvedValueOnce({
+        data: {
+          id: 'user-1',
+          email: 'amandacontabil@bcost.com.br',
+          activeCompanyId: 'company-new-001',
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          companyId: 'company-new-001',
+          status: 'OK',
+          items: [{ id: 'tx-1', companyId: 'company-new-001' }],
+          total: 1,
+        },
+      });
+
+    const payload = await enterpriseApi.getModuleData('bank-transactions');
+
+    expect(payload.connected).toBe(true);
+    expect(apiGetMock).toHaveBeenNthCalledWith(1, '/auth/me');
+    expect(apiGetMock).toHaveBeenNthCalledWith(
+      2,
+      '/banking/enterprise/transactions/company-new-001',
+    );
+    expect(window.localStorage.getItem('bcost_active_company')).toBe('company-new-001');
+    expect(payload.records[0]).toMatchObject({ id: 'tx-1', companyId: 'company-new-001' });
   });
 });

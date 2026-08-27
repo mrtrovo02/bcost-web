@@ -35,6 +35,7 @@ const payrollSummaryMock = vi.mocked(payrollEnterpriseApi.summary);
 describe('tenant company resolution for legacy frontend APIs', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.clear();
     getTokenMock.mockReturnValue('real-jwt-token');
     getActiveCompanyIdMock.mockReturnValue('company-real-001');
   });
@@ -57,21 +58,42 @@ describe('tenant company resolution for legacy frontend APIs', () => {
   });
 
   it('uses the canonical active company resolver for fiscal URLs', async () => {
-    apiGetMock.mockResolvedValueOnce({ data: [] });
+    apiGetMock
+      .mockResolvedValueOnce({
+        data: {
+          id: 'user-1',
+          email: 'amandacontabil@bcost.com.br',
+          activeCompanyId: 'company-real-001',
+        },
+      })
+      .mockResolvedValueOnce({ data: [] });
 
     await fiscalApi.getInvoices();
 
-    expect(apiGetMock).toHaveBeenCalledWith('/fiscal/invoices/company-real-001');
+    expect(apiGetMock).toHaveBeenNthCalledWith(1, '/auth/me');
+    expect(apiGetMock).toHaveBeenNthCalledWith(2, '/fiscal/invoices/company-real-001');
   });
 
   it('blocks stale demo company ids in fiscal when token is real', async () => {
     getActiveCompanyIdMock.mockReturnValue('demo-001');
+    window.localStorage.setItem('bcost_active_company', 'demo-001');
+    window.localStorage.setItem('bcost_company_id', 'demo-001');
+    apiGetMock.mockRejectedValueOnce({ response: { status: 401 } });
 
-    await expect(fiscalApi.getDashboard()).rejects.toThrow('Empresa não selecionada.');
-    expect(apiGetMock).not.toHaveBeenCalled();
+    await expect(fiscalApi.getDashboard()).rejects.toThrow(
+      'Nenhuma empresa real ativa foi encontrada',
+    );
+    expect(apiGetMock).toHaveBeenCalledWith('/auth/me');
   });
 
   it('uses the canonical active company resolver for HR payroll', async () => {
+    apiGetMock.mockResolvedValueOnce({
+      data: {
+        id: 'user-1',
+        email: 'amandacontabil@bcost.com.br',
+        activeCompanyId: 'company-real-001',
+      },
+    });
     listPayrollsMock.mockResolvedValueOnce({
       status: 'OK',
       module: 'payrolls',
@@ -105,17 +127,29 @@ describe('tenant company resolution for legacy frontend APIs', () => {
     await expect(hrApi.getPayroll()).resolves.toEqual([
       expect.objectContaining({ id: 'payroll-1' }),
     ]);
+    expect(apiGetMock).toHaveBeenCalledWith('/auth/me');
     expect(listPayrollsMock).toHaveBeenCalledWith('company-real-001');
   });
 
   it('does not call payroll API with stale demo company id when token is real', async () => {
     getActiveCompanyIdMock.mockReturnValue('demo-001');
+    window.localStorage.setItem('bcost_active_company', 'demo-001');
+    window.localStorage.setItem('bcost_company_id', 'demo-001');
+    apiGetMock.mockRejectedValueOnce({ response: { status: 401 } });
 
     await expect(hrApi.getPayroll()).resolves.toEqual([]);
+    expect(apiGetMock).toHaveBeenCalledWith('/auth/me');
     expect(listPayrollsMock).not.toHaveBeenCalled();
   });
 
   it('uses payroll enterprise summary for HR employee metrics', async () => {
+    apiGetMock.mockResolvedValueOnce({
+      data: {
+        id: 'user-1',
+        email: 'amandacontabil@bcost.com.br',
+        activeCompanyId: 'company-real-001',
+      },
+    });
     payrollSummaryMock.mockResolvedValueOnce({
       status: 'OK',
       module: 'payroll-enterprise-summary',
@@ -165,13 +199,18 @@ describe('tenant company resolution for legacy frontend APIs', () => {
         employerCost: 17920,
       },
     });
+    expect(apiGetMock).toHaveBeenCalledWith('/auth/me');
     expect(payrollSummaryMock).toHaveBeenCalledWith('company-real-001');
   });
 
   it('does not call payroll summary with stale demo company id when token is real', async () => {
     getActiveCompanyIdMock.mockReturnValue('demo-001');
+    window.localStorage.setItem('bcost_active_company', 'demo-001');
+    window.localStorage.setItem('bcost_company_id', 'demo-001');
+    apiGetMock.mockRejectedValueOnce({ response: { status: 401 } });
 
     await expect(hrApi.getEmployeeMetrics()).resolves.toBeNull();
+    expect(apiGetMock).toHaveBeenCalledWith('/auth/me');
     expect(payrollSummaryMock).not.toHaveBeenCalled();
   });
 });
