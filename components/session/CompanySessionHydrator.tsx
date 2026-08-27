@@ -140,6 +140,10 @@ function readCompaniesFromStorage(): CompanyLike[] {
   return [];
 }
 
+function removeDemoCompanies(companies: CompanyLike[]): CompanyLike[] {
+  return companies.filter((company) => !isDemoCompanyId(company.id));
+}
+
 function normalizeCompanies(value: unknown): CompanyLike[] {
   if (!Array.isArray(value)) return [];
 
@@ -206,6 +210,10 @@ function companyContextAlreadyExists() {
   const companyId = readLocalStorage(COMPANY_ID_KEYS);
   const companies = readCompaniesFromStorage();
   return Boolean(companyId && companies.length > 0);
+}
+
+function readActiveCompanyId(): string | null {
+  return readLocalStorage(COMPANY_ID_KEYS);
 }
 
 async function fetchAuthMe(token: string) {
@@ -279,7 +287,15 @@ export function CompanySessionHydrator() {
       }
 
       if (token === DEMO_TOKEN) {
-        if (!companyContextAlreadyExists()) {
+        const activeCompanyId = readActiveCompanyId();
+        const companies = readCompaniesFromStorage();
+        const hasValidDemoContext =
+          activeCompanyId &&
+          isDemoCompanyId(activeCompanyId) &&
+          companies.some((company) => company.id === activeCompanyId);
+
+        if (!hasValidDemoContext) {
+          clearCompanyContext();
           persistCompanyContext(String('demo-001'), readCompaniesFromStorage());
         }
         return;
@@ -289,7 +305,7 @@ export function CompanySessionHydrator() {
       const jwtCompanyId =
         payload?.companyId || payload?.activeCompanyId || payload?.company_id || null;
 
-      const storedCompanies = readCompaniesFromStorage();
+      const storedCompanies = removeDemoCompanies(readCompaniesFromStorage());
 
       if (
         jwtCompanyId &&
@@ -326,7 +342,7 @@ export function CompanySessionHydrator() {
 
       if (!resolvedCompanyId) {
         if (shouldUseLocalDemo()) {
-          persistCompanyContext('demo-001', storedCompanies);
+          persistCompanyContext('demo-001', readCompaniesFromStorage());
         } else {
           clearCompanyContext();
         }

@@ -59,6 +59,10 @@ function clearCompanyContextStorage(): void {
   delete api.defaults.headers.common['CompanyId'];
 }
 
+function removeDemoCompanies(companies: Company[]): Company[] {
+  return companies.filter((company) => !isDemoEntityId(company.id));
+}
+
 export function CompanyProvider({ children }: { children: ReactNode }) {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
@@ -75,11 +79,14 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       try {
         const saved = safeLocalStorageGet('bcost_active_company_data');
         const savedId = getActiveCompanyId();
-        const storedCompanies = safeJsonParse<Company[]>(
+        const rawStoredCompanies = safeJsonParse<Company[]>(
           safeLocalStorageGet('bcost_companies'),
           [],
         );
         const isDemo = detectDemoSession();
+        const storedCompanies = isDemo
+          ? rawStoredCompanies
+          : removeDemoCompanies(rawStoredCompanies);
 
         setIsDemoSession(isDemo);
 
@@ -102,6 +109,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
             }
 
             setSelectedCompany(parsedCompany);
+            setCompanies(storedCompanies);
             api.defaults.headers.common['x-company-id'] = parsedCompany.id;
             trackEvent('company_context_restored', { companyId: parsedCompany.id });
           }
@@ -122,6 +130,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
           }
 
           setSelectedCompany(restored);
+          setCompanies(storedCompanies);
           safeLocalStorageSet('bcost_active_company_data', JSON.stringify(restored));
           if (restored.id) {
             api.defaults.headers.common['x-company-id'] = restored.id;
