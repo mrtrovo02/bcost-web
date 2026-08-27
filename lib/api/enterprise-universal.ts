@@ -1,19 +1,13 @@
 'use strict';
 
-import {
-  api,
-  getActiveCompanyId,
-  getToken,
-  isDemoSession,
-  setActiveCompanyId,
-} from '@/services/api';
+import { api, getActiveCompanyId, setActiveCompanyId } from '@/services/api';
+import { resolveEnterpriseCompanyIdWithFallback } from '@/lib/api/enterprise-company';
 import { safeLocalStorageGet } from '@/lib/utils/runtime-guards';
 import { trackEvent } from '@/lib/utils/telemetry';
 import { getSchemaModuleBySlug } from '@/lib/product/schema-modules';
 import {
   createDemoEnterpriseCatalog,
   createDemoEnterpriseResponse,
-  getDemoEnterpriseCompanyId,
 } from '@/lib/api/enterprise-demo';
 import { assertOperationalDemoFallbackEnabled, isDemoEntityId } from '@/lib/config/demo-policy';
 
@@ -159,11 +153,6 @@ export function getStoredCompanyId(): string | null {
   return getActiveCompanyId?.() || null;
 }
 
-function hasRealAuthToken(): boolean {
-  const token = getToken?.();
-  return Boolean(token && token !== 'demo-token-local');
-}
-
 function assertEnterpriseModuleDemoAllowed(companyId: string, message: string): void {
   if (!isDemoEntityId(companyId)) {
     throw new Error(message);
@@ -173,54 +162,9 @@ function assertEnterpriseModuleDemoAllowed(companyId: string, message: string): 
 }
 
 export async function resolveEnterpriseCompanyId(): Promise<string | null> {
-  if (isDemoSession()) {
-    const demoCompanyId = getDemoEnterpriseCompanyId();
-    setActiveCompanyId?.(demoCompanyId);
-    return demoCompanyId;
-  }
-
-  try {
-    const me = await api.get('/auth/me');
-    const companies = Array.isArray(me.data?.companies) ? me.data.companies : [];
-    const companyId =
-      me.data?.activeCompanyId ||
-      me.data?.companyId ||
-      companies.find((company: { id?: string }) => company.id === getStoredCompanyId())?.id ||
-      companies[0]?.id;
-
-    if (companyId) {
-      setActiveCompanyId?.(companyId);
-      return companyId;
-    }
-  } catch {
-    // segue para fallback
-  }
-
-  try {
-    const companies = await api.get('/company');
-    const firstCompany = Array.isArray(companies.data) ? companies.data[0] : null;
-
-    if (firstCompany?.id) {
-      setActiveCompanyId?.(firstCompany.id);
-      return firstCompany.id;
-    }
-  } catch {
-    // sem fallback disponível
-  }
-
-  const stored = getStoredCompanyId();
-
-  if (stored && (!isDemoEntityId(stored) || !hasRealAuthToken())) {
-    return stored;
-  }
-
-  assertOperationalDemoFallbackEnabled(
-    'Nenhuma empresa real ativa foi encontrada. Cadastre ou selecione uma empresa antes de abrir modulos enterprise.',
-  );
-
-  const fallbackCompanyId = getDemoEnterpriseCompanyId();
-  setActiveCompanyId?.(fallbackCompanyId);
-  return fallbackCompanyId;
+  const companyId = await resolveEnterpriseCompanyIdWithFallback();
+  setActiveCompanyId?.(companyId);
+  return companyId;
 }
 
 export const enterpriseUniversalApi = {
