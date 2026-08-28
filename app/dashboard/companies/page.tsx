@@ -33,7 +33,8 @@ type CompanyEditForm = {
 const DEFAULT_TAX_REGIME: TaxRegime = 'SIMPLES_NACIONAL';
 
 function resolveErrorMessage(error: unknown, fallback: string): string {
-  const responseData = isRecord(error) && isRecord(error.response) ? error.response.data : undefined;
+  const responseData =
+    isRecord(error) && isRecord(error.response) ? error.response.data : undefined;
   return isRecord(responseData)
     ? getErrorMessage(responseData, fallback)
     : getErrorMessage(error, fallback);
@@ -51,8 +52,7 @@ export default function CompaniesPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [newCompanyName, setNewCompanyName] = useState<string>('');
   const [newCompanyCnpj, setNewCompanyCnpj] = useState<string>('');
-  const [newCompanyTaxRegime, setNewCompanyTaxRegime] =
-    useState<TaxRegime>(DEFAULT_TAX_REGIME);
+  const [newCompanyTaxRegime, setNewCompanyTaxRegime] = useState<TaxRegime>(DEFAULT_TAX_REGIME);
   const [isCreating, setIsCreating] = useState<boolean>(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -75,11 +75,7 @@ export default function CompaniesPage() {
     try {
       setIsLoading(true);
 
-      // Recupera estado local de forma segura
-      const savedActiveId =
-        typeof window !== 'undefined' ? localStorage.getItem('bcost_active_company') : null;
-
-      setActiveId(savedActiveId);
+      setActiveId(companyService.getActiveCompanyId());
 
       if (isCompanyContextLoading) {
         return;
@@ -114,7 +110,7 @@ export default function CompaniesPage() {
       const selected = companies.find((item) => item.id === id);
       if (selected) {
         setSelectedCompany(selected);
-        localStorage.setItem('bcost_active_company', id);
+        companyService.setActiveCompany(id);
         setActiveId(id);
       }
 
@@ -157,9 +153,9 @@ export default function CompaniesPage() {
       setNewCompanyCnpj('');
       setNewCompanyTaxRegime(DEFAULT_TAX_REGIME);
       setActiveId(created.id);
+      companyService.setActiveCompany(created.id);
 
       if (typeof window !== 'undefined') {
-        localStorage.setItem('bcost_active_company', created.id);
         localStorage.setItem('bcost_active_company_data', JSON.stringify(created));
       }
       router.push('/dashboard/intelligence');
@@ -180,7 +176,7 @@ export default function CompaniesPage() {
       setNewCompanyCnpj('');
       setNewCompanyTaxRegime(DEFAULT_TAX_REGIME);
       setActiveId(created.id);
-      localStorage.setItem('bcost_active_company', created.id);
+      companyService.setActiveCompany(created.id);
       localStorage.setItem('bcost_active_company_data', JSON.stringify(created));
       router.push('/dashboard/intelligence');
     } catch (error: unknown) {

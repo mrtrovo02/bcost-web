@@ -18,6 +18,7 @@ import {
   getEnterpriseEndpointStrategy,
   enterpriseApi,
 } from '@/lib/api/enterprise';
+import { resolveEnterpriseCompanyIdWithFallback } from '@/lib/api/enterprise-company';
 
 type Props = {
   module: BcostSchemaModule;
@@ -55,19 +56,6 @@ function priorityClass(priority: string) {
   }
 
   return 'bg-slate-50 text-slate-500 border-slate-100';
-}
-
-function getStoredCompanyId() {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  return (
-    localStorage.getItem('bcost_company_id') ||
-    localStorage.getItem('bcost_active_company') ||
-    localStorage.getItem('companyId') ||
-    null
-  );
 }
 
 function formatJson(value: unknown) {
@@ -124,7 +112,10 @@ export default function EnterpriseModuleClient({ module }: Props) {
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
-    const activeCompanyId = getStoredCompanyId();
+    const activeCompanyId =
+      module.status === 'PLANNED' && !strategy?.enabled
+        ? null
+        : await resolveEnterpriseCompanyIdWithFallback().catch(() => null);
     setCompanyId(activeCompanyId);
     setError('');
 
