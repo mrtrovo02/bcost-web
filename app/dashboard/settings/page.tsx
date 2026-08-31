@@ -46,6 +46,13 @@ const SECTIONS: { key: SectionKey; label: string; icon: typeof User }[] = [
 ];
 
 const PLAN_ORDER: Record<PlanLevel, number> = { FREE: 1, PRO: 2, ENTERPRISE: 3 };
+const WEBHOOK_STATUS_OPTIONS: Array<PaymentWebhookDeliveryStatus | 'ALL'> = [
+  'ALL',
+  'FAILED',
+  'RECEIVED',
+  'PROCESSED',
+  'IGNORED',
+];
 
 function formatLimit(value: number): string {
   if (value >= 999999) return 'Ilimitado';
@@ -94,6 +101,8 @@ function BillingSection() {
   const [subscription, setSubscription] =
     useState<PaymentSubscriptionResponse['subscription']>(null);
   const [paymentEvents, setPaymentEvents] = useState<PaymentWebhookEvent[]>([]);
+  const [webhookStatusFilter, setWebhookStatusFilter] =
+    useState<PaymentWebhookDeliveryStatus | 'ALL'>('FAILED');
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<PlanLevel | null>(null);
   const [openingPortal, setOpeningPortal] = useState(false);
@@ -123,7 +132,10 @@ function BillingSection() {
       setSubscription(subscriptionRes.subscription ?? null);
 
       paymentsApi
-        .webhookEvents(selectedCompany.id)
+        .webhookEvents(selectedCompany.id, {
+          status: webhookStatusFilter === 'ALL' ? undefined : webhookStatusFilter,
+          limit: 25,
+        })
         .then((eventsRes) => setPaymentEvents(eventsRes.events ?? []))
         .catch((eventErr: unknown) => {
           console.warn('[Settings/Billing] webhook audit unavailable:', eventErr);
@@ -152,7 +164,7 @@ function BillingSection() {
     } finally {
       setLoading(false);
     }
-  }, [isDemoBillingContext, selectedCompany]);
+  }, [isDemoBillingContext, selectedCompany, webhookStatusFilter]);
 
   useEffect(() => {
     load();
@@ -306,7 +318,7 @@ function BillingSection() {
 
       {!isDemoBillingContext && (
         <div className="bg-[#090d16] border border-white/5 rounded-2xl p-6">
-          <div className="flex items-center justify-between gap-4 mb-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-4">
             <div>
               <p className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-2">
                 <Activity size={13} /> Auditoria do gateway
@@ -315,13 +327,28 @@ function BillingSection() {
                 Últimos eventos recebidos para checkout, assinatura e sincronização de plano.
               </p>
             </div>
-            <button
-              onClick={load}
-              disabled={loading}
-              className="shrink-0 rounded-xl border border-white/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-300 hover:bg-white/5 disabled:opacity-50"
-            >
-              Atualizar
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={webhookStatusFilter}
+                onChange={(event) =>
+                  setWebhookStatusFilter(event.target.value as PaymentWebhookDeliveryStatus | 'ALL')
+                }
+                className="rounded-xl border border-white/10 bg-[#050914] px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-300 outline-none focus:border-blue-500"
+              >
+                {WEBHOOK_STATUS_OPTIONS.map((status) => (
+                  <option key={status} value={status}>
+                    {status === 'ALL' ? 'Todos' : webhookStatusLabel(status)}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={load}
+                disabled={loading}
+                className="shrink-0 rounded-xl border border-white/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-300 hover:bg-white/5 disabled:opacity-50"
+              >
+                Atualizar
+              </button>
+            </div>
           </div>
 
           {paymentEvents.length > 0 ? (

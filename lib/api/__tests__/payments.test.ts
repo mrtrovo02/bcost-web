@@ -116,10 +116,18 @@ describe('paymentsApi', () => {
       },
     });
 
-    const response = await paymentsApi.webhookEvents('company-001');
+    const response = await paymentsApi.webhookEvents('company-001', {
+      status: 'FAILED',
+      limit: 25,
+    });
 
     expect(response.events).toHaveLength(1);
     expect(response.events[0]?.providerEventId).toBe('evt_123');
-    expect(apiGetMock).toHaveBeenCalledWith('/payments/webhook-events/company-001');
+    expect(apiGetMock).toHaveBeenCalledWith('/payments/webhook-events/company-001', {
+      params: {
+        status: 'FAILED',
+        limit: 25,
+      },
+    });
   });
 });

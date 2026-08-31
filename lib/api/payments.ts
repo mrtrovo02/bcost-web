@@ -84,8 +84,17 @@ export type PaymentWebhookEvent = {
 export type PaymentWebhookEventsResponse = {
   status: string;
   companyId: string;
+  filters?: {
+    status?: PaymentWebhookDeliveryStatus | null;
+    limit: number;
+  };
   events: PaymentWebhookEvent[];
   generatedAt: string;
+};
+
+export type PaymentWebhookEventsQuery = {
+  status?: PaymentWebhookDeliveryStatus;
+  limit?: number;
 };
 
 export const paymentsApi = {
@@ -121,9 +130,13 @@ export const paymentsApi = {
     return response.data;
   },
 
-  webhookEvents: async (companyId: string): Promise<PaymentWebhookEventsResponse> => {
+  webhookEvents: async (
+    companyId: string,
+    query: PaymentWebhookEventsQuery = {},
+  ): Promise<PaymentWebhookEventsResponse> => {
     const response = await api.get<PaymentWebhookEventsResponse>(
       `/payments/webhook-events/${companyId}`,
+      { params: query },
     );
 
     return response.data;
