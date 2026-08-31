@@ -1,10 +1,13 @@
 import Link from 'next/link';
 import {
   bcostModuleAreas,
-  bcostSchemaModules,
+  getModuleCommercialActionLabel,
   getModuleMarketReadinessLabel,
+  getModulesByArea,
   getModuleStats,
   getSellableModules,
+  type BcostModulePriority,
+  type BcostModuleStatus,
 } from '@/lib/product/schema-modules';
 import AccountingArchitectureRegistryWidget from '@/components/enterprise/AccountingArchitectureRegistryWidget';
 import AccountingMarketReadinessWidget from '@/components/enterprise/AccountingMarketReadinessWidget';
@@ -16,34 +19,30 @@ import BillingPlansWidget from '@/components/enterprise/BillingPlansWidget';
 import CoreTaxPreviewWidget from '@/components/enterprise/CoreTaxPreviewWidget';
 import EnterpriseCatalogGovernanceWidget from '@/components/enterprise/EnterpriseCatalogGovernanceWidget';
 
-function statusLabel(status: string) {
+function statusLabel(status: BcostModuleStatus) {
   if (status === 'ACTIVE') return 'Ativo';
   if (status === 'INTEGRATING') return 'Em integração';
   return 'Planejado';
 }
 
-function statusClass(status: string) {
+function statusClass(status: BcostModuleStatus) {
   if (status === 'ACTIVE') return 'bg-emerald-50 text-emerald-700 border-emerald-100';
   if (status === 'INTEGRATING') return 'bg-blue-50 text-blue-700 border-blue-100';
   return 'bg-slate-50 text-slate-500 border-slate-100';
 }
 
-function priorityClass(priority: string) {
+function priorityClass(priority: BcostModulePriority) {
   if (priority === 'CRITICAL') return 'bg-red-50 text-red-700';
   if (priority === 'HIGH') return 'bg-amber-50 text-amber-700';
   if (priority === 'MEDIUM') return 'bg-violet-50 text-violet-700';
   return 'bg-slate-50 text-slate-500';
 }
 
-function operationLabel(status: string) {
-  if (status === 'ACTIVE' || status === 'INTEGRATING' || status === 'PLANNED') {
-    return getModuleMarketReadinessLabel(status);
-  }
-
-  return 'Roadmap bloqueado';
+function operationLabel(status: BcostModuleStatus) {
+  return getModuleMarketReadinessLabel(status);
 }
 
-function operationClass(status: string) {
+function operationClass(status: BcostModuleStatus) {
   if (status === 'ACTIVE') return 'bg-emerald-50 text-emerald-700 border-emerald-100';
   if (status === 'INTEGRATING') return 'bg-indigo-50 text-indigo-700 border-indigo-100';
   return 'bg-slate-50 text-slate-500 border-slate-100';
@@ -153,13 +152,16 @@ export default function EnterpriseModulesPage() {
               <p className="mt-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
                 {module.apiBase ?? module.route}
               </p>
+              <p className="mt-4 text-sm font-black text-emerald-700">
+                {getModuleCommercialActionLabel(module.status)}
+              </p>
             </Link>
           ))}
         </div>
       </section>
 
       {bcostModuleAreas.map((area) => {
-        const modules = bcostSchemaModules.filter((module) => module.area === area);
+        const modules = getModulesByArea(area);
 
         if (modules.length === 0) return null;
 
@@ -212,7 +214,7 @@ export default function EnterpriseModulesPage() {
                   </h3>
 
                   <p className="mt-1 text-xs font-black uppercase tracking-[0.2em] text-slate-400">
-                    Model: {module.model}
+                    Contrato operacional: {module.model}
                   </p>
 
                   <p className="mt-4 text-sm leading-6 text-slate-500">{module.description}</p>
@@ -236,6 +238,9 @@ export default function EnterpriseModulesPage() {
                       </span>
                     ))}
                   </div>
+                  <p className="mt-5 text-sm font-black text-blue-700">
+                    {getModuleCommercialActionLabel(module.status)}
+                  </p>
                 </Link>
               ))}
             </div>

@@ -4,10 +4,13 @@ import { describe, expect, it } from 'vitest';
 
 import {
   bcostSchemaModules,
+  getModuleCommercialActionLabel,
   getModuleMarketReadiness,
   getModuleMarketReadinessLabel,
+  getModulesByArea,
   getModuleStats,
   getSellableModules,
+  sortModulesByMarketPriority,
 } from '../schema-modules';
 
 function routeHasPage(route: string) {
@@ -109,6 +112,9 @@ describe('bcostSchemaModules routes', () => {
     expect(getModuleMarketReadinessLabel('ACTIVE')).toBe('Vendável');
     expect(getModuleMarketReadinessLabel('INTEGRATING')).toBe('Beta assistido');
     expect(getModuleMarketReadinessLabel('PLANNED')).toBe('Roadmap bloqueado');
+    expect(getModuleCommercialActionLabel('ACTIVE')).toBe('Abrir módulo');
+    expect(getModuleCommercialActionLabel('INTEGRATING')).toBe('Ver escopo assistido');
+    expect(getModuleCommercialActionLabel('PLANNED')).toBe('Ver roadmap');
   });
 
   it('mantem estatisticas de mercado coerentes com o catalogo', () => {
@@ -149,6 +155,72 @@ describe('bcostSchemaModules routes', () => {
 
     for (const module of bcostSchemaModules) {
       expect(readinessBySlug[module.slug]).toBe(getModuleMarketReadiness(module.status));
+    }
+  });
+
+  it('ordena modulos por prontidao comercial, prioridade e titulo', () => {
+    const sorted = sortModulesByMarketPriority([
+      {
+        slug: 'z-roadmap',
+        title: 'Z Roadmap',
+        model: 'Roadmap',
+        area: 'SaaS',
+        status: 'PLANNED',
+        priority: 'CRITICAL',
+        description: 'Roadmap',
+        commercialValue: 'Roadmap',
+        route: '/dashboard/modules/z-roadmap',
+        apiBase: '/roadmap/z',
+        mainActions: ['Ver'],
+        kpis: ['Status'],
+      },
+      {
+        slug: 'b-sellable',
+        title: 'B Vendavel',
+        model: 'Sellable',
+        area: 'SaaS',
+        status: 'ACTIVE',
+        priority: 'HIGH',
+        description: 'Vendavel',
+        commercialValue: 'Vendavel',
+        route: '/dashboard/modules/b-sellable',
+        apiBase: '/sellable/b',
+        mainActions: ['Abrir'],
+        kpis: ['Status'],
+      },
+      {
+        slug: 'a-sellable',
+        title: 'A Vendavel',
+        model: 'Sellable',
+        area: 'SaaS',
+        status: 'ACTIVE',
+        priority: 'CRITICAL',
+        description: 'Vendavel',
+        commercialValue: 'Vendavel',
+        route: '/dashboard/modules/a-sellable',
+        apiBase: '/sellable/a',
+        mainActions: ['Abrir'],
+        kpis: ['Status'],
+      },
+    ]);
+
+    expect(sorted.map((module) => module.slug)).toEqual([
+      'a-sellable',
+      'b-sellable',
+      'z-roadmap',
+    ]);
+  });
+
+  it('lista areas ja ordenadas para a vitrine enterprise', () => {
+    const fiscalModules = getModulesByArea('Fiscal');
+    const firstRoadmapIndex = fiscalModules.findIndex((module) => module.status === 'PLANNED');
+    const lastSellableIndex = fiscalModules.reduce(
+      (lastIndex, module, index) => (module.status === 'ACTIVE' ? index : lastIndex),
+      -1,
+    );
+
+    if (firstRoadmapIndex !== -1 && lastSellableIndex !== -1) {
+      expect(lastSellableIndex).toBeLessThan(firstRoadmapIndex);
     }
   });
 });

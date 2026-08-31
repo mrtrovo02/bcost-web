@@ -22,6 +22,19 @@ export type BcostModulePriority = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
 
 export type BcostMarketReadiness = 'SELLABLE' | 'ASSISTED_BETA' | 'ROADMAP_LOCKED';
 
+const MARKET_READINESS_ORDER: Record<BcostMarketReadiness, number> = {
+  SELLABLE: 1,
+  ASSISTED_BETA: 2,
+  ROADMAP_LOCKED: 3,
+};
+
+const PRIORITY_ORDER: Record<BcostModulePriority, number> = {
+  CRITICAL: 1,
+  HIGH: 2,
+  MEDIUM: 3,
+  LOW: 4,
+};
+
 export type BcostSchemaModule = {
   slug: string;
   title: string;
@@ -49,6 +62,31 @@ export function getModuleMarketReadinessLabel(status: BcostModuleStatus): string
   if (readiness === 'SELLABLE') return 'Vendável';
   if (readiness === 'ASSISTED_BETA') return 'Beta assistido';
   return 'Roadmap bloqueado';
+}
+
+export function getModuleCommercialActionLabel(status: BcostModuleStatus): string {
+  const readiness = getModuleMarketReadiness(status);
+
+  if (readiness === 'SELLABLE') return 'Abrir módulo';
+  if (readiness === 'ASSISTED_BETA') return 'Ver escopo assistido';
+  return 'Ver roadmap';
+}
+
+export function sortModulesByMarketPriority(
+  modules: BcostSchemaModule[],
+): BcostSchemaModule[] {
+  return modules.slice().sort((left, right) => {
+    const readinessDelta =
+      MARKET_READINESS_ORDER[getModuleMarketReadiness(left.status)] -
+      MARKET_READINESS_ORDER[getModuleMarketReadiness(right.status)];
+
+    if (readinessDelta !== 0) return readinessDelta;
+
+    const priorityDelta = PRIORITY_ORDER[left.priority] - PRIORITY_ORDER[right.priority];
+    if (priorityDelta !== 0) return priorityDelta;
+
+    return left.title.localeCompare(right.title, 'pt-BR');
+  });
 }
 
 export const bcostSchemaModules: BcostSchemaModule[] = [
@@ -886,24 +924,28 @@ export function getSchemaModuleBySlug(slug: string) {
 }
 
 export function getModulesByArea(area: BcostModuleArea) {
-  return bcostSchemaModules.filter((module) => module.area === area);
+  return sortModulesByMarketPriority(bcostSchemaModules.filter((module) => module.area === area));
 }
 
 export function getSellableModules() {
-  return bcostSchemaModules.filter(
-    (module) => getModuleMarketReadiness(module.status) === 'SELLABLE',
+  return sortModulesByMarketPriority(
+    bcostSchemaModules.filter((module) => getModuleMarketReadiness(module.status) === 'SELLABLE'),
   );
 }
 
 export function getAssistedBetaModules() {
-  return bcostSchemaModules.filter(
-    (module) => getModuleMarketReadiness(module.status) === 'ASSISTED_BETA',
+  return sortModulesByMarketPriority(
+    bcostSchemaModules.filter(
+      (module) => getModuleMarketReadiness(module.status) === 'ASSISTED_BETA',
+    ),
   );
 }
 
 export function getRoadmapLockedModules() {
-  return bcostSchemaModules.filter(
-    (module) => getModuleMarketReadiness(module.status) === 'ROADMAP_LOCKED',
+  return sortModulesByMarketPriority(
+    bcostSchemaModules.filter(
+      (module) => getModuleMarketReadiness(module.status) === 'ROADMAP_LOCKED',
+    ),
   );
 }
 
