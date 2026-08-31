@@ -48,6 +48,31 @@ export type PaymentSubscriptionResponse = {
   generatedAt: string;
 };
 
+export type PaymentWebhookDeliveryStatus =
+  | 'RECEIVED'
+  | 'PROCESSED'
+  | 'IGNORED'
+  | 'FAILED';
+
+export type PaymentWebhookEvent = {
+  id: string;
+  provider: 'STRIPE' | 'PAGARME' | 'MERCADO_PAGO';
+  providerEventId: string;
+  eventType: string;
+  status: PaymentWebhookDeliveryStatus;
+  processedAt?: string | null;
+  errorMessage?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PaymentWebhookEventsResponse = {
+  status: string;
+  companyId: string;
+  events: PaymentWebhookEvent[];
+  generatedAt: string;
+};
+
 export const paymentsApi = {
   createCheckoutSession: async (
     companyId: string,
@@ -64,6 +89,14 @@ export const paymentsApi = {
   subscription: async (companyId: string): Promise<PaymentSubscriptionResponse> => {
     const response = await api.get<PaymentSubscriptionResponse>(
       `/payments/subscription/${companyId}`,
+    );
+
+    return response.data;
+  },
+
+  webhookEvents: async (companyId: string): Promise<PaymentWebhookEventsResponse> => {
+    const response = await api.get<PaymentWebhookEventsResponse>(
+      `/payments/webhook-events/${companyId}`,
     );
 
     return response.data;

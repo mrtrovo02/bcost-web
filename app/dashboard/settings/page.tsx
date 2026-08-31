@@ -10,6 +10,7 @@ import {
   Lock,
   Loader2,
   ChevronRight,
+  Activity,
 } from 'lucide-react';
 import { isDemoSession } from '@/services/api';
 import { useCompany } from '@/app/context/CompanyContext';
@@ -23,7 +24,12 @@ import {
   type BillingPlan,
   type PlanLevel,
 } from '@/lib/api/billing';
-import { paymentsApi, type PaymentSubscriptionResponse } from '@/lib/api/payments';
+import {
+  paymentsApi,
+  type PaymentSubscriptionResponse,
+  type PaymentWebhookDeliveryStatus,
+  type PaymentWebhookEvent,
+} from '@/lib/api/payments';
 
 type ApiErrorLike = {
   response?: { data?: { message?: string } };
@@ -47,6 +53,33 @@ function formatLimit(value: number): string {
   return value.toLocaleString('pt-BR');
 }
 
+function formatDateTime(value?: string | null): string {
+  if (!value) return 'Pendente';
+  return new Date(value).toLocaleString('pt-BR');
+}
+
+function webhookStatusLabel(status: PaymentWebhookDeliveryStatus): string {
+  const labels: Record<PaymentWebhookDeliveryStatus, string> = {
+    RECEIVED: 'Recebido',
+    PROCESSED: 'Processado',
+    IGNORED: 'Ignorado',
+    FAILED: 'Falhou',
+  };
+
+  return labels[status];
+}
+
+function webhookStatusClass(status: PaymentWebhookDeliveryStatus): string {
+  const classes: Record<PaymentWebhookDeliveryStatus, string> = {
+    RECEIVED: 'border-blue-500/30 bg-blue-500/10 text-blue-300',
+    PROCESSED: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
+    IGNORED: 'border-slate-500/30 bg-slate-500/10 text-slate-300',
+    FAILED: 'border-red-500/30 bg-red-500/10 text-red-300',
+  };
+
+  return classes[status];
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Seção: Plano e Cobrança
 // ─────────────────────────────────────────────────────────────────────────
@@ -60,6 +93,7 @@ function BillingSection() {
   const [entitlements, setEntitlements] = useState<BillingEntitlementsResponse | null>(null);
   const [subscription, setSubscription] =
     useState<PaymentSubscriptionResponse['subscription']>(null);
+  const [paymentEvents, setPaymentEvents] = useState<PaymentWebhookEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<PlanLevel | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -74,6 +108,7 @@ function BillingSection() {
         setPlans(DEMO_BILLING_PLANS);
         setEntitlements(getDemoBillingEntitlements(selectedCompany));
         setSubscription(null);
+        setPaymentEvents([]);
         return;
       }
 
@@ -85,12 +120,21 @@ function BillingSection() {
       setPlans(plansRes.plans ?? []);
       setEntitlements(entitlementsRes ?? null);
       setSubscription(subscriptionRes.subscription ?? null);
+
+      paymentsApi
+        .webhookEvents(selectedCompany.id)
+        .then((eventsRes) => setPaymentEvents(eventsRes.events ?? []))
+        .catch((eventErr: unknown) => {
+          console.warn('[Settings/Billing] webhook audit unavailable:', eventErr);
+          setPaymentEvents([]);
+        });
     } catch (err) {
       console.error('[Settings/Billing] load failed:', err);
       if (isDemoBillingContext) {
         setPlans(DEMO_BILLING_PLANS);
         setEntitlements(getDemoBillingEntitlements(selectedCompany));
         setSubscription(null);
+        setPaymentEvents([]);
         setError(
           'Não foi possível carregar o plano em tempo real. Exibindo a configuração local de demonstração.',
         );
@@ -100,6 +144,7 @@ function BillingSection() {
       setPlans([]);
       setEntitlements(null);
       setSubscription(null);
+      setPaymentEvents([]);
       setError(
         'Não foi possível carregar o plano em tempo real para esta empresa. Verifique a API de billing antes de alterar assinatura em produção.',
       );
@@ -219,6 +264,66 @@ function BillingSection() {
               value={formatLimit(entitlements.limits.bankTransactionsPerMonth)}
             />
           </div>
+        </div>
+      )}
+
+      {!isDemoBillingContext && (
+        <div className="bg-[#090d16] border border-white/5 rounded-2xl p-6">
+          <div className="flex items-center justify-between gap-4 mb-4">
+            <div>
+              <p className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                <Activity size={13} /> Auditoria do gateway
+              </p>
+              <p className="text-xs text-slate-500 mt-1">
+                Últimos eventos recebidos para checkout, assinatura e sincronização de plano.
+              </p>
+            </div>
+            <button
+              onClick={load}
+              disabled={loading}
+              className="shrink-0 rounded-xl border border-white/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-300 hover:bg-white/5 disabled:opacity-50"
+            >
+              Atualizar
+            </button>
+          </div>
+
+          {paymentEvents.length > 0 ? (
+            <div className="divide-y divide-white/5 rounded-xl border border-white/5 overflow-hidden">
+              {paymentEvents.slice(0, 6).map((event) => (
+                <div
+                  key={event.id}
+                  className="grid gap-3 px-4 py-3 md:grid-cols-[1.2fr_0.9fr_auto] md:items-center bg-white/[0.015]"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-slate-200 truncate">{event.eventType}</p>
+                    <p className="text-[11px] text-slate-500 truncate">
+                      {event.provider} · {event.providerEventId}
+                    </p>
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    <p>Criado: {formatDateTime(event.createdAt)}</p>
+                    <p>Processado: {formatDateTime(event.processedAt)}</p>
+                  </div>
+                  <span
+                    className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-wider ${webhookStatusClass(
+                      event.status,
+                    )}`}
+                  >
+                    {webhookStatusLabel(event.status)}
+                  </span>
+                  {event.errorMessage && (
+                    <p className="md:col-span-3 text-[11px] font-semibold text-red-300">
+                      {event.errorMessage}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3 text-xs text-slate-500">
+              Nenhum evento de gateway registrado para esta empresa.
+            </div>
+          )}
         </div>
       )}
 

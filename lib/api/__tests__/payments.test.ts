@@ -69,4 +69,33 @@ describe('paymentsApi', () => {
     expect(response.companyId).toBe('company-001');
     expect(apiGetMock).toHaveBeenCalledWith('/payments/subscription/company-001');
   });
+
+  it('loads payment webhook events for operational audit', async () => {
+    apiGetMock.mockResolvedValueOnce({
+      data: {
+        status: 'OK',
+        companyId: 'company-001',
+        events: [
+          {
+            id: 'event-local-id',
+            provider: 'STRIPE',
+            providerEventId: 'evt_123',
+            eventType: 'checkout.session.completed',
+            status: 'PROCESSED',
+            processedAt: '2026-08-31T00:00:01.000Z',
+            errorMessage: null,
+            createdAt: '2026-08-31T00:00:00.000Z',
+            updatedAt: '2026-08-31T00:00:01.000Z',
+          },
+        ],
+        generatedAt: '2026-08-31T00:00:02.000Z',
+      },
+    });
+
+    const response = await paymentsApi.webhookEvents('company-001');
+
+    expect(response.events).toHaveLength(1);
+    expect(response.events[0]?.providerEventId).toBe('evt_123');
+    expect(apiGetMock).toHaveBeenCalledWith('/payments/webhook-events/company-001');
+  });
 });
