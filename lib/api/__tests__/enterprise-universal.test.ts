@@ -49,6 +49,7 @@ describe('enterpriseUniversalApi', () => {
     expect(bankingProducts).toMatchObject({
       persistence: 'ROADMAP',
       endpoint: '/banking/enterprise/products',
+      marketReadiness: 'ROADMAP_LOCKED',
       canonicalOwner: 'banking-enterprise',
       automationBoundary: 'ASSISTED_AUTOMATION',
       operationalGuardrails: expect.arrayContaining([
@@ -58,6 +59,7 @@ describe('enterpriseUniversalApi', () => {
     expect(companies).toMatchObject({
       persistence: 'PRISMA',
       endpoint: '/enterprise/modules/companies/:companyId',
+      marketReadiness: 'SELLABLE',
       canonicalOwner: 'enterprise-modules',
       automationBoundary: 'SOFTWARE_ONLY',
     });
@@ -197,6 +199,7 @@ describe('enterpriseUniversalApi', () => {
         roadmap: true,
         mode: 'DEMO_ROADMAP',
         endpoint: '/banking/enterprise/products',
+        marketReadiness: 'ROADMAP_LOCKED',
         canonicalOwner: 'banking-enterprise',
         automationBoundary: 'ASSISTED_AUTOMATION',
         operationalGuardrails: expect.arrayContaining([

@@ -5,6 +5,7 @@ import { resolveEnterpriseCompanyIdWithFallback } from '@/lib/api/enterprise-com
 import { safeLocalStorageGet } from '@/lib/utils/runtime-guards';
 import { trackEvent } from '@/lib/utils/telemetry';
 import { getSchemaModuleBySlug } from '@/lib/product/schema-modules';
+import type { BcostMarketReadiness } from '@/lib/product/schema-modules';
 import {
   createDemoEnterpriseCatalog,
   createDemoEnterpriseResponse,
@@ -38,6 +39,7 @@ export type EnterpriseCatalogItem = {
   endpoint?: string;
   area?: string;
   priority?: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+  marketReadiness?: BcostMarketReadiness;
   canonicalOwner?: string;
   automationBoundary?: 'SOFTWARE_ONLY' | 'ASSISTED_AUTOMATION' | 'CRC_VALIDATED' | 'HUMAN_LED';
   operationalGuardrails?: string[];

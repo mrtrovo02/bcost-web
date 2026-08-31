@@ -2,6 +2,7 @@
 
 import {
   bcostSchemaModules,
+  getModuleMarketReadiness,
   type BcostSchemaModule,
   type BcostModuleStatus,
 } from '@/lib/product/schema-modules';
@@ -352,6 +353,7 @@ function summarizeRoadmap(module: BcostSchemaModule) {
     mode: 'DEMO_ROADMAP',
     area: module.area,
     priority: module.priority,
+    marketReadiness: getModuleMarketReadiness(module.status),
     endpoint: module.apiBase ?? null,
     canonicalOwner: roadmapCanonicalOwner(module),
     automationBoundary: boundary,
@@ -451,6 +453,7 @@ export function createDemoEnterpriseCatalog() {
         endpoint: module.apiBase ?? `/enterprise/modules/${module.slug}/:companyId`,
         area: module.area,
         priority: module.priority,
+        marketReadiness: getModuleMarketReadiness(module.status),
         canonicalOwner: roadmapCanonicalOwner(module),
         automationBoundary: boundary,
         operationalGuardrails: roadmapGuardrails(module, boundary),
@@ -463,6 +466,7 @@ export function createDemoEnterpriseCatalog() {
       label: module.title,
       persistence: 'PRISMA' as const,
       endpoint: `/enterprise/modules/${module.slug}/:companyId`,
+      marketReadiness: getModuleMarketReadiness(module.status),
       canonicalOwner: 'enterprise-modules',
       automationBoundary: 'SOFTWARE_ONLY' as const,
       operationalGuardrails: [

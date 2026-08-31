@@ -139,4 +139,16 @@ describe('bcostSchemaModules routes', () => {
       expect(routeHasPage(module.route)).toBe(true);
     }
   });
+
+  it('mantem catalogo universal enriquecido com maturidade comercial', async () => {
+    const { createDemoEnterpriseCatalog } = await import('@/lib/api/enterprise-demo');
+    const catalog = createDemoEnterpriseCatalog();
+    const readinessBySlug = Object.fromEntries(
+      catalog.map((module) => [module.slug, module.marketReadiness]),
+    );
+
+    for (const module of bcostSchemaModules) {
+      expect(readinessBySlug[module.slug]).toBe(getModuleMarketReadiness(module.status));
+    }
+  });
 });
