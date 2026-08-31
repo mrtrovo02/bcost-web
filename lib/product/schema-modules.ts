@@ -889,6 +889,24 @@ export function getModulesByArea(area: BcostModuleArea) {
   return bcostSchemaModules.filter((module) => module.area === area);
 }
 
+export function getSellableModules() {
+  return bcostSchemaModules.filter(
+    (module) => getModuleMarketReadiness(module.status) === 'SELLABLE',
+  );
+}
+
+export function getAssistedBetaModules() {
+  return bcostSchemaModules.filter(
+    (module) => getModuleMarketReadiness(module.status) === 'ASSISTED_BETA',
+  );
+}
+
+export function getRoadmapLockedModules() {
+  return bcostSchemaModules.filter(
+    (module) => getModuleMarketReadiness(module.status) === 'ROADMAP_LOCKED',
+  );
+}
+
 export const bcostModuleAreas: BcostModuleArea[] = [
   'SaaS',
   'Fiscal',
@@ -907,15 +925,9 @@ export const bcostModuleAreas: BcostModuleArea[] = [
 ];
 
 export function getModuleStats() {
-  const sellable = bcostSchemaModules.filter(
-    (module) => getModuleMarketReadiness(module.status) === 'SELLABLE',
-  ).length;
-  const assistedBeta = bcostSchemaModules.filter(
-    (module) => getModuleMarketReadiness(module.status) === 'ASSISTED_BETA',
-  ).length;
-  const roadmapLocked = bcostSchemaModules.filter(
-    (module) => getModuleMarketReadiness(module.status) === 'ROADMAP_LOCKED',
-  ).length;
+  const sellable = getSellableModules().length;
+  const assistedBeta = getAssistedBetaModules().length;
+  const roadmapLocked = getRoadmapLockedModules().length;
 
   return {
     total: bcostSchemaModules.length,

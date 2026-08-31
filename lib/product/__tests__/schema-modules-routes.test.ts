@@ -7,6 +7,7 @@ import {
   getModuleMarketReadiness,
   getModuleMarketReadinessLabel,
   getModuleStats,
+  getSellableModules,
 } from '../schema-modules';
 
 function routeHasPage(route: string) {
@@ -124,5 +125,18 @@ describe('bcostSchemaModules routes', () => {
     expect(stats.assistedBeta).toBe(assistedBeta);
     expect(stats.roadmapLocked).toBe(roadmapLocked);
     expect(stats.sellable + stats.assistedBeta + stats.roadmapLocked).toBe(stats.total);
+  });
+
+  it('mantem a prateleira vendavel restrita a modulos ativos com rota e api', () => {
+    const sellableModules = getSellableModules();
+
+    expect(sellableModules.length).toBeGreaterThan(0);
+
+    for (const module of sellableModules) {
+      expect(module.status).toBe('ACTIVE');
+      expect(module.route).toMatch(/^\/dashboard\//);
+      expect(module.apiBase).toMatch(/^\/[a-z0-9/-]+$/);
+      expect(routeHasPage(module.route)).toBe(true);
+    }
   });
 });

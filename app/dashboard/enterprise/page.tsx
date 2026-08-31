@@ -4,6 +4,7 @@ import {
   bcostSchemaModules,
   getModuleMarketReadinessLabel,
   getModuleStats,
+  getSellableModules,
 } from '@/lib/product/schema-modules';
 import AccountingArchitectureRegistryWidget from '@/components/enterprise/AccountingArchitectureRegistryWidget';
 import AccountingMarketReadinessWidget from '@/components/enterprise/AccountingMarketReadinessWidget';
@@ -50,6 +51,7 @@ function operationClass(status: string) {
 
 export default function EnterpriseModulesPage() {
   const stats = getModuleStats();
+  const sellableModules = getSellableModules();
 
   return (
     <div className="min-h-screen space-y-10 bg-[#fcfdfe] p-8">
@@ -111,6 +113,50 @@ export default function EnterpriseModulesPage() {
       <CoreTaxPreviewWidget />
       <AccountingPlatformCoverageWidget />
       <EnterpriseCatalogGovernanceWidget />
+
+      <section className="space-y-5">
+        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.25em] text-emerald-600">
+              Pronto para venda
+            </p>
+            <h2 className="mt-2 text-3xl font-black tracking-tighter text-slate-900">
+              Módulos vendáveis agora
+            </h2>
+          </div>
+
+          <p className="text-sm font-bold text-slate-400">
+            {sellableModules.length} módulos com maturidade comercial
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+          {sellableModules.map((module) => (
+            <Link
+              href={module.route}
+              key={module.slug}
+              className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-lg"
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-700">
+                  {getModuleMarketReadinessLabel(module.status)}
+                </span>
+                <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${priorityClass(module.priority)}`}>
+                  {module.priority}
+                </span>
+              </div>
+
+              <h3 className="mt-4 text-xl font-black tracking-tight text-slate-900">
+                {module.title}
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-slate-500">{module.commercialValue}</p>
+              <p className="mt-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                {module.apiBase ?? module.route}
+              </p>
+            </Link>
+          ))}
+        </div>
+      </section>
 
       {bcostModuleAreas.map((area) => {
         const modules = bcostSchemaModules.filter((module) => module.area === area);
