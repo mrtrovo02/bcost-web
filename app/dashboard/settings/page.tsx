@@ -23,6 +23,7 @@ import {
   type BillingPlan,
   type PlanLevel,
 } from '@/lib/api/billing';
+import { paymentsApi } from '@/lib/api/payments';
 
 type ApiErrorLike = {
   response?: { data?: { message?: string } };
@@ -112,6 +113,17 @@ function BillingSection() {
     setError(null);
     setFeedback(null);
     try {
+      if (planLevel !== 'FREE') {
+        const checkout = await paymentsApi.createCheckoutSession(selectedCompany.id, {
+          planLevel,
+          successUrl: `${window.location.origin}/dashboard/settings?billing=success`,
+          cancelUrl: `${window.location.origin}/dashboard/settings?billing=cancel`,
+        });
+
+        window.location.assign(checkout.checkoutSession.checkoutUrl);
+        return;
+      }
+
       const response = await billingApi.updatePlan(
         selectedCompany.id,
         planLevel,

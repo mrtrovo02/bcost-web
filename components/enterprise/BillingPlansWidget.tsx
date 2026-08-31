@@ -30,6 +30,7 @@ import {
 } from '@/lib/api/billing';
 import { isDemoEntityId, isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
 import { resolveEnterpriseCompanyIdWithFallback } from '@/lib/api/enterprise-company';
+import { paymentsApi } from '@/lib/api/payments';
 import { getToken } from '@/services/api';
 
 type UiMessage = {
@@ -324,6 +325,18 @@ export default function BillingPlansWidget() {
       setMessage(null);
 
       try {
+        if (hasRealAuthToken() && !isDemoEntityId(companyId) && planLevel !== 'FREE') {
+          const origin = typeof window !== 'undefined' ? window.location.origin : '';
+          const checkout = await paymentsApi.createCheckoutSession(companyId, {
+            planLevel,
+            successUrl: `${origin}/dashboard/settings?billing=success`,
+            cancelUrl: `${origin}/dashboard/settings?billing=cancel`,
+          });
+
+          window.location.assign(checkout.checkoutSession.checkoutUrl);
+          return;
+        }
+
         const response = await billingApi.updatePlan(
           companyId,
           planLevel,
@@ -344,8 +357,11 @@ export default function BillingPlansWidget() {
       } catch (error) {
         setMessage({
           type: 'error',
-          title: 'Falha ao alterar plano',
-          description: error instanceof Error ? error.message : 'Não foi possível alterar o plano.',
+          title: planLevel === 'FREE' ? 'Falha ao alterar plano' : 'Falha ao iniciar checkout',
+          description:
+            error instanceof Error
+              ? error.message
+              : 'Não foi possível iniciar a operação comercial.',
         });
       } finally {
         setActionLoading(null);

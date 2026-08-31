@@ -1,0 +1,71 @@
+'use strict';
+
+import { api } from '@/services/api';
+import type { BillingEntitlementsResponse, PlanLevel } from './billing';
+
+export type MonetizablePlanLevel = Exclude<PlanLevel, 'FREE'>;
+
+export type CreateCheckoutSessionInput = {
+  planLevel: MonetizablePlanLevel;
+  successUrl?: string;
+  cancelUrl?: string;
+};
+
+export type CheckoutSessionResponse = {
+  status: string;
+  provider: 'STRIPE';
+  companyId: string;
+  planLevel: MonetizablePlanLevel;
+  checkoutSession: {
+    id: string;
+    providerCheckoutSessionId: string;
+    checkoutUrl: string;
+    status: string;
+    expiresAt?: string | null;
+  };
+  generatedAt: string;
+};
+
+export type PaymentSubscriptionResponse = {
+  status: string;
+  companyId: string;
+  subscription: {
+    id: string;
+    provider: string;
+    providerSubscriptionId: string;
+    providerCustomerId?: string | null;
+    planLevel: string;
+    status: string;
+    currentPeriodStart?: string | null;
+    currentPeriodEnd?: string | null;
+    cancelAtPeriodEnd: boolean;
+    canceledAt?: string | null;
+    trialEndsAt?: string | null;
+    createdAt: string;
+    updatedAt: string;
+  } | null;
+  entitlements: BillingEntitlementsResponse;
+  generatedAt: string;
+};
+
+export const paymentsApi = {
+  createCheckoutSession: async (
+    companyId: string,
+    input: CreateCheckoutSessionInput,
+  ): Promise<CheckoutSessionResponse> => {
+    const response = await api.post<CheckoutSessionResponse>(
+      `/payments/checkout/${companyId}`,
+      input,
+    );
+
+    return response.data;
+  },
+
+  subscription: async (companyId: string): Promise<PaymentSubscriptionResponse> => {
+    const response = await api.get<PaymentSubscriptionResponse>(
+      `/payments/subscription/${companyId}`,
+    );
+
+    return response.data;
+  },
+};
