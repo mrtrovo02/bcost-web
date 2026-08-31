@@ -23,7 +23,7 @@ import {
   type BillingPlan,
   type PlanLevel,
 } from '@/lib/api/billing';
-import { paymentsApi } from '@/lib/api/payments';
+import { paymentsApi, type PaymentSubscriptionResponse } from '@/lib/api/payments';
 
 type ApiErrorLike = {
   response?: { data?: { message?: string } };
@@ -58,6 +58,8 @@ function BillingSection() {
   );
   const [plans, setPlans] = useState<BillingPlan[]>([]);
   const [entitlements, setEntitlements] = useState<BillingEntitlementsResponse | null>(null);
+  const [subscription, setSubscription] =
+    useState<PaymentSubscriptionResponse['subscription']>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<PlanLevel | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -71,20 +73,24 @@ function BillingSection() {
       if (isDemoBillingContext) {
         setPlans(DEMO_BILLING_PLANS);
         setEntitlements(getDemoBillingEntitlements(selectedCompany));
+        setSubscription(null);
         return;
       }
 
-      const [plansRes, entitlementsRes] = await Promise.all([
+      const [plansRes, entitlementsRes, subscriptionRes] = await Promise.all([
         billingApi.plans(),
         billingApi.entitlements(selectedCompany.id),
+        paymentsApi.subscription(selectedCompany.id),
       ]);
       setPlans(plansRes.plans ?? []);
       setEntitlements(entitlementsRes ?? null);
+      setSubscription(subscriptionRes.subscription ?? null);
     } catch (err) {
       console.error('[Settings/Billing] load failed:', err);
       if (isDemoBillingContext) {
         setPlans(DEMO_BILLING_PLANS);
         setEntitlements(getDemoBillingEntitlements(selectedCompany));
+        setSubscription(null);
         setError(
           'Não foi possível carregar o plano em tempo real. Exibindo a configuração local de demonstração.',
         );
@@ -93,6 +99,7 @@ function BillingSection() {
 
       setPlans([]);
       setEntitlements(null);
+      setSubscription(null);
       setError(
         'Não foi possível carregar o plano em tempo real para esta empresa. Verifique a API de billing antes de alterar assinatura em produção.',
       );
@@ -181,11 +188,25 @@ function BillingSection() {
                 Plano atual
               </p>
               <p className="text-2xl font-black text-white mt-1">{entitlements.plan.label}</p>
+              <p className="text-xs text-slate-500 mt-2">
+                {subscription
+                  ? `Assinatura ${subscription.status} via ${subscription.provider}`
+                  : 'Sem assinatura ativa registrada pelo gateway.'}
+              </p>
             </div>
             <span className="text-[10px] font-black uppercase tracking-wider text-blue-400 bg-blue-500/10 border border-blue-500/30 px-3 py-1.5 rounded-full">
               {entitlements.company.name}
             </span>
           </div>
+          {subscription?.currentPeriodEnd && (
+            <div className="mb-4 rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3 text-xs text-slate-400">
+              Próxima renovação/período atual até{' '}
+              <span className="font-bold text-slate-200">
+                {new Date(subscription.currentPeriodEnd).toLocaleDateString('pt-BR')}
+              </span>
+              {subscription.cancelAtPeriodEnd ? ' · cancelamento agendado ao fim do período' : ''}
+            </div>
+          )}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
             <LimitStat label="Empresas" value={formatLimit(entitlements.limits.companies)} />
             <LimitStat label="Usuários" value={formatLimit(entitlements.limits.users)} />
