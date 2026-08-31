@@ -7,6 +7,11 @@ import {
   enterpriseUniversalApi,
   type EnterpriseCatalogItem,
 } from '@/lib/api/enterprise-universal';
+import {
+  getModuleMarketReadinessLabel,
+  type BcostMarketReadiness,
+  type BcostModuleStatus,
+} from '@/lib/product/schema-modules';
 
 type CatalogState = {
   loading: boolean;
@@ -26,6 +31,27 @@ const BOUNDARY_LABEL: Record<string, string> = {
   CRC_VALIDATED: 'CRC',
   HUMAN_LED: 'Humano',
 };
+
+function resolveReadiness(item: EnterpriseCatalogItem): BcostMarketReadiness {
+  if (item.marketReadiness) return item.marketReadiness;
+  return item.persistence === 'PRISMA' ? 'SELLABLE' : 'ROADMAP_LOCKED';
+}
+
+function readinessLabel(value: BcostMarketReadiness) {
+  const statusByReadiness: Record<BcostMarketReadiness, BcostModuleStatus> = {
+    SELLABLE: 'ACTIVE',
+    ASSISTED_BETA: 'INTEGRATING',
+    ROADMAP_LOCKED: 'PLANNED',
+  };
+
+  return getModuleMarketReadinessLabel(statusByReadiness[value]);
+}
+
+function readinessClass(value: BcostMarketReadiness) {
+  if (value === 'SELLABLE') return 'border-emerald-100 bg-emerald-50 text-emerald-700';
+  if (value === 'ASSISTED_BETA') return 'border-indigo-100 bg-indigo-50 text-indigo-700';
+  return 'border-slate-200 bg-slate-50 text-slate-600';
+}
 
 function persistenceClass(value?: EnterpriseCatalogItem['persistence']) {
   if (value === 'PRISMA') return 'border-emerald-100 bg-emerald-50 text-emerald-700';
@@ -94,12 +120,16 @@ export default function EnterpriseCatalogGovernanceWidget() {
   const stats = useMemo(() => {
     const persistence = countBy(state.items, (item) => item.persistence);
     const boundaries = countBy(state.items, (item) => item.automationBoundary);
+    const readiness = countBy(state.items, (item) => resolveReadiness(item));
     const roadmap = state.items.filter((item) => item.persistence === 'ROADMAP');
 
     return {
       total: state.items.length,
       persisted: persistence.PRISMA ?? 0,
       roadmap: persistence.ROADMAP ?? 0,
+      sellable: readiness.SELLABLE ?? 0,
+      assistedBeta: readiness.ASSISTED_BETA ?? 0,
+      roadmapLocked: readiness.ROADMAP_LOCKED ?? 0,
       crcValidated: boundaries.CRC_VALIDATED ?? 0,
       humanLed: boundaries.HUMAN_LED ?? 0,
       assisted: boundaries.ASSISTED_AUTOMATION ?? 0,
@@ -155,12 +185,12 @@ export default function EnterpriseCatalogGovernanceWidget() {
         <div className="mt-6 grid gap-6">
           <div className="grid gap-3 md:grid-cols-4 xl:grid-cols-8">
             <MetricCard label="Total" value={stats.total} />
-            <MetricCard label="Prisma" value={stats.persisted} tone="emerald" />
-            <MetricCard label="Roadmap" value={stats.roadmap} tone="blue" />
+            <MetricCard label="Vendáveis" value={stats.sellable} tone="emerald" />
+            <MetricCard label="Beta" value={stats.assistedBeta} tone="indigo" />
+            <MetricCard label="Bloqueados" value={stats.roadmapLocked} tone="slate" />
             <MetricCard label="CRC" value={stats.crcValidated} tone="red" />
             <MetricCard label="Humano" value={stats.humanLed} tone="amber" />
             <MetricCard label="Assistido" value={stats.assisted} tone="indigo" />
-            <MetricCard label="Software" value={stats.softwareOnly} tone="emerald" />
             <MetricCard label="P0 Roadmap" value={stats.criticalRoadmap} tone="red" />
           </div>
 
@@ -178,6 +208,13 @@ export default function EnterpriseCatalogGovernanceWidget() {
                     )}`}
                   >
                     {item.persistence ?? 'CATALOG'}
+                  </span>
+                  <span
+                    className={`rounded-full border px-2 py-1 text-[10px] font-black uppercase tracking-widest ${readinessClass(
+                      resolveReadiness(item),
+                    )}`}
+                  >
+                    {readinessLabel(resolveReadiness(item))}
                   </span>
                   <span
                     className={`rounded-full border px-2 py-1 text-[10px] font-black uppercase tracking-widest ${boundaryClass(

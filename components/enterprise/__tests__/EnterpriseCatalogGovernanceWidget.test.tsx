@@ -20,6 +20,7 @@ describe('EnterpriseCatalogGovernanceWidget', () => {
         label: 'Empresas',
         persistence: 'PRISMA',
         endpoint: '/enterprise/modules/companies/:companyId',
+        marketReadiness: 'SELLABLE',
         canonicalOwner: 'enterprise-modules',
         automationBoundary: 'SOFTWARE_ONLY',
         operationalGuardrails: ['Endpoint persistido exige autenticação JWT.'],
@@ -32,6 +33,7 @@ describe('EnterpriseCatalogGovernanceWidget', () => {
         endpoint: '/banking/enterprise/products',
         area: 'Banking',
         priority: 'CRITICAL',
+        marketReadiness: 'ROADMAP_LOCKED',
         canonicalOwner: 'banking-enterprise',
         automationBoundary: 'ASSISTED_AUTOMATION',
         operationalGuardrails: ['Não ativar Conta PJ sem parceiro BaaS homologado.'],
@@ -50,5 +52,8 @@ describe('EnterpriseCatalogGovernanceWidget', () => {
     expect(screen.getByText('banking-enterprise')).toBeInTheDocument();
     expect(screen.getByText('/banking/enterprise/products')).toBeInTheDocument();
     expect(screen.getByText('P0 Roadmap')).toBeInTheDocument();
+    expect(screen.getByText('Vendáveis')).toBeInTheDocument();
+    expect(screen.getByText('Bloqueados')).toBeInTheDocument();
+    expect(screen.getByText('Roadmap bloqueado')).toBeInTheDocument();
   });
 });
