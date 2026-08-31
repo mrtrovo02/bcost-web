@@ -30,15 +30,15 @@ function priorityClass(priority: string) {
 }
 
 function operationLabel(status: string) {
-  if (status === 'ACTIVE') return 'API real';
-  if (status === 'INTEGRATING') return 'Operação assistida';
-  return 'Fallback controlado';
+  if (status === 'ACTIVE') return 'Vendável';
+  if (status === 'INTEGRATING') return 'Beta assistido';
+  return 'Roadmap bloqueado';
 }
 
 function operationClass(status: string) {
   if (status === 'ACTIVE') return 'bg-emerald-50 text-emerald-700 border-emerald-100';
   if (status === 'INTEGRATING') return 'bg-indigo-50 text-indigo-700 border-indigo-100';
-  return 'bg-amber-50 text-amber-700 border-amber-100';
+  return 'bg-slate-50 text-slate-500 border-slate-100';
 }
 
 export default function EnterpriseModulesPage() {
@@ -63,9 +63,9 @@ export default function EnterpriseModulesPage() {
           </p>
 
           <div className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-5 text-sm leading-6 text-slate-300">
-            Os módulos com API real usam dados do backend. Módulos ainda em implantação abrem com
-            fallback operacional identificado, para validação de fluxo, navegação, KPIs e layout sem
-            quebrar a experiência.
+            Os módulos vendáveis usam endpoints reais, isolamento por empresa e regras de plano.
+            Módulos em beta assistido exigem operação humana ou integração pendente explicitamente
+            indicada. Itens de roadmap permanecem sinalizados como indisponíveis para venda direta.
           </div>
         </div>
 

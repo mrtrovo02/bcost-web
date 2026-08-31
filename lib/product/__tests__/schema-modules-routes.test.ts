@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -81,5 +81,17 @@ describe('bcostSchemaModules routes', () => {
     expect(apiBaseBySlug['fiscal-obligations']).toBe('/obligations/enterprise/fiscal');
     expect(apiBaseBySlug['company-formation']).toBe('/accounting-platform/setup/readiness');
     expect(apiBaseBySlug['banking-products']).toBe('/banking/enterprise/products');
+  });
+
+  it('mantem a pagina enterprise com linguagem comercial sem fallback demonstrativo', () => {
+    const pageSource = readFileSync(
+      path.join(process.cwd(), 'app', 'dashboard', 'enterprise', 'page.tsx'),
+      'utf8',
+    );
+
+    expect(pageSource).toContain("return 'Vendável'");
+    expect(pageSource).toContain("return 'Beta assistido'");
+    expect(pageSource).toContain("return 'Roadmap bloqueado'");
+    expect(pageSource.toLowerCase()).not.toContain('fallback');
   });
 });
