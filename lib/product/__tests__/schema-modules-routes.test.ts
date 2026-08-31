@@ -2,7 +2,12 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import { bcostSchemaModules } from '../schema-modules';
+import {
+  bcostSchemaModules,
+  getModuleMarketReadiness,
+  getModuleMarketReadinessLabel,
+  getModuleStats,
+} from '../schema-modules';
 
 function routeHasPage(route: string) {
   const appDir = path.join(process.cwd(), 'app');
@@ -89,9 +94,35 @@ describe('bcostSchemaModules routes', () => {
       'utf8',
     );
 
-    expect(pageSource).toContain("return 'Vendável'");
-    expect(pageSource).toContain("return 'Beta assistido'");
-    expect(pageSource).toContain("return 'Roadmap bloqueado'");
+    expect(pageSource).toContain('getModuleMarketReadinessLabel');
+    expect(getModuleMarketReadinessLabel('ACTIVE')).toBe('Vendável');
+    expect(getModuleMarketReadinessLabel('INTEGRATING')).toBe('Beta assistido');
+    expect(getModuleMarketReadinessLabel('PLANNED')).toBe('Roadmap bloqueado');
     expect(pageSource.toLowerCase()).not.toContain('fallback');
+  });
+
+  it('deriva maturidade comercial sem permitir venda direta de roadmap', () => {
+    expect(getModuleMarketReadiness('ACTIVE')).toBe('SELLABLE');
+    expect(getModuleMarketReadiness('INTEGRATING')).toBe('ASSISTED_BETA');
+    expect(getModuleMarketReadiness('PLANNED')).toBe('ROADMAP_LOCKED');
+    expect(getModuleMarketReadinessLabel('ACTIVE')).toBe('Vendável');
+    expect(getModuleMarketReadinessLabel('INTEGRATING')).toBe('Beta assistido');
+    expect(getModuleMarketReadinessLabel('PLANNED')).toBe('Roadmap bloqueado');
+  });
+
+  it('mantem estatisticas de mercado coerentes com o catalogo', () => {
+    const stats = getModuleStats();
+    const sellable = bcostSchemaModules.filter((module) => module.status === 'ACTIVE').length;
+    const assistedBeta = bcostSchemaModules.filter(
+      (module) => module.status === 'INTEGRATING',
+    ).length;
+    const roadmapLocked = bcostSchemaModules.filter(
+      (module) => module.status === 'PLANNED',
+    ).length;
+
+    expect(stats.sellable).toBe(sellable);
+    expect(stats.assistedBeta).toBe(assistedBeta);
+    expect(stats.roadmapLocked).toBe(roadmapLocked);
+    expect(stats.sellable + stats.assistedBeta + stats.roadmapLocked).toBe(stats.total);
   });
 });

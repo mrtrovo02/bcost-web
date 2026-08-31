@@ -1,5 +1,10 @@
 import Link from 'next/link';
-import { bcostModuleAreas, bcostSchemaModules, getModuleStats } from '@/lib/product/schema-modules';
+import {
+  bcostModuleAreas,
+  bcostSchemaModules,
+  getModuleMarketReadinessLabel,
+  getModuleStats,
+} from '@/lib/product/schema-modules';
 import AccountingArchitectureRegistryWidget from '@/components/enterprise/AccountingArchitectureRegistryWidget';
 import AccountingMarketReadinessWidget from '@/components/enterprise/AccountingMarketReadinessWidget';
 import AccountingOfferingsWidget from '@/components/enterprise/AccountingOfferingsWidget';
@@ -30,8 +35,10 @@ function priorityClass(priority: string) {
 }
 
 function operationLabel(status: string) {
-  if (status === 'ACTIVE') return 'Vendável';
-  if (status === 'INTEGRATING') return 'Beta assistido';
+  if (status === 'ACTIVE' || status === 'INTEGRATING' || status === 'PLANNED') {
+    return getModuleMarketReadinessLabel(status);
+  }
+
   return 'Roadmap bloqueado';
 }
 
@@ -76,18 +83,18 @@ export default function EnterpriseModulesPage() {
           </div>
 
           <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
-            <p className="text-3xl font-black text-emerald-300">{stats.active}</p>
-            <p className="mt-1 text-xs text-slate-400">Ativos</p>
+            <p className="text-3xl font-black text-emerald-300">{stats.sellable}</p>
+            <p className="mt-1 text-xs text-slate-400">Vendáveis</p>
           </div>
 
           <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
-            <p className="text-3xl font-black text-blue-300">{stats.integrating}</p>
-            <p className="mt-1 text-xs text-slate-400">Em integração</p>
+            <p className="text-3xl font-black text-blue-300">{stats.assistedBeta}</p>
+            <p className="mt-1 text-xs text-slate-400">Beta assistido</p>
           </div>
 
           <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
-            <p className="text-3xl font-black text-slate-300">{stats.planned}</p>
-            <p className="mt-1 text-xs text-slate-400">Planejados</p>
+            <p className="text-3xl font-black text-slate-300">{stats.roadmapLocked}</p>
+            <p className="mt-1 text-xs text-slate-400">Roadmap bloqueado</p>
           </div>
 
           <div className="rounded-3xl border border-white/10 bg-white/5 p-5">

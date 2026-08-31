@@ -20,6 +20,8 @@ export type BcostModuleStatus = 'ACTIVE' | 'INTEGRATING' | 'PLANNED';
 
 export type BcostModulePriority = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
 
+export type BcostMarketReadiness = 'SELLABLE' | 'ASSISTED_BETA' | 'ROADMAP_LOCKED';
+
 export type BcostSchemaModule = {
   slug: string;
   title: string;
@@ -34,6 +36,20 @@ export type BcostSchemaModule = {
   mainActions: string[];
   kpis: string[];
 };
+
+export function getModuleMarketReadiness(status: BcostModuleStatus): BcostMarketReadiness {
+  if (status === 'ACTIVE') return 'SELLABLE';
+  if (status === 'INTEGRATING') return 'ASSISTED_BETA';
+  return 'ROADMAP_LOCKED';
+}
+
+export function getModuleMarketReadinessLabel(status: BcostModuleStatus): string {
+  const readiness = getModuleMarketReadiness(status);
+
+  if (readiness === 'SELLABLE') return 'Vendável';
+  if (readiness === 'ASSISTED_BETA') return 'Beta assistido';
+  return 'Roadmap bloqueado';
+}
 
 export const bcostSchemaModules: BcostSchemaModule[] = [
   {
@@ -891,11 +907,24 @@ export const bcostModuleAreas: BcostModuleArea[] = [
 ];
 
 export function getModuleStats() {
+  const sellable = bcostSchemaModules.filter(
+    (module) => getModuleMarketReadiness(module.status) === 'SELLABLE',
+  ).length;
+  const assistedBeta = bcostSchemaModules.filter(
+    (module) => getModuleMarketReadiness(module.status) === 'ASSISTED_BETA',
+  ).length;
+  const roadmapLocked = bcostSchemaModules.filter(
+    (module) => getModuleMarketReadiness(module.status) === 'ROADMAP_LOCKED',
+  ).length;
+
   return {
     total: bcostSchemaModules.length,
     active: bcostSchemaModules.filter((module) => module.status === 'ACTIVE').length,
     integrating: bcostSchemaModules.filter((module) => module.status === 'INTEGRATING').length,
     planned: bcostSchemaModules.filter((module) => module.status === 'PLANNED').length,
     critical: bcostSchemaModules.filter((module) => module.priority === 'CRITICAL').length,
+    sellable,
+    assistedBeta,
+    roadmapLocked,
   };
 }
