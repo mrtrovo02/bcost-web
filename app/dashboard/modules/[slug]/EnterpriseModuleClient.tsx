@@ -978,6 +978,12 @@ function UniversalModuleView({
     [catalogItem, data],
   );
   const universalEndpoint = `/enterprise/modules/${slug}/${companyId || ':companyId'}`;
+  const isFeatureLocked = Boolean(
+    error &&
+    (error.includes('Feature exige') ||
+      error.includes('Feature bloqueada') ||
+      error.includes('FEATURE_LOCKED')),
+  );
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -1069,17 +1075,36 @@ function UniversalModuleView({
             <p className="text-sm font-semibold text-slate-500">Carregando dados enterprise...</p>
           </section>
         ) : error ? (
-          <section className="rounded-3xl border border-red-200 bg-red-50 p-8 shadow-sm">
-            <h2 className="text-lg font-black text-red-900">
-              Não foi possível carregar este módulo
-            </h2>
-            <p className="mt-2 text-sm text-red-700">{error}</p>
-            <button
-              onClick={onRefresh}
-              className="mt-5 rounded-2xl bg-red-700 px-5 py-3 text-sm font-bold text-white"
+          <section
+            className={`rounded-3xl border p-8 shadow-sm ${
+              isFeatureLocked ? 'border-blue-200 bg-blue-50' : 'border-red-200 bg-red-50'
+            }`}
+          >
+            <h2
+              className={`text-lg font-black ${isFeatureLocked ? 'text-blue-950' : 'text-red-900'}`}
             >
-              Tentar novamente
-            </button>
+              {isFeatureLocked
+                ? 'Módulo disponível mediante upgrade'
+                : 'Não foi possível carregar este módulo'}
+            </h2>
+            <p className={`mt-2 text-sm ${isFeatureLocked ? 'text-blue-800' : 'text-red-700'}`}>
+              {error}
+            </p>
+            {isFeatureLocked ? (
+              <Link
+                href="/dashboard/settings?section=billing"
+                className="mt-5 inline-flex rounded-2xl bg-blue-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-600"
+              >
+                Ver planos e ativar módulo
+              </Link>
+            ) : (
+              <button
+                onClick={onRefresh}
+                className="mt-5 rounded-2xl bg-red-700 px-5 py-3 text-sm font-bold text-white"
+              >
+                Tentar novamente
+              </button>
+            )}
           </section>
         ) : data && isRoadmapData(data) ? (
           <RoadmapModuleView data={data} onRefresh={onRefresh} />
