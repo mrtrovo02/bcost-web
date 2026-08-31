@@ -128,6 +128,25 @@ describe('enterpriseUniversalApi', () => {
     );
   });
 
+  it('surfaces feature paywall errors without falling back to demo data', async () => {
+    apiGetMock.mockRejectedValueOnce({
+      response: {
+        status: 403,
+        data: {
+          status: 'FEATURE_LOCKED',
+          message: 'Feature exige plano mínimo ENTERPRISE.',
+          feature: 'digital.certificates',
+          planLevel: 'PRO',
+          requiredPlan: 'ENTERPRISE',
+        },
+      },
+    });
+
+    await expect(
+      enterpriseUniversalApi.getModule('digital-certificates', 'company-123'),
+    ).rejects.toThrow('Feature exige plano mínimo ENTERPRISE.');
+  });
+
   it('does not return summary or health demo data for real companies', async () => {
     apiGetMock.mockRejectedValue({ response: { status: 404 } });
 

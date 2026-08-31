@@ -53,6 +53,21 @@ export type EnterpriseModuleViewState = {
   data: EnterpriseModuleResponse | null;
 };
 
+type EnterpriseApiErrorPayload = {
+  status?: string;
+  message?: string;
+  feature?: string;
+  planLevel?: string;
+  requiredPlan?: string;
+};
+
+type EnterpriseApiError = {
+  response?: {
+    status?: number;
+    data?: EnterpriseApiErrorPayload;
+  };
+};
+
 type EnterpriseCatalogCache = {
   items: EnterpriseCatalogItem[];
   expiresAt: number;
@@ -161,6 +176,28 @@ function assertEnterpriseModuleDemoAllowed(companyId: string, message: string): 
   assertOperationalDemoFallbackEnabled(message);
 }
 
+function toEnterpriseApiError(error: unknown): EnterpriseApiError {
+  return error && typeof error === 'object' && 'response' in error
+    ? (error as EnterpriseApiError)
+    : {};
+}
+
+function throwFeatureLockedError(error: unknown): void {
+  const apiError = toEnterpriseApiError(error);
+  const payload = apiError.response?.data;
+
+  if (apiError.response?.status !== 403 || payload?.status !== 'FEATURE_LOCKED') {
+    return;
+  }
+
+  const feature = payload.feature ? ` (${payload.feature})` : '';
+  const requiredPlan = payload.requiredPlan ? ` Exige plano ${payload.requiredPlan}.` : '';
+  const message =
+    payload.message || `Feature bloqueada para o plano atual${feature}.${requiredPlan}`;
+
+  throw new Error(message);
+}
+
 export async function resolveEnterpriseCompanyId(): Promise<string | null> {
   const companyId = await resolveEnterpriseCompanyIdWithFallback();
   setActiveCompanyId?.(companyId);
@@ -262,15 +299,14 @@ export const enterpriseUniversalApi = {
         generatedAt: data.generatedAt || new Date().toISOString(),
       };
     } catch (error) {
+      throwFeatureLockedError(error);
+
       assertEnterpriseModuleDemoAllowed(
         companyId,
         'Modulo enterprise indisponivel e fallback demonstrativo desabilitado neste ambiente.',
       );
 
-      const status =
-        typeof error === 'object' && error !== null && 'response' in error
-          ? (error as { response?: { status?: number } }).response?.status
-          : undefined;
+      const status = toEnterpriseApiError(error).response?.status;
 
       trackEvent('enterprise_module_fallback', { slug, companyId, status });
 
