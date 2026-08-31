@@ -96,6 +96,7 @@ function BillingSection() {
   const [paymentEvents, setPaymentEvents] = useState<PaymentWebhookEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<PlanLevel | null>(null);
+  const [openingPortal, setOpeningPortal] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
 
@@ -195,6 +196,30 @@ function BillingSection() {
     }
   };
 
+  const handleOpenBillingPortal = async () => {
+    if (!selectedCompany?.id || isDemoBillingContext) return;
+
+    setOpeningPortal(true);
+    setError(null);
+    setFeedback(null);
+    try {
+      const portal = await paymentsApi.createBillingPortalSession(selectedCompany.id, {
+        returnUrl: `${window.location.origin}/dashboard/settings?billing=portal`,
+      });
+
+      window.location.assign(portal.portalSession.portalUrl);
+    } catch (err: unknown) {
+      const apiError = err as ApiErrorLike;
+      const message =
+        apiError.response?.data?.message ||
+        apiError.message ||
+        'Não foi possível abrir o portal de cobrança.';
+      setError(message);
+    } finally {
+      setOpeningPortal(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24 text-slate-500">
@@ -227,7 +252,7 @@ function BillingSection() {
       {/* Plano atual + limites */}
       {entitlements && (
         <div className="bg-[#090d16] border border-white/5 rounded-2xl p-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-4">
             <div>
               <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">
                 Plano atual
@@ -239,9 +264,21 @@ function BillingSection() {
                   : 'Sem assinatura ativa registrada pelo gateway.'}
               </p>
             </div>
-            <span className="text-[10px] font-black uppercase tracking-wider text-blue-400 bg-blue-500/10 border border-blue-500/30 px-3 py-1.5 rounded-full">
-              {entitlements.company.name}
-            </span>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <span className="text-[10px] font-black uppercase tracking-wider text-blue-400 bg-blue-500/10 border border-blue-500/30 px-3 py-1.5 rounded-full">
+                {entitlements.company.name}
+              </span>
+              {!isDemoBillingContext && subscription && (
+                <button
+                  onClick={handleOpenBillingPortal}
+                  disabled={openingPortal}
+                  className="rounded-xl bg-white text-slate-950 px-4 py-2 text-[10px] font-black uppercase tracking-wider hover:bg-slate-200 disabled:opacity-60 flex items-center justify-center gap-2"
+                >
+                  {openingPortal && <Loader2 className="animate-spin" size={13} />}
+                  Gerenciar cobrança
+                </button>
+              )}
+            </div>
           </div>
           {subscription?.currentPeriodEnd && (
             <div className="mb-4 rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3 text-xs text-slate-400">

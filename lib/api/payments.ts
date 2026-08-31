@@ -11,6 +11,10 @@ export type CreateCheckoutSessionInput = {
   cancelUrl?: string;
 };
 
+export type CreateBillingPortalSessionInput = {
+  returnUrl?: string;
+};
+
 export type CheckoutSessionResponse = {
   status: string;
   provider: 'STRIPE';
@@ -22,6 +26,17 @@ export type CheckoutSessionResponse = {
     checkoutUrl: string;
     status: string;
     expiresAt?: string | null;
+  };
+  generatedAt: string;
+};
+
+export type BillingPortalSessionResponse = {
+  status: string;
+  provider: 'STRIPE';
+  companyId: string;
+  portalSession: {
+    providerPortalSessionId: string;
+    portalUrl: string;
   };
   generatedAt: string;
 };
@@ -80,6 +95,18 @@ export const paymentsApi = {
   ): Promise<CheckoutSessionResponse> => {
     const response = await api.post<CheckoutSessionResponse>(
       `/payments/checkout/${companyId}`,
+      input,
+    );
+
+    return response.data;
+  },
+
+  createBillingPortalSession: async (
+    companyId: string,
+    input: CreateBillingPortalSessionInput,
+  ): Promise<BillingPortalSessionResponse> => {
+    const response = await api.post<BillingPortalSessionResponse>(
+      `/payments/portal/${companyId}`,
       input,
     );
 

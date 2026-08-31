@@ -70,6 +70,30 @@ describe('paymentsApi', () => {
     expect(apiGetMock).toHaveBeenCalledWith('/payments/subscription/company-001');
   });
 
+  it('creates billing portal sessions through the backend payments endpoint', async () => {
+    apiPostMock.mockResolvedValueOnce({
+      data: {
+        status: 'OK',
+        provider: 'STRIPE',
+        companyId: 'company-001',
+        portalSession: {
+          providerPortalSessionId: 'bps_123',
+          portalUrl: 'https://billing.stripe.com/p/session/bps_123',
+        },
+        generatedAt: '2026-08-31T00:00:00.000Z',
+      },
+    });
+
+    const response = await paymentsApi.createBillingPortalSession('company-001', {
+      returnUrl: 'https://app.bcost.com.br/dashboard/settings?billing=portal',
+    });
+
+    expect(response.portalSession.providerPortalSessionId).toBe('bps_123');
+    expect(apiPostMock).toHaveBeenCalledWith('/payments/portal/company-001', {
+      returnUrl: 'https://app.bcost.com.br/dashboard/settings?billing=portal',
+    });
+  });
+
   it('loads payment webhook events for operational audit', async () => {
     apiGetMock.mockResolvedValueOnce({
       data: {
