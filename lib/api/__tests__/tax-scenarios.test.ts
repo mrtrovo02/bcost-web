@@ -190,6 +190,26 @@ describe('taxScenariosApi', () => {
     expect(lucroPresumido?.netAnnualResult).toBeLessThan(0);
   });
 
+  it('does not report savings against an ineligible current model', async () => {
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_DEMO_FALLBACK', 'true');
+    getActiveCompanyIdMock.mockReturnValueOnce('demo-001');
+    isDemoSessionMock.mockReturnValue(true);
+    apiPostMock.mockRejectedValueOnce(new Error('Request failed with status code 401'));
+
+    const result = await taxScenariosApi.simulate({
+      activity: 'SERVICE_PROVIDER',
+      monthlyRevenue: 220_000,
+      monthlyDeductibleExpenses: 35_000,
+      monthlyPayroll: 50_000,
+      dependents: 1,
+      currentModel: 'MEI',
+    });
+
+    expect(result.bestEstimatedModel).toBe('PF');
+    expect(result.annualSavings).toBe(0);
+    expect(result.recommendation.rationale.join(' ')).not.toContain('Ganho anual estimado');
+  });
+
   it('does not use demo fallback for real authenticated company failures', async () => {
     getActiveCompanyIdMock.mockReturnValueOnce('6befc33e-95cd-4ef4-b8d4-9d5bf1e15f1b');
     isDemoSessionMock.mockReturnValue(false);

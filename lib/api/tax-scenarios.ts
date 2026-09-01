@@ -175,6 +175,15 @@ function buildCalculation(
   };
 }
 
+function isSavingsComparable(calculation?: TaxScenarioCalculation): calculation is TaxScenarioCalculation {
+  return Boolean(
+    calculation &&
+      calculation.estimatedTax >= 0 &&
+      calculation.eligibilityStatus !== 'INELIGIBLE' &&
+      calculation.eligibilityStatus !== 'REQUIRES_REVIEW',
+  );
+}
+
 function createDemoSimulation(input: SimulateTaxScenarioDto, companyId?: string): SimulationResponse {
   const annualRevenue = money(input.monthlyRevenue * 12);
   const annualDeductibleExpenses = money(input.monthlyDeductibleExpenses * 12);
@@ -355,7 +364,9 @@ function createDemoSimulation(input: SimulateTaxScenarioDto, companyId?: string)
   const best = [...viableComparisons].sort((a, b) => b.netAnnualResult - a.netAnnualResult)[0];
   const bestEstimatedModel = best?.model ?? 'PF';
   const currentResult = comparisons.find((comparison) => comparison.model === input.currentModel);
-  const potentialGain = currentResult && best ? money(best.netAnnualResult - currentResult.netAnnualResult) : 0;
+  const potentialGain = currentResult && best && isSavingsComparable(currentResult)
+    ? money(best.netAnnualResult - currentResult.netAnnualResult)
+    : 0;
 
   return {
     status: 'OK',
@@ -463,7 +474,9 @@ function normalizeSimulationResponse(
     data.comparisons?.find((comparison) => comparison.model === requestPayload.currentModel) ??
     data.comparisons?.[0];
   const annualSavings =
-    typeof bestScenario?.netAnnualResult === 'number' && typeof currentScenario?.netAnnualResult === 'number'
+    typeof bestScenario?.netAnnualResult === 'number' &&
+    typeof currentScenario?.netAnnualResult === 'number' &&
+    isSavingsComparable(currentScenario)
       ? Number((bestScenario.netAnnualResult - currentScenario.netAnnualResult).toFixed(2))
       : 0;
 
