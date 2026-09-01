@@ -2,7 +2,6 @@ import Link from 'next/link';
 import {
   bcostModuleAreas,
   getAreaMarketSummaries,
-  getCommercialLanes,
   getModuleCommercialActionLabel,
   getModuleMarketReadinessLabel,
   getModulesByArea,
@@ -20,6 +19,7 @@ import AutomationJobsExecutiveWidget from '@/components/enterprise/AutomationJob
 import BillingPlansWidget from '@/components/enterprise/BillingPlansWidget';
 import CoreTaxPreviewWidget from '@/components/enterprise/CoreTaxPreviewWidget';
 import EnterpriseCatalogGovernanceWidget from '@/components/enterprise/EnterpriseCatalogGovernanceWidget';
+import EnterpriseCommercialLanesWidget from '@/components/enterprise/EnterpriseCommercialLanesWidget';
 
 function statusLabel(status: BcostModuleStatus) {
   if (status === 'ACTIVE') return 'Ativo';
@@ -54,7 +54,6 @@ export default function EnterpriseModulesPage() {
   const stats = getModuleStats();
   const sellableModules = getSellableModules();
   const areaSummaries = getAreaMarketSummaries();
-  const commercialLanes = getCommercialLanes();
 
   return (
     <div className="min-h-screen space-y-10 bg-[#fcfdfe] p-8">
@@ -181,64 +180,7 @@ export default function EnterpriseModulesPage() {
         </div>
       </section>
 
-      <section className="space-y-5">
-        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-500">
-              Go-to-market
-            </p>
-            <h2 className="mt-2 text-3xl font-black tracking-tighter text-slate-900">
-              Trilhas comerciais e operacionais
-            </h2>
-          </div>
-
-          <p className="max-w-2xl text-sm font-bold leading-6 text-slate-400">
-            Separação prática entre produto vendável, operação assistida e roadmap para reduzir
-            risco jurídico, fiscal e comercial.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-          {commercialLanes.map((lane) => (
-            <div
-              key={lane.id}
-              className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h3 className="text-2xl font-black tracking-tight text-slate-900">{lane.title}</h3>
-                <span className="rounded-full border border-slate-100 bg-slate-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                  {lane.modules.length} módulos
-                </span>
-              </div>
-
-              <p className="mt-3 text-sm font-bold leading-6 text-slate-500">{lane.description}</p>
-
-              <div className="mt-5 rounded-2xl bg-slate-50 p-4">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                  Gate operacional
-                </p>
-                <p className="mt-2 text-sm font-bold leading-6 text-slate-700">
-                  {lane.operationalGate}
-                </p>
-              </div>
-
-              <div className="mt-5 flex flex-wrap gap-2">
-                {lane.modules.slice(0, 4).map((module) => (
-                  <Link
-                    href={module.route}
-                    key={module.slug}
-                    className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600 transition hover:bg-blue-50 hover:text-blue-700"
-                  >
-                    {module.title}
-                  </Link>
-                ))}
-              </div>
-
-              <p className="mt-5 text-sm font-black text-blue-700">{lane.primaryAction}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      <EnterpriseCommercialLanesWidget />
 
       <section className="space-y-5">
         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
