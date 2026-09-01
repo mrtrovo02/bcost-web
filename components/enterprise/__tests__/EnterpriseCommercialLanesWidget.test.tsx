@@ -20,6 +20,12 @@ describe('EnterpriseCommercialLanesWidget', () => {
         description: 'Módulos vendáveis para clientes reais.',
         marketReadiness: 'SELLABLE',
         automationBoundaries: ['SOFTWARE_ONLY'],
+        summary: {
+          total: 3,
+          critical: 2,
+          high: 1,
+          regulated: 1,
+        },
         modules: [
           {
             slug: 'companies',
@@ -79,6 +85,9 @@ describe('EnterpriseCommercialLanesWidget', () => {
     expect(screen.getByText('Trilhas comerciais e operacionais')).toBeInTheDocument();
     expect(screen.getByText('Empresas')).toBeInTheDocument();
     expect(screen.getByText('Balanço Patrimonial')).toBeInTheDocument();
+    expect(screen.getByText('3 módulos')).toBeInTheDocument();
+    expect(screen.getAllByText('Alta prioridade')).toHaveLength(3);
+    expect(screen.getAllByText('Regulados')).toHaveLength(3);
     expect(screen.getByText('Abrir módulo')).toBeInTheDocument();
     expect(screen.getByText('Validar escopo assistido')).toBeInTheDocument();
     expect(commercialLanesMock).toHaveBeenCalledWith({ forceRefresh: false });
