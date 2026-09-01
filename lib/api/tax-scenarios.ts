@@ -142,11 +142,11 @@ function money(value: number): number {
 }
 
 function progressiveIrpf(annualBase: number): number {
-  if (annualBase <= 27_110.4) return 0;
-  if (annualBase <= 33_919.8) return annualBase * 0.075 - 2_033.28;
-  if (annualBase <= 45_012.6) return annualBase * 0.15 - 4_577.27;
-  if (annualBase <= 55_976.16) return annualBase * 0.225 - 7_953.21;
-  return annualBase * 0.275 - 10_752.02;
+  if (annualBase <= 29_145.6) return 0;
+  if (annualBase <= 33_919.8) return annualBase * 0.075 - 2_185.92;
+  if (annualBase <= 45_012.6) return annualBase * 0.15 - 4_729.92;
+  if (annualBase <= 55_976.16) return annualBase * 0.225 - 8_105.88;
+  return annualBase * 0.275 - 10_904.76;
 }
 
 function resolveSimplesBracket(annualRevenue: number, brackets: SimplesBracket[]): SimplesBracket {
@@ -162,7 +162,7 @@ function buildCalculation(
       : 0;
   const netAnnualResult =
     input.estimatedTax >= 0
-      ? money(input.annualRevenue - input.annualDeductibleExpenses - input.estimatedTax)
+      ? money(input.annualRevenue - input.annualDeductibleExpenses - input.annualPayroll - input.estimatedTax)
       : 0;
 
   return {
@@ -230,7 +230,7 @@ function createDemoSimulation(input: SimulateTaxScenarioDto, companyId?: string)
         'Resolução CGSN nº 140/2018, arts. 100, 101 e 105: ocupações permitidas e limites operacionais do SIMEI.',
       ],
       annualRevenue,
-      annualDeductibleExpenses: 0,
+      annualDeductibleExpenses,
       annualPayroll,
       taxableBase: annualRevenue,
       estimatedTax: annualRevenue > MEI_ANNUAL_LIMIT || annualPayroll > 0 ? -1 : money(85 * 12),
@@ -269,7 +269,7 @@ function createDemoSimulation(input: SimulateTaxScenarioDto, companyId?: string)
           : 'Lei Complementar 123/2006, art. 18 e Anexos III/V: alíquota efetiva conforme RBT12, anexo, alíquota nominal e parcela a deduzir.',
       ],
       annualRevenue,
-      annualDeductibleExpenses: 0,
+      annualDeductibleExpenses,
       annualPayroll,
       taxableBase: annualRevenue,
       estimatedTax:
@@ -316,8 +316,8 @@ function createDemoSimulation(input: SimulateTaxScenarioDto, companyId?: string)
     buildCalculation({
       model: 'LUCRO_PRESUMIDO',
       annualRevenue,
-      annualDeductibleExpenses: 0,
-      annualPayroll: 0,
+      annualDeductibleExpenses,
+      annualPayroll,
       taxableBase: money(annualRevenue * presumedMargin),
       estimatedTax: money(irCsll + pisCofins + iss),
       warnings: ['ISS varia por município e serviço; retenções e adicional de IRPJ podem alterar o resultado.'],

@@ -176,12 +176,16 @@ describe('taxScenariosApi', () => {
       currentModel: 'PF',
     });
     const mei = result.comparisons.find((comparison) => comparison.model === 'MEI');
+    const simples = result.comparisons.find((comparison) => comparison.model === 'SIMPLES_NACIONAL');
+    const lucroPresumido = result.comparisons.find((comparison) => comparison.model === 'LUCRO_PRESUMIDO');
 
     expect(result.factorR.percentage).toBe(320);
-    expect(result.bestEstimatedModel).not.toBe('MEI');
+    expect(result.bestEstimatedModel).toBe('PF');
     expect(mei?.eligibilityStatus).toBe('REQUIRES_REVIEW');
     expect(mei?.estimatedTax).toBe(-1);
     expect(mei?.warnings.join(' ')).toContain('folha informada');
+    expect(simples?.netAnnualResult).toBeLessThan(0);
+    expect(lucroPresumido?.netAnnualResult).toBeLessThan(0);
   });
 
   it('does not use demo fallback for real authenticated company failures', async () => {
