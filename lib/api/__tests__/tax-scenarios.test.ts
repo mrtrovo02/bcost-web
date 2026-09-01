@@ -138,6 +138,29 @@ describe('taxScenariosApi', () => {
     expect(result.guardrails.join(' ')).toContain('empresas reais continuam exigindo API autenticada');
   });
 
+  it('blocks Simples Nacional in demo fallback when annualized revenue exceeds the legal limit', async () => {
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_DEMO_FALLBACK', 'true');
+    getActiveCompanyIdMock.mockReturnValueOnce('demo-001');
+    isDemoSessionMock.mockReturnValue(true);
+    apiPostMock.mockRejectedValueOnce(new Error('Request failed with status code 401'));
+
+    const result = await taxScenariosApi.simulate({
+      activity: 'SERVICE_PROVIDER',
+      monthlyRevenue: 2_220_000,
+      monthlyDeductibleExpenses: 35_000,
+      monthlyPayroll: 550_000,
+      dependents: 10,
+      currentModel: 'SIMPLES_NACIONAL',
+    });
+    const simples = result.comparisons.find((comparison) => comparison.model === 'SIMPLES_NACIONAL');
+
+    expect(result.bestEstimatedModel).not.toBe('SIMPLES_NACIONAL');
+    expect(result.recommendation.title).toBe('Simples Nacional bloqueado pelo limite de receita');
+    expect(simples?.eligibilityStatus).toBe('INELIGIBLE');
+    expect(simples?.estimatedTax).toBe(-1);
+    expect(result.guardrails.join(' ')).toContain('R$ 4,8 milhões');
+  });
+
   it('does not use demo fallback for real authenticated company failures', async () => {
     getActiveCompanyIdMock.mockReturnValueOnce('6befc33e-95cd-4ef4-b8d4-9d5bf1e15f1b');
     isDemoSessionMock.mockReturnValue(false);

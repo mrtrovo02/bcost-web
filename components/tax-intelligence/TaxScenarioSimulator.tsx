@@ -67,6 +67,8 @@ export default function TaxScenarioSimulator() {
 
   const bestModel = result?.bestEstimatedModel ?? 'SIMPLES_NACIONAL';
   const bestComparison = result?.comparisons.find((comparison) => comparison.model === bestModel);
+  const blockingGuardrails =
+    result?.guardrails.filter((item) => item.toLowerCase().includes('bloqueia')) ?? [];
 
   return (
     <section className="bg-[#090d16] border border-white/5 rounded-[2.5rem] p-6 shadow-[0_4px_25px_rgba(0,0,0,0.25)]">
@@ -250,6 +252,24 @@ export default function TaxScenarioSimulator() {
                 </div>
               </div>
 
+              {blockingGuardrails.length > 0 && (
+                <div className="rounded-[2rem] border border-amber-500/20 bg-amber-500/5 p-5">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="mt-0.5 text-amber-300" size={20} />
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-200">
+                        Bloqueio regulatório
+                      </p>
+                      <ul className="mt-3 space-y-2 text-sm text-amber-100">
+                        {blockingGuardrails.map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="rounded-[2rem] border border-white/5 bg-[#0d1320] p-5">
                 <div className="flex items-center gap-2 mb-4">
                   <Calculator className="text-blue-400" size={18} />
@@ -261,7 +281,7 @@ export default function TaxScenarioSimulator() {
                   {result.comparisons.map((comparison) => (
                     <div
                       key={comparison.model}
-                      className={`rounded-2xl border p-4 ${comparison.model === bestModel ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-white/5 bg-[#090d16]'}`}
+                      className={`rounded-2xl border p-4 ${comparison.model === bestModel ? 'border-emerald-500/30 bg-emerald-500/5' : comparison.eligibilityStatus === 'INELIGIBLE' ? 'border-amber-500/20 bg-amber-500/5' : 'border-white/5 bg-[#090d16]'}`}
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div>
@@ -269,10 +289,12 @@ export default function TaxScenarioSimulator() {
                             {comparison.model.replace('_', ' ')}
                           </p>
                           <p className="mt-2 text-xl font-black text-white">
-                            {new Intl.NumberFormat('pt-BR', {
-                              style: 'currency',
-                              currency: 'BRL',
-                            }).format(comparison.estimatedTax)}
+                            {comparison.eligibilityStatus === 'INELIGIBLE'
+                              ? 'Inelegível'
+                              : new Intl.NumberFormat('pt-BR', {
+                                  style: 'currency',
+                                  currency: 'BRL',
+                                }).format(comparison.estimatedTax)}
                           </p>
                         </div>
                         <div className="text-right">
@@ -280,13 +302,20 @@ export default function TaxScenarioSimulator() {
                             líquida anual
                           </p>
                           <p className="mt-2 text-sm font-black text-slate-200">
-                            {new Intl.NumberFormat('pt-BR', {
-                              style: 'currency',
-                              currency: 'BRL',
-                            }).format(comparison.netAnnualResult)}
+                            {comparison.eligibilityStatus === 'INELIGIBLE'
+                              ? 'Bloqueado'
+                              : new Intl.NumberFormat('pt-BR', {
+                                  style: 'currency',
+                                  currency: 'BRL',
+                                }).format(comparison.netAnnualResult)}
                           </p>
                         </div>
                       </div>
+                      {comparison.warnings.length > 0 && (
+                        <p className="mt-3 text-xs leading-relaxed text-amber-100/80">
+                          {comparison.warnings[0]}
+                        </p>
+                      )}
                     </div>
                   ))}
                 </div>
