@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import {
   bcostModuleAreas,
+  getAreaMarketSummaries,
   getModuleCommercialActionLabel,
   getModuleMarketReadinessLabel,
   getModulesByArea,
@@ -51,6 +52,7 @@ function operationClass(status: BcostModuleStatus) {
 export default function EnterpriseModulesPage() {
   const stats = getModuleStats();
   const sellableModules = getSellableModules();
+  const areaSummaries = getAreaMarketSummaries();
 
   return (
     <div className="min-h-screen space-y-10 bg-[#fcfdfe] p-8">
@@ -112,6 +114,70 @@ export default function EnterpriseModulesPage() {
       <CoreTaxPreviewWidget />
       <AccountingPlatformCoverageWidget />
       <EnterpriseCatalogGovernanceWidget />
+
+      <section className="space-y-5">
+        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.25em] text-blue-600">
+              Mapa comercial
+            </p>
+            <h2 className="mt-2 text-3xl font-black tracking-tighter text-slate-900">
+              Prontidão por área de negócio
+            </h2>
+          </div>
+
+          <p className="max-w-2xl text-sm font-bold leading-6 text-slate-400">
+            Leitura executiva para separar venda direta, beta assistido e roadmap bloqueado sem
+            prometer serviço ainda não operacional.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-4">
+          {areaSummaries.map((summary) => (
+            <div
+              key={summary.area}
+              className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                    Área
+                  </p>
+                  <h3 className="mt-2 text-xl font-black tracking-tight text-slate-900">
+                    {summary.area}
+                  </h3>
+                </div>
+
+                <span className="rounded-full border border-slate-100 bg-slate-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                  {summary.total} módulos
+                </span>
+              </div>
+
+              <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <p className="text-2xl font-black text-emerald-600">{summary.sellable}</p>
+                  <p className="text-xs font-bold text-slate-400">Vendáveis</p>
+                </div>
+
+                <div>
+                  <p className="text-2xl font-black text-blue-600">{summary.assistedBeta}</p>
+                  <p className="text-xs font-bold text-slate-400">Beta</p>
+                </div>
+
+                <div>
+                  <p className="text-2xl font-black text-slate-500">{summary.roadmapLocked}</p>
+                  <p className="text-xs font-bold text-slate-400">Roadmap</p>
+                </div>
+
+                <div>
+                  <p className="text-2xl font-black text-red-600">{summary.critical}</p>
+                  <p className="text-xs font-bold text-slate-400">Críticos</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <section className="space-y-5">
         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">

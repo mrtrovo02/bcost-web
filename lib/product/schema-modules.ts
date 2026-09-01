@@ -50,6 +50,15 @@ export type BcostSchemaModule = {
   kpis: string[];
 };
 
+export type BcostAreaMarketSummary = {
+  area: BcostModuleArea;
+  total: number;
+  sellable: number;
+  assistedBeta: number;
+  roadmapLocked: number;
+  critical: number;
+};
+
 export function getModuleMarketReadiness(status: BcostModuleStatus): BcostMarketReadiness {
   if (status === 'ACTIVE') return 'SELLABLE';
   if (status === 'INTEGRATING') return 'ASSISTED_BETA';
@@ -965,6 +974,35 @@ export const bcostModuleAreas: BcostModuleArea[] = [
   'Consultoria',
   'Segurança',
 ];
+
+export function getAreaMarketSummaries(): BcostAreaMarketSummary[] {
+  return bcostModuleAreas
+    .map((area) => {
+      const modules = getModulesByArea(area);
+
+      return {
+        area,
+        total: modules.length,
+        sellable: modules.filter(
+          (module) => getModuleMarketReadiness(module.status) === 'SELLABLE',
+        ).length,
+        assistedBeta: modules.filter(
+          (module) => getModuleMarketReadiness(module.status) === 'ASSISTED_BETA',
+        ).length,
+        roadmapLocked: modules.filter(
+          (module) => getModuleMarketReadiness(module.status) === 'ROADMAP_LOCKED',
+        ).length,
+        critical: modules.filter((module) => module.priority === 'CRITICAL').length,
+      };
+    })
+    .filter((summary) => summary.total > 0)
+    .sort(
+      (first, second) =>
+        second.sellable - first.sellable ||
+        second.critical - first.critical ||
+        first.area.localeCompare(second.area, 'pt-BR'),
+    );
+}
 
 export function getModuleStats() {
   const sellable = getSellableModules().length;

@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   bcostSchemaModules,
+  getAreaMarketSummaries,
   getModuleCommercialActionLabel,
   getModuleMarketReadiness,
   getModuleMarketReadinessLabel,
@@ -221,6 +222,31 @@ describe('bcostSchemaModules routes', () => {
 
     if (firstRoadmapIndex !== -1 && lastSellableIndex !== -1) {
       expect(lastSellableIndex).toBeLessThan(firstRoadmapIndex);
+    }
+  });
+
+  it('mantem resumo comercial por area coerente com o catalogo enterprise', () => {
+    const summaries = getAreaMarketSummaries();
+    const summarizedTotal = summaries.reduce((total, summary) => total + summary.total, 0);
+
+    expect(summaries.length).toBeGreaterThan(0);
+    expect(summarizedTotal).toBe(bcostSchemaModules.length);
+
+    for (const summary of summaries) {
+      const modulesByArea = bcostSchemaModules.filter((module) => module.area === summary.area);
+      const sellable = modulesByArea.filter((module) => module.status === 'ACTIVE').length;
+      const assistedBeta = modulesByArea.filter((module) => module.status === 'INTEGRATING').length;
+      const roadmapLocked = modulesByArea.filter((module) => module.status === 'PLANNED').length;
+      const critical = modulesByArea.filter((module) => module.priority === 'CRITICAL').length;
+
+      expect(summary.total).toBe(modulesByArea.length);
+      expect(summary.sellable).toBe(sellable);
+      expect(summary.assistedBeta).toBe(assistedBeta);
+      expect(summary.roadmapLocked).toBe(roadmapLocked);
+      expect(summary.critical).toBe(critical);
+      expect(summary.sellable + summary.assistedBeta + summary.roadmapLocked).toBe(
+        summary.total,
+      );
     }
   });
 });
