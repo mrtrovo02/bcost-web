@@ -393,29 +393,47 @@ function createDemoSimulation(input: SimulateTaxScenarioDto, companyId?: string)
       decision:
         annualRevenue > SIMPLES_ANNUAL_LIMIT
           ? 'ASSISTED_TAX_PLANNING_REQUIRED'
-          : factorRPercentage > 0 && factorRPercentage < FACTOR_R_THRESHOLD
-          ? 'SIMPLES_WITH_FACTOR_R_REVIEW'
           : bestEstimatedModel === 'PF'
-            ? 'ASSISTED_TAX_PLANNING_REQUIRED'
+            ? 'PF_REVIEW_RECOMMENDED'
+            : factorRPercentage > 0 && factorRPercentage < FACTOR_R_THRESHOLD
+              ? 'SIMPLES_WITH_FACTOR_R_REVIEW'
             : 'PJ_SIMULATION_RECOMMENDED',
       title:
         annualRevenue > SIMPLES_ANNUAL_LIMIT
           ? 'Simples Nacional bloqueado pelo limite de receita'
-          : factorRPercentage > 0 && factorRPercentage < FACTOR_R_THRESHOLD
-          ? 'Revisar Fator R antes de decidir o modelo'
           : bestEstimatedModel === 'PF'
-            ? 'Planejamento tributário assistido recomendado'
+            ? 'PF permanece melhor na simulação preliminar'
+            : factorRPercentage > 0 && factorRPercentage < FACTOR_R_THRESHOLD
+              ? 'Revisar Fator R antes de decidir o modelo'
             : 'Estrutura PJ merece análise assistida',
       rationale: [
         annualRevenue > SIMPLES_ANNUAL_LIMIT
           ? 'A receita anualizada supera R$ 4.800.000,00, limite geral de EPP para permanência no Simples Nacional.'
-          : `Modelo com melhor resultado estimado: ${bestEstimatedModel}.`,
-        potentialGain > 0
-          ? `Ganho anual estimado contra o modelo atual: R$ ${potentialGain.toLocaleString('pt-BR')}.`
-          : 'A comparação indica necessidade de detalhamento antes de decisão.',
+          : bestEstimatedModel === 'PF'
+            ? 'Com os valores informados, os regimes PJ elegíveis não superam o resultado líquido estimado da pessoa física.'
+            : `Modelo com melhor resultado estimado: ${bestEstimatedModel}.`,
+        bestEstimatedModel === 'PF' && factorRPercentage > 0 && factorRPercentage < FACTOR_R_THRESHOLD
+          ? `Fator R estimado em ${factorRPercentage}%, abaixo do limiar de 28%; Simples para serviços tende a exigir Anexo V até revisão da folha/pró-labore.`
+          : potentialGain > 0
+            ? `Ganho anual estimado contra o modelo atual: R$ ${potentialGain.toLocaleString('pt-BR')}.`
+            : 'A comparação indica necessidade de detalhamento antes de decisão.',
       ],
-      requiredEvidence: ['CNAE pretendido', 'Município de prestação', 'Notas/recibos recentes'],
-      nextActions: ['Rodar onboarding de abertura/migração', 'Validar regime tributário', 'Submeter revisão CRC'],
+      requiredEvidence:
+        bestEstimatedModel === 'PF'
+          ? [
+              'Recibos/notas e retenções dos últimos 12 meses',
+              'Despesas dedutíveis com documentação hábil',
+              'CNAE pretendido e município de prestação',
+            ]
+          : ['CNAE pretendido', 'Município de prestação', 'Notas/recibos recentes'],
+      nextActions:
+        bestEstimatedModel === 'PF'
+          ? [
+              'Manter recomendação como triagem, sem promessa de economia',
+              'Validar livro caixa e retenções',
+              'Submeter revisão CRC antes de proposta de migração',
+            ]
+          : ['Rodar onboarding de abertura/migração', 'Validar regime tributário', 'Submeter revisão CRC'],
     },
     guardrails: [
       'Fallback demonstrativo restrito a sessão demo; empresas reais continuam exigindo API autenticada e dados oficiais.',

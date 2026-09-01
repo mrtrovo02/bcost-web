@@ -181,6 +181,8 @@ describe('taxScenariosApi', () => {
 
     expect(result.factorR.percentage).toBe(320);
     expect(result.bestEstimatedModel).toBe('PF');
+    expect(result.recommendation.decision).toBe('PF_REVIEW_RECOMMENDED');
+    expect(result.recommendation.title).toBe('PF permanece melhor na simulação preliminar');
     expect(mei?.eligibilityStatus).toBe('REQUIRES_REVIEW');
     expect(mei?.estimatedTax).toBe(-1);
     expect(mei?.warnings.join(' ')).toContain('folha informada');
