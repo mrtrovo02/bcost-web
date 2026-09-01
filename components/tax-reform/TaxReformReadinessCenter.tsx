@@ -31,6 +31,7 @@ import {
   CBS_IBS_TRANSITION,
   TAX_REFORM_OFFICIAL_SOURCES,
 } from '@/lib/tax-reform/official-data';
+import { buildDashboardPdfCanvasOptions } from '@/lib/export/html2canvas-options';
 
 interface TaxReformReadinessCenterProps {
   companyName?: string;
@@ -147,11 +148,10 @@ export default function TaxReformReadinessCenter({
         import('html2canvas'),
         import('jspdf'),
       ]);
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#f8fafc',
-      });
+      const canvas = await html2canvas(
+        element,
+        buildDashboardPdfCanvasOptions('#f8fafc', 'tax-reform-readiness-dossier'),
+      );
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
       const imgWidth = 210;

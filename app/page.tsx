@@ -17,6 +17,7 @@ import { formatCompactCurrency, formatCurrency, formatPercentage, getAnexoLabel 
 import { LoadingShell } from '@/components/ui/LoadingShell';
 import { StatePanel } from '@/components/ui/StatePanel';
 import { isDemoEntityId, isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
+import { buildDashboardPdfCanvasOptions } from '@/lib/export/html2canvas-options';
 
 interface DashboardChartPoint {
   label?: string;
@@ -195,25 +196,7 @@ export default function DashboardPage() {
 
     setIsExporting(true);
     try {
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#F8FAFC',
-        onclone: (clonedDoc) => {
-          const allElements = clonedDoc.getElementsByTagName('*');
-          for (let i = 0; i < allElements.length; i++) {
-            const el = allElements[i] as HTMLElement;
-            const style = window.getComputedStyle(el);
-            if (style.color.includes('lab') || style.color.includes('oklch'))
-              el.style.color = '#1e293b';
-            if (style.backgroundColor.includes('lab') || style.backgroundColor.includes('oklch')) {
-              el.style.backgroundColor = el.classList.contains('bg-blue-600')
-                ? '#2563eb'
-                : 'transparent';
-            }
-          }
-        },
-      });
+      const canvas = await html2canvas(element, buildDashboardPdfCanvasOptions('#F8FAFC'));
 
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');

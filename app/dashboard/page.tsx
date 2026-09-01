@@ -10,6 +10,8 @@ import CbsIbsAlertBanner, { calcularCbsIbs } from '@/components/alerts/CbsIbsAle
 import SplitPaymentProjector from '@/components/split-payment/SplitPaymentProjector';
 import { MonthlyPerformance } from '@/lib/types/fiscal';
 import { CBS_IBS_TRANSITION } from '@/lib/tax-reform/official-data';
+import { buildDashboardPdfCanvasOptions } from '@/lib/export/html2canvas-options';
+import { isDemoEntityId } from '@/lib/config/demo-policy';
 import { TrendingUp, Download, Activity, AlertCircle, Clock, DollarSign, ShieldAlert } from 'lucide-react';
 
 type DashboardHistoryEntry = MonthlyPerformance;
@@ -58,6 +60,28 @@ export default function DashboardPage() {
       const now = new Date();
       const month = now.getMonth() + 1;
       const year = now.getFullYear();
+
+      if (isDemoSession() || isDemoEntityId(selectedCompany.id)) {
+        const demoData = getDemoFiscalData(selectedCompany.name);
+        const totalRevenue = demoData.evolucao.reduce((sum, item) => sum + item.faturamento, 0);
+        setData({
+          company: selectedCompany.name,
+          overview: {
+            totalRevenue,
+            estimatedTax: demoData.comparison.comBcost,
+            netRevenue: totalRevenue - demoData.comparison.comBcost,
+            fatorR: '11.0%',
+            totalInvoices: demoData.evolucao.length,
+          },
+          insights: {
+            taxEfficiency: `Anexo ${demoData.metadata.anexoUtilizado} • Demo Ativo`,
+            suggestion: 'Exibição de demonstração localizada para o painel de vendas.',
+          },
+          history: demoData.evolucao,
+        });
+        lastLoadedId.current = selectedCompany.id;
+        return;
+      }
 
       // Consultas simultâneas otimizadas no Motor bCost
       const [metricsRes, fatorRRes, overviewRes] = await Promise.all([
@@ -118,13 +142,21 @@ export default function DashboardPage() {
 
       console.error('Erro crítico no Motor bCost:', error);
 
-      const status =
+      const responseStatus =
+        typeof error === 'object' &&
+        error !== null &&
+        'response' in error &&
+        typeof (error as { response?: { status?: unknown } }).response?.status === 'number'
+          ? (error as { response: { status: number } }).response.status
+          : undefined;
+      const directStatus =
         typeof error === 'object' &&
         error !== null &&
         'status' in error &&
         typeof (error as Record<string, unknown>).status === 'number'
           ? (error as { status?: number }).status
           : undefined;
+      const status = responseStatus ?? directStatus;
 
       if (isDemoSession()) {
         const demoData = getDemoFiscalData(selectedCompany.name);
@@ -168,11 +200,7 @@ export default function DashboardPage() {
         import('jspdf'),
       ]);
 
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#020408',
-      });
+      const canvas = await html2canvas(element, buildDashboardPdfCanvasOptions('#020408'));
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
       const imgWidth = 210;

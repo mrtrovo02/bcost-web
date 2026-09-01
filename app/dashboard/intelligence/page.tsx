@@ -11,6 +11,7 @@ import TaxScenarioSimulator from '@/components/tax-intelligence/TaxScenarioSimul
 import TaxReformScenarioStack from '@/components/tax-reform/TaxReformScenarioStack';
 import { MonthlyPerformance } from '@/lib/types/fiscal';
 import { CBS_IBS_TRANSITION } from '@/lib/tax-reform/official-data';
+import { buildDashboardPdfCanvasOptions } from '@/lib/export/html2canvas-options';
 import { FiscalModuleFactory } from '@/shared/factories/fiscal-factory.shared';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -128,11 +129,7 @@ export default function DashboardPage() {
     if (!element || !data) return;
     setIsExporting(true);
     try {
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#020408',
-      });
+      const canvas = await html2canvas(element, buildDashboardPdfCanvasOptions('#020408'));
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
       const imgWidth = 210;
