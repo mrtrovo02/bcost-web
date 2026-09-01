@@ -183,6 +183,20 @@ describe('taxScenariosApi', () => {
     expect(result.bestEstimatedModel).toBe('PF');
     expect(result.recommendation.decision).toBe('PF_REVIEW_RECOMMENDED');
     expect(result.recommendation.title).toBe('PF permanece melhor na simulação preliminar');
+    expect(result.complianceTrail?.officialAssessment).toBe(false);
+    expect(result.complianceTrail?.rules).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'MEI_ELIGIBILITY',
+          status: 'REQUIRES_REVIEW',
+          severity: 'HIGH',
+        }),
+        expect.objectContaining({
+          code: 'OFFICIAL_ASSESSMENT_LOCK',
+          status: 'REQUIRES_REVIEW',
+        }),
+      ]),
+    );
     expect(mei?.eligibilityStatus).toBe('REQUIRES_REVIEW');
     expect(mei?.estimatedTax).toBe(-1);
     expect(mei?.warnings.join(' ')).toContain('folha informada');

@@ -69,6 +69,8 @@ export default function TaxScenarioSimulator() {
   const bestComparison = result?.comparisons.find((comparison) => comparison.model === bestModel);
   const blockingGuardrails =
     result?.guardrails.filter((item) => item.toLowerCase().includes('bloqueia')) ?? [];
+  const complianceRules =
+    result?.complianceTrail?.rules.filter((rule) => rule.severity !== 'INFO') ?? [];
 
   return (
     <section className="bg-[#090d16] border border-white/5 rounded-[2.5rem] p-6 shadow-[0_4px_25px_rgba(0,0,0,0.25)]">
@@ -266,6 +268,45 @@ export default function TaxScenarioSimulator() {
                         ))}
                       </ul>
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {result.complianceTrail && (
+                <div className="rounded-[2rem] border border-blue-500/20 bg-blue-500/5 p-5">
+                  <div className="flex flex-col gap-3 border-b border-white/5 pb-4 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-200">
+                        Trilha de conformidade fiscal
+                      </p>
+                      <h4 className="mt-2 text-lg font-black text-white">
+                        {result.complianceTrail.officialAssessment
+                          ? 'Apuração oficial habilitada'
+                          : 'Apuração oficial bloqueada'}
+                      </h4>
+                    </div>
+                    <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-amber-200">
+                      {result.complianceTrail.calculationMode.replace('_', ' ')}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 space-y-3">
+                    {(complianceRules.length > 0 ? complianceRules : result.complianceTrail.rules.slice(0, 2)).map((rule) => (
+                      <div key={rule.code} className="rounded-2xl border border-white/5 bg-[#090d16] p-4">
+                        <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                          <div>
+                            <p className="text-sm font-black text-white">{rule.title}</p>
+                            <p className="mt-2 text-xs leading-relaxed text-slate-300">{rule.result}</p>
+                          </div>
+                          <span className="shrink-0 rounded-full border border-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-slate-200">
+                            {rule.status.replace('_', ' ')}
+                          </span>
+                        </div>
+                        <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
+                          Evidências: {rule.evidenceRequired.slice(0, 3).join(', ')}.
+                        </p>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}

@@ -62,6 +62,38 @@ export interface TaxScenarioRecommendation {
   nextActions: string[];
 }
 
+export type TaxComplianceRuleStatus =
+  | 'PASSED'
+  | 'BLOCKED'
+  | 'REQUIRES_REVIEW'
+  | 'INFORMATIONAL';
+
+export type TaxComplianceRuleSeverity =
+  | 'INFO'
+  | 'MEDIUM'
+  | 'HIGH'
+  | 'CRITICAL';
+
+export interface TaxComplianceRuleEvaluation {
+  code: string;
+  status: TaxComplianceRuleStatus;
+  severity: TaxComplianceRuleSeverity;
+  title: string;
+  result: string;
+  legalBasis: string[];
+  evidenceRequired: string[];
+  officialAssessment: boolean;
+}
+
+export interface TaxScenarioComplianceTrail {
+  version: string;
+  calculationMode: 'ESTIMATIVE_TRIAGE';
+  officialAssessment: false;
+  evaluatedAt: string;
+  rules: TaxComplianceRuleEvaluation[];
+  disclaimers: string[];
+}
+
 export interface SimulationResponse {
   status: 'OK';
   input: SimulateTaxScenarioDto;
@@ -86,6 +118,7 @@ export interface SimulationResponse {
     note: string;
   };
   recommendation: TaxScenarioRecommendation;
+  complianceTrail?: TaxScenarioComplianceTrail;
   guardrails: string[];
   generatedAt: string;
   scenarioId?: string;
@@ -182,6 +215,115 @@ function isSavingsComparable(calculation?: TaxScenarioCalculation): calculation 
       calculation.eligibilityStatus !== 'INELIGIBLE' &&
       calculation.eligibilityStatus !== 'REQUIRES_REVIEW',
   );
+}
+
+function buildDemoComplianceTrail(
+  input: SimulateTaxScenarioDto,
+  comparisons: TaxScenarioCalculation[],
+  annualRevenue: number,
+  annualPayroll: number,
+  factorRPercentage: number,
+): TaxScenarioComplianceTrail {
+  const simples = comparisons.find((comparison) => comparison.model === 'SIMPLES_NACIONAL');
+  const mei = comparisons.find((comparison) => comparison.model === 'MEI');
+  const serviceActivity = ['LEGAL', 'TECHNOLOGY', 'CONSULTING', 'SERVICE_PROVIDER'].includes(input.activity);
+
+  return {
+    version: 'tax-scenarios-compliance-2026.1',
+    calculationMode: 'ESTIMATIVE_TRIAGE',
+    officialAssessment: false,
+    evaluatedAt: new Date().toISOString(),
+    rules: [
+      {
+        code: 'CBS_IBS_2026_CALIBRATION',
+        status: 'INFORMATIONAL',
+        severity: 'INFO',
+        title: 'CBS/IBS 2026 em fase de teste',
+        result: 'Aplica destaque informativo de CBS 0,9% e IBS 0,1%, sem tratar como recolhimento definitivo.',
+        legalBasis: ['EC 132/2023, art. 125.', 'LC 214/2025.'],
+        evidenceRequired: ['XML/JSON fiscal com campos CBS/IBS', 'CST, cClassTrib, NBS/CNAE e município'],
+        officialAssessment: false,
+      },
+      {
+        code: 'SIMPLES_NACIONAL_REVENUE_LIMIT',
+        status: annualRevenue > SIMPLES_ANNUAL_LIMIT ? 'BLOCKED' : 'PASSED',
+        severity: annualRevenue > SIMPLES_ANNUAL_LIMIT ? 'CRITICAL' : 'INFO',
+        title: 'Limite anual do Simples Nacional',
+        result:
+          annualRevenue > SIMPLES_ANNUAL_LIMIT
+            ? 'Receita anualizada ultrapassa R$ 4.800.000,00; Simples Nacional não pode ser recomendado automaticamente.'
+            : 'Receita anualizada dentro do limite geral para análise preliminar.',
+        legalBasis: ['Lei Complementar 123/2006, art. 3º, II.'],
+        evidenceRequired: ['RBT12 oficial', 'Extrato PGDAS-D', 'Segregação de receitas'],
+        officialAssessment: false,
+      },
+      {
+        code: 'SIMPLES_EFFECTIVE_RATE_FORMULA',
+        status: simples?.eligibilityStatus === 'ELIGIBLE' ? 'PASSED' : 'REQUIRES_REVIEW',
+        severity: simples?.eligibilityStatus === 'ELIGIBLE' ? 'INFO' : 'HIGH',
+        title: 'Fórmula de alíquota efetiva do Simples',
+        result:
+          simples?.eligibilityStatus === 'ELIGIBLE'
+            ? 'Motor usa alíquota efetiva por RBT12, alíquota nominal e parcela a deduzir.'
+            : 'Cálculo do Simples exige revisão antes de recomendação comercial.',
+        legalBasis: ['Lei Complementar 123/2006, art. 18 e Anexos III/V.'],
+        evidenceRequired: ['RBT12 real', 'CNAEs', 'Receitas segregadas por atividade'],
+        officialAssessment: false,
+      },
+      {
+        code: 'FACTOR_R_SERVICE_REVIEW',
+        status: serviceActivity && factorRPercentage < FACTOR_R_THRESHOLD ? 'REQUIRES_REVIEW' : 'PASSED',
+        severity: serviceActivity && factorRPercentage < FACTOR_R_THRESHOLD ? 'HIGH' : 'INFO',
+        title: 'Fator R para serviços',
+        result:
+          serviceActivity && factorRPercentage < FACTOR_R_THRESHOLD
+            ? 'Fator R abaixo de 28%; atividade de serviço tende a exigir revisão de Anexo V.'
+            : 'Fator R não bloqueia a triagem preliminar.',
+        legalBasis: ['Lei Complementar 123/2006, Anexos III/V.'],
+        evidenceRequired: ['Folha dos últimos 12 meses', 'Pró-labore', 'RBT12 oficial'],
+        officialAssessment: false,
+      },
+      {
+        code: 'MEI_ELIGIBILITY',
+        status:
+          mei?.eligibilityStatus === 'ELIGIBLE'
+            ? 'PASSED'
+            : mei?.eligibilityStatus === 'INELIGIBLE'
+              ? 'BLOCKED'
+              : 'REQUIRES_REVIEW',
+        severity:
+          mei?.eligibilityStatus === 'ELIGIBLE'
+            ? 'INFO'
+            : mei?.eligibilityStatus === 'INELIGIBLE'
+              ? 'CRITICAL'
+              : 'HIGH',
+        title: 'Elegibilidade MEI',
+        result:
+          mei?.eligibilityStatus === 'ELIGIBLE'
+            ? 'Receita dentro do limite anual e sem folha informada.'
+            : annualPayroll > 0
+              ? 'Há folha informada; MEI exige validação de empregado único, salário mínimo/piso e ocupação permitida.'
+              : 'Receita ultrapassa limite anual do MEI.',
+        legalBasis: ['Portal gov.br/Empresas e Negócios.', 'Resolução CGSN nº 140/2018.'],
+        evidenceRequired: ['Ocupação MEI permitida', 'Quantidade de empregados', 'Remuneração'],
+        officialAssessment: false,
+      },
+      {
+        code: 'OFFICIAL_ASSESSMENT_LOCK',
+        status: 'REQUIRES_REVIEW',
+        severity: 'HIGH',
+        title: 'Bloqueio de apuração oficial automática',
+        result: 'Resultado classificado como triagem estimativa; decisão final exige escrituração e validação CRC.',
+        legalBasis: ['Código Tributário Nacional.', 'Normas profissionais contábeis aplicáveis.'],
+        evidenceRequired: ['XML/NFS-e/NF-e', 'Livro caixa ou escrituração', 'Retenções, guias e extratos'],
+        officialAssessment: false,
+      },
+    ],
+    disclaimers: [
+      'Este simulador não substitui apuração oficial, PGDAS-D, escrituração, DIRPF ou parecer de contador responsável.',
+      'A recomendação comercial deve ser bloqueada quando houver status BLOCKED ou REQUIRES_REVIEW sem evidência validada.',
+    ],
+  };
 }
 
 function createDemoSimulation(input: SimulateTaxScenarioDto, companyId?: string): SimulationResponse {
@@ -367,6 +509,13 @@ function createDemoSimulation(input: SimulateTaxScenarioDto, companyId?: string)
   const potentialGain = currentResult && best && isSavingsComparable(currentResult)
     ? money(best.netAnnualResult - currentResult.netAnnualResult)
     : 0;
+  const complianceTrail = buildDemoComplianceTrail(
+    input,
+    comparisons,
+    annualRevenue,
+    annualPayroll,
+    factorRPercentage,
+  );
 
   return {
     status: 'OK',
@@ -446,6 +595,7 @@ function createDemoSimulation(input: SimulateTaxScenarioDto, companyId?: string)
             ]
           : ['Rodar onboarding de abertura/migração', 'Validar regime tributário', 'Submeter revisão CRC'],
     },
+    complianceTrail,
     guardrails: [
       'Fallback demonstrativo restrito a sessão demo; empresas reais continuam exigindo API autenticada e dados oficiais.',
       ...(annualRevenue > SIMPLES_ANNUAL_LIMIT
