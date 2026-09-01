@@ -1,4 +1,4 @@
-import { api } from '@/services/api';
+import { api, getActiveCompanyId } from '@/services/api';
 
 export type TaxRegime =
   | 'PF'
@@ -101,12 +101,20 @@ export interface SimulationResponse {
 
 export const taxScenariosApi = {
   async simulate(payload: SimulateTaxScenarioDto): Promise<SimulationResponse> {
-    const { data } = await api.post<SimulationResponse>('/tax-scenarios/simulate', payload);
+    const companyId = payload.companyId ?? getActiveCompanyId() ?? undefined;
+    const requestPayload: SimulateTaxScenarioDto = {
+      ...payload,
+      ...(companyId ? { companyId } : {}),
+    };
+    const { data } = await api.post<SimulationResponse>(
+      '/tax-scenarios/simulate',
+      requestPayload,
+    );
     const bestModel = data.bestEstimatedModel ?? data.recommendedRegime ?? 'PF';
     const bestScenario =
       data.comparisons?.find((comparison) => comparison.model === bestModel) ?? data.comparisons?.[0];
     const currentScenario =
-      data.comparisons?.find((comparison) => comparison.model === payload.currentModel) ??
+      data.comparisons?.find((comparison) => comparison.model === requestPayload.currentModel) ??
       data.comparisons?.[0];
     const annualSavings =
       typeof bestScenario?.netAnnualResult === 'number' && typeof currentScenario?.netAnnualResult === 'number'
@@ -115,7 +123,7 @@ export const taxScenariosApi = {
 
     return {
       ...data,
-      companyId: payload.companyId,
+      companyId,
       recommendedRegime: bestModel,
       annualSavings,
       scenarios:
