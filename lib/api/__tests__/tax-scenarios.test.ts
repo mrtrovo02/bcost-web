@@ -1,16 +1,18 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { taxScenariosApi, type SimulationResponse } from '../tax-scenarios';
-import { api, getActiveCompanyId } from '@/services/api';
+import { api, getActiveCompanyId, isDemoSession } from '@/services/api';
 
 vi.mock('@/services/api', () => ({
   api: {
     post: vi.fn(),
   },
   getActiveCompanyId: vi.fn(),
+  isDemoSession: vi.fn(),
 }));
 
 const apiPostMock = vi.mocked(api.post);
 const getActiveCompanyIdMock = vi.mocked(getActiveCompanyId);
+const isDemoSessionMock = vi.mocked(isDemoSession);
 
 const API_RESPONSE: SimulationResponse = {
   status: 'OK',
@@ -79,6 +81,11 @@ const API_RESPONSE: SimulationResponse = {
 describe('taxScenariosApi', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    isDemoSessionMock.mockReturnValue(false);
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it('uses active company ID when payload does not include companyId', async () => {
@@ -106,5 +113,45 @@ describe('taxScenariosApi', () => {
     expect(result.companyId).toBe('demo-001');
     expect(result.recommendedRegime).toBe('SIMPLES_NACIONAL');
     expect(result.annualSavings).toBe(610_800);
+  });
+
+  it('keeps demo simulator operational when the protected API rejects the request', async () => {
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_DEMO_FALLBACK', 'true');
+    getActiveCompanyIdMock.mockReturnValueOnce('demo-001');
+    isDemoSessionMock.mockReturnValue(true);
+    apiPostMock.mockRejectedValueOnce(new Error('Request failed with status code 401'));
+
+    const result = await taxScenariosApi.simulate({
+      activity: 'SERVICE_PROVIDER',
+      monthlyRevenue: 220_000,
+      monthlyDeductibleExpenses: 35_000,
+      monthlyPayroll: 50_000,
+      dependents: 1,
+      currentModel: 'SIMPLES_NACIONAL',
+    });
+
+    expect(result.status).toBe('OK');
+    expect(result.companyId).toBe('demo-001');
+    expect(result.scenarioId).toBe('demo-local-tax-scenario');
+    expect(result.comparisons).toHaveLength(4);
+    expect(result.scenarios?.some((scenario) => scenario.isRecommended)).toBe(true);
+    expect(result.guardrails.join(' ')).toContain('empresas reais continuam exigindo API autenticada');
+  });
+
+  it('does not use demo fallback for real authenticated company failures', async () => {
+    getActiveCompanyIdMock.mockReturnValueOnce('6befc33e-95cd-4ef4-b8d4-9d5bf1e15f1b');
+    isDemoSessionMock.mockReturnValue(false);
+    apiPostMock.mockRejectedValueOnce(new Error('Request failed with status code 401'));
+
+    await expect(
+      taxScenariosApi.simulate({
+        activity: 'SERVICE_PROVIDER',
+        monthlyRevenue: 220_000,
+        monthlyDeductibleExpenses: 35_000,
+        monthlyPayroll: 50_000,
+        dependents: 1,
+        currentModel: 'SIMPLES_NACIONAL',
+      }),
+    ).rejects.toThrow('Request failed with status code 401');
   });
 });

@@ -1,4 +1,5 @@
-import { api, getActiveCompanyId } from '@/services/api';
+import { assertOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
+import { api, getActiveCompanyId, isDemoSession } from '@/services/api';
 
 export type TaxRegime =
   | 'PF'
@@ -99,6 +100,268 @@ export interface SimulationResponse {
   }>;
 }
 
+const MEI_ANNUAL_LIMIT = 81_000;
+const FACTOR_R_THRESHOLD = 28;
+const CBS_INFORMATIVE_2026 = 0.009;
+const IBS_INFORMATIVE_2026 = 0.001;
+
+function round(value: number, precision: number): number {
+  const factor = 10 ** precision;
+  return Math.round(value * factor) / factor;
+}
+
+function money(value: number): number {
+  return round(value, 2);
+}
+
+function progressiveIrpf(annualBase: number): number {
+  if (annualBase <= 27_110.4) return 0;
+  if (annualBase <= 33_919.8) return annualBase * 0.075 - 2_033.28;
+  if (annualBase <= 45_012.6) return annualBase * 0.15 - 4_577.27;
+  if (annualBase <= 55_976.16) return annualBase * 0.225 - 7_953.21;
+  return annualBase * 0.275 - 10_752.02;
+}
+
+function buildCalculation(
+  input: Omit<TaxScenarioCalculation, 'estimatedEffectiveRate' | 'netAnnualResult' | 'monthlyNetResult'>,
+): TaxScenarioCalculation {
+  const estimatedEffectiveRate =
+    input.annualRevenue > 0 && input.estimatedTax >= 0
+      ? round((input.estimatedTax / input.annualRevenue) * 100, 2)
+      : 0;
+  const netAnnualResult =
+    input.estimatedTax >= 0
+      ? money(input.annualRevenue - input.annualDeductibleExpenses - input.estimatedTax)
+      : 0;
+
+  return {
+    ...input,
+    taxableBase: money(input.taxableBase),
+    estimatedTax: money(input.estimatedTax),
+    estimatedEffectiveRate,
+    netAnnualResult,
+    monthlyNetResult: money(netAnnualResult / 12),
+  };
+}
+
+function createDemoSimulation(input: SimulateTaxScenarioDto, companyId?: string): SimulationResponse {
+  const annualRevenue = money(input.monthlyRevenue * 12);
+  const annualDeductibleExpenses = money(input.monthlyDeductibleExpenses * 12);
+  const annualPayroll = money(input.monthlyPayroll * 12);
+  const factorRPercentage = annualRevenue > 0 ? round((annualPayroll / annualRevenue) * 100, 2) : 0;
+  const serviceActivity = ['LEGAL', 'TECHNOLOGY', 'CONSULTING', 'SERVICE_PROVIDER'].includes(input.activity);
+  const simplesRate = serviceActivity ? (factorRPercentage >= FACTOR_R_THRESHOLD ? 0.06 : 0.155) : 0.06;
+  const presumedMargin = 0.32;
+  const irCsll = annualRevenue * presumedMargin * 0.24;
+  const pisCofins = annualRevenue * 0.0365;
+  const iss = annualRevenue * 0.03;
+
+  const comparisons: TaxScenarioCalculation[] = [
+    buildCalculation({
+      model: 'PF',
+      annualRevenue,
+      annualDeductibleExpenses,
+      annualPayroll: 0,
+      taxableBase: Math.max(0, annualRevenue - annualDeductibleExpenses - input.dependents * 2_275.08),
+      estimatedTax: money(progressiveIrpf(Math.max(0, annualRevenue - annualDeductibleExpenses - input.dependents * 2_275.08))),
+      warnings:
+        annualRevenue > 120_000
+          ? ['Receita anual elevada para PF: avaliar retenções, livro caixa e estrutura PJ.']
+          : [],
+      components: [
+        {
+          code: 'IRPF_PROGRESSIVE_ESTIMATE',
+          label: 'IRPF progressivo estimado',
+          amount: money(progressiveIrpf(Math.max(0, annualRevenue - annualDeductibleExpenses - input.dependents * 2_275.08))),
+          basis: 'Tabela progressiva anual simplificada, sem substituir DIRPF.',
+        },
+      ],
+    }),
+    buildCalculation({
+      model: 'MEI',
+      annualRevenue,
+      annualDeductibleExpenses: 0,
+      annualPayroll: 0,
+      taxableBase: annualRevenue,
+      estimatedTax: annualRevenue > MEI_ANNUAL_LIMIT ? -1 : money(85 * 12),
+      warnings:
+        annualRevenue > MEI_ANNUAL_LIMIT
+          ? ['Faturamento informado supera o limite anual usual do MEI; exige avaliação de desenquadramento.']
+          : ['MEI depende de atividade permitida e demais limites legais.'],
+      components: [
+        {
+          code: 'MEI_FIXED_MONTHLY_DAS_ESTIMATE',
+          label: 'DAS mensal fixo estimado',
+          amount: annualRevenue > MEI_ANNUAL_LIMIT ? 0 : money(85 * 12),
+          basis: 'Estimativa orientativa; valor real depende da atividade e legislação vigente.',
+        },
+      ],
+    }),
+    buildCalculation({
+      model: 'SIMPLES_NACIONAL',
+      annualRevenue,
+      annualDeductibleExpenses: 0,
+      annualPayroll,
+      taxableBase: annualRevenue,
+      estimatedTax: money(annualRevenue * simplesRate),
+      warnings: [
+        'Alíquota efetiva do Simples depende de RBT12, anexo, parcela a deduzir, CNAE e segregação de receitas.',
+        ...(serviceActivity && factorRPercentage < FACTOR_R_THRESHOLD
+          ? ['Fator R abaixo de 28% pode deslocar serviços para carga maior; revisar pró-labore/folha.']
+          : []),
+      ],
+      components: [
+        {
+          code: factorRPercentage >= FACTOR_R_THRESHOLD ? 'SIMPLES_FACTOR_R_REVIEW' : 'SIMPLES_SERVICE_ESTIMATE',
+          label:
+            factorRPercentage >= FACTOR_R_THRESHOLD
+              ? 'Simples estimado com revisão de Fator R'
+              : 'Simples estimado para serviço',
+          amount: money(annualRevenue * simplesRate),
+          rate: simplesRate,
+          basis: 'Triagem comercial baseada em receita anualizada e Fator R.',
+        },
+      ],
+    }),
+    buildCalculation({
+      model: 'LUCRO_PRESUMIDO',
+      annualRevenue,
+      annualDeductibleExpenses: 0,
+      annualPayroll: 0,
+      taxableBase: money(annualRevenue * presumedMargin),
+      estimatedTax: money(irCsll + pisCofins + iss),
+      warnings: ['ISS varia por município e serviço; retenções e adicional de IRPJ podem alterar o resultado.'],
+      components: [
+        {
+          code: 'IRPJ_CSLL_PRESUMED',
+          label: 'IRPJ/CSLL sobre base presumida',
+          amount: money(irCsll),
+          rate: 0.24,
+          basis: 'Base presumida orientativa para serviços.',
+        },
+        {
+          code: 'PIS_COFINS_CUMULATIVE',
+          label: 'PIS/COFINS cumulativo',
+          amount: money(pisCofins),
+          rate: 0.0365,
+          basis: 'Estimativa de regime cumulativo.',
+        },
+        {
+          code: 'ISS_ESTIMATE',
+          label: 'ISS municipal estimado',
+          amount: money(iss),
+          rate: 0.03,
+          basis: 'Alíquota média orientativa; confirmar município.',
+        },
+      ],
+    }),
+  ];
+  const viableComparisons = comparisons.filter((comparison) => comparison.estimatedTax >= 0);
+  const best = [...viableComparisons].sort((a, b) => b.netAnnualResult - a.netAnnualResult)[0];
+  const bestEstimatedModel = best?.model ?? 'PF';
+  const currentResult = comparisons.find((comparison) => comparison.model === input.currentModel);
+  const potentialGain = currentResult && best ? money(best.netAnnualResult - currentResult.netAnnualResult) : 0;
+
+  return {
+    status: 'OK',
+    input,
+    assumptions: [
+      {
+        code: 'DEMO_CONTINUITY_SIMULATION',
+        description:
+          'Simulação calculada localmente apenas para continuidade da sessão demonstrativa quando a API protegida não respondeu.',
+        sourceBasis: ['EC 132/2023', 'LC 214/2025', 'Lei Complementar 123/2006'],
+      },
+      {
+        code: 'CBS_IBS_2026_CALIBRATION',
+        description:
+          'CBS/IBS em 2026 tratados como destaque informativo e calibração operacional, sem premissa de recolhimento definitivo.',
+        sourceBasis: ['LC 214/2025', 'Notas Técnicas NF-e/NFC-e RTC 2025/2026'],
+      },
+    ],
+    comparisons,
+    bestEstimatedModel,
+    factorR: {
+      percentage: factorRPercentage,
+      qualifiesForAnexoIIIReview: factorRPercentage >= FACTOR_R_THRESHOLD,
+      requiredPayrollForThreshold: money(Math.max(0, annualRevenue * (FACTOR_R_THRESHOLD / 100) - annualPayroll)),
+    },
+    reformImpact: {
+      calibrationYear: 2026,
+      cbsInformativeRate: CBS_INFORMATIVE_2026,
+      ibsInformativeRate: IBS_INFORMATIVE_2026,
+      estimatedCbs: money(annualRevenue * CBS_INFORMATIVE_2026),
+      estimatedIbs: money(annualRevenue * IBS_INFORMATIVE_2026),
+      note: 'Valores de CBS/IBS são informativos para 2026 e devem ser revisados conforme ato técnico, município, atividade e documento fiscal.',
+    },
+    recommendation: {
+      decision:
+        factorRPercentage > 0 && factorRPercentage < FACTOR_R_THRESHOLD
+          ? 'SIMPLES_WITH_FACTOR_R_REVIEW'
+          : bestEstimatedModel === 'PF'
+            ? 'ASSISTED_TAX_PLANNING_REQUIRED'
+            : 'PJ_SIMULATION_RECOMMENDED',
+      title:
+        factorRPercentage > 0 && factorRPercentage < FACTOR_R_THRESHOLD
+          ? 'Revisar Fator R antes de decidir o modelo'
+          : bestEstimatedModel === 'PF'
+            ? 'Planejamento tributário assistido recomendado'
+            : 'Estrutura PJ merece análise assistida',
+      rationale: [
+        `Modelo com melhor resultado estimado: ${bestEstimatedModel}.`,
+        potentialGain > 0
+          ? `Ganho anual estimado contra o modelo atual: R$ ${potentialGain.toLocaleString('pt-BR')}.`
+          : 'A comparação indica necessidade de detalhamento antes de decisão.',
+      ],
+      requiredEvidence: ['CNAE pretendido', 'Município de prestação', 'Notas/recibos recentes'],
+      nextActions: ['Rodar onboarding de abertura/migração', 'Validar regime tributário', 'Submeter revisão CRC'],
+    },
+    guardrails: [
+      'Fallback demonstrativo restrito a sessão demo; empresas reais continuam exigindo API autenticada e dados oficiais.',
+      'Não prometer economia tributária sem validar CNAE, município, regime, pró-labore, folha e documentos fiscais.',
+      'Simulação PF x PJ não contempla todos os cenários de retenções, ISS fixo, benefícios fiscais, atividades reguladas ou regimes específicos.',
+    ],
+    generatedAt: new Date().toISOString(),
+    scenarioId: 'demo-local-tax-scenario',
+    companyId,
+  };
+}
+
+function normalizeSimulationResponse(
+  data: SimulationResponse,
+  requestPayload: SimulateTaxScenarioDto,
+  companyId?: string,
+): SimulationResponse {
+  const bestModel = data.bestEstimatedModel ?? data.recommendedRegime ?? 'PF';
+  const bestScenario =
+    data.comparisons?.find((comparison) => comparison.model === bestModel) ?? data.comparisons?.[0];
+  const currentScenario =
+    data.comparisons?.find((comparison) => comparison.model === requestPayload.currentModel) ??
+    data.comparisons?.[0];
+  const annualSavings =
+    typeof bestScenario?.netAnnualResult === 'number' && typeof currentScenario?.netAnnualResult === 'number'
+      ? Number((bestScenario.netAnnualResult - currentScenario.netAnnualResult).toFixed(2))
+      : 0;
+
+  return {
+    ...data,
+    companyId,
+    recommendedRegime: bestModel,
+    annualSavings,
+    scenarios:
+      (data.comparisons ?? []).map((comparison) => ({
+        regime: comparison.model,
+        effectiveRate: comparison.estimatedEffectiveRate,
+        annualTax: comparison.estimatedTax,
+        monthlyTax: Number((comparison.estimatedTax / 12).toFixed(2)),
+        breakdown: Object.fromEntries(
+          (comparison.components ?? []).map((component) => [component.code, component.amount]),
+        ),
+        isRecommended: comparison.model === bestModel,
+      })) ?? [],
+  };
+}
+
 export const taxScenariosApi = {
   async simulate(payload: SimulateTaxScenarioDto): Promise<SimulationResponse> {
     const companyId = payload.companyId ?? getActiveCompanyId() ?? undefined;
@@ -106,38 +369,22 @@ export const taxScenariosApi = {
       ...payload,
       ...(companyId ? { companyId } : {}),
     };
-    const { data } = await api.post<SimulationResponse>(
-      '/tax-scenarios/simulate',
-      requestPayload,
-    );
-    const bestModel = data.bestEstimatedModel ?? data.recommendedRegime ?? 'PF';
-    const bestScenario =
-      data.comparisons?.find((comparison) => comparison.model === bestModel) ?? data.comparisons?.[0];
-    const currentScenario =
-      data.comparisons?.find((comparison) => comparison.model === requestPayload.currentModel) ??
-      data.comparisons?.[0];
-    const annualSavings =
-      typeof bestScenario?.netAnnualResult === 'number' && typeof currentScenario?.netAnnualResult === 'number'
-        ? Number((bestScenario.netAnnualResult - currentScenario.netAnnualResult).toFixed(2))
-        : 0;
+    try {
+      const { data } = await api.post<SimulationResponse>(
+        '/tax-scenarios/simulate',
+        requestPayload,
+      );
 
-    return {
-      ...data,
-      companyId,
-      recommendedRegime: bestModel,
-      annualSavings,
-      scenarios:
-        (data.comparisons ?? []).map((comparison) => ({
-          regime: comparison.model,
-          effectiveRate: comparison.estimatedEffectiveRate,
-          annualTax: comparison.estimatedTax,
-          monthlyTax: Number((comparison.estimatedTax / 12).toFixed(2)),
-          breakdown: Object.fromEntries(
-            (comparison.components ?? []).map((component) => [component.code, component.amount]),
-          ),
-          isRecommended: comparison.model === bestModel,
-        })) ?? [],
-    };
+      return normalizeSimulationResponse(data, requestPayload, companyId);
+    } catch (error) {
+      if (!isDemoSession()) throw error;
+
+      assertOperationalDemoFallbackEnabled(
+        'Simulador tributário demo indisponível porque o fallback demonstrativo está desabilitado neste ambiente.',
+      );
+
+      return normalizeSimulationResponse(createDemoSimulation(requestPayload, companyId), requestPayload, companyId);
+    }
   },
 
   async getLatestSimulation(companyId: string): Promise<SimulationResponse | null> {
