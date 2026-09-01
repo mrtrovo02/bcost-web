@@ -22,6 +22,8 @@ export type BcostModulePriority = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
 
 export type BcostMarketReadiness = 'SELLABLE' | 'ASSISTED_BETA' | 'ROADMAP_LOCKED';
 
+export type BcostCommercialLaneId = 'direct-sale' | 'assisted-sale' | 'blocked-roadmap';
+
 const MARKET_READINESS_ORDER: Record<BcostMarketReadiness, number> = {
   SELLABLE: 1,
   ASSISTED_BETA: 2,
@@ -57,6 +59,16 @@ export type BcostAreaMarketSummary = {
   assistedBeta: number;
   roadmapLocked: number;
   critical: number;
+};
+
+export type BcostCommercialLane = {
+  id: BcostCommercialLaneId;
+  title: string;
+  description: string;
+  readiness: BcostMarketReadiness;
+  modules: BcostSchemaModule[];
+  primaryAction: string;
+  operationalGate: string;
 };
 
 export function getModuleMarketReadiness(status: BcostModuleStatus): BcostMarketReadiness {
@@ -956,6 +968,38 @@ export function getRoadmapLockedModules() {
       (module) => getModuleMarketReadiness(module.status) === 'ROADMAP_LOCKED',
     ),
   );
+}
+
+export function getCommercialLanes(): BcostCommercialLane[] {
+  return [
+    {
+      id: 'direct-sale',
+      title: 'Venda direta',
+      description: 'Módulos que podem entrar em proposta comercial e onboarding de cliente real.',
+      readiness: 'SELLABLE',
+      modules: getSellableModules(),
+      primaryAction: 'Abrir módulo',
+      operationalGate: 'Plano ativo, empresa autorizada e endpoint produtivo disponível.',
+    },
+    {
+      id: 'assisted-sale',
+      title: 'Beta assistido',
+      description: 'Serviços que dependem de validação operacional, contador ou integração externa.',
+      readiness: 'ASSISTED_BETA',
+      modules: getAssistedBetaModules(),
+      primaryAction: 'Validar escopo assistido',
+      operationalGate: 'SLA interno, evidência fiscal e aceite explícito antes de executar.',
+    },
+    {
+      id: 'blocked-roadmap',
+      title: 'Roadmap bloqueado',
+      description: 'Itens estratégicos que ainda não devem ser vendidos como automação pronta.',
+      readiness: 'ROADMAP_LOCKED',
+      modules: getRoadmapLockedModules(),
+      primaryAction: 'Planejar entrega',
+      operationalGate: 'Arquitetura, integração oficial e teste de compliance pendentes.',
+    },
+  ];
 }
 
 export const bcostModuleAreas: BcostModuleArea[] = [

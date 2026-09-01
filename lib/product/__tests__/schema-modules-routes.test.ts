@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
   bcostSchemaModules,
   getAreaMarketSummaries,
+  getCommercialLanes,
   getModuleCommercialActionLabel,
   getModuleMarketReadiness,
   getModuleMarketReadinessLabel,
@@ -247,6 +248,29 @@ describe('bcostSchemaModules routes', () => {
       expect(summary.sellable + summary.assistedBeta + summary.roadmapLocked).toBe(
         summary.total,
       );
+    }
+  });
+
+  it('mantem trilhas comerciais alinhadas a maturidade operacional dos modulos', () => {
+    const lanes = getCommercialLanes();
+    const modulesInLanes = lanes.flatMap((lane) => lane.modules);
+
+    expect(lanes.map((lane) => lane.id)).toEqual([
+      'direct-sale',
+      'assisted-sale',
+      'blocked-roadmap',
+    ]);
+    expect(modulesInLanes.map((module) => module.slug).sort()).toEqual(
+      bcostSchemaModules.map((module) => module.slug).sort(),
+    );
+
+    for (const lane of lanes) {
+      expect(lane.modules.length).toBeGreaterThan(0);
+      expect(lane.operationalGate.length).toBeGreaterThan(10);
+
+      for (const module of lane.modules) {
+        expect(getModuleMarketReadiness(module.status)).toBe(lane.readiness);
+      }
     }
   });
 });
