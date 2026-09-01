@@ -545,7 +545,6 @@ api.interceptors.request.use(
 
     if (requestCompanyId) {
       config.headers['x-company-id'] = requestCompanyId;
-      config.headers['CompanyId'] = requestCompanyId;
     }
     return config;
   },
