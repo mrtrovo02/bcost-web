@@ -45,6 +45,26 @@ export type EnterpriseCatalogItem = {
   operationalGuardrails?: string[];
 };
 
+export type EnterpriseAutomationBoundary = NonNullable<
+  EnterpriseCatalogItem['automationBoundary']
+>;
+
+export type EnterpriseCommercialLaneId =
+  | 'direct-sale'
+  | 'assisted-validation'
+  | 'blocked-roadmap';
+
+export type EnterpriseCommercialLane = {
+  id: EnterpriseCommercialLaneId;
+  title: string;
+  description: string;
+  marketReadiness: BcostMarketReadiness;
+  automationBoundaries: EnterpriseAutomationBoundary[];
+  modules: EnterpriseCatalogItem[];
+  primaryAction: string;
+  operationalGate: string;
+};
+
 export type EnterpriseCatalogOptions = {
   forceRefresh?: boolean;
 };
@@ -79,6 +99,14 @@ const ENTERPRISE_CATALOG_CACHE_TTL_MS = 60_000;
 
 let enterpriseCatalogCache: EnterpriseCatalogCache | null = null;
 let enterpriseCatalogRequest: Promise<EnterpriseCatalogItem[]> | null = null;
+
+type EnterpriseCommercialLanesCache = {
+  lanes: EnterpriseCommercialLane[];
+  expiresAt: number;
+};
+
+let enterpriseCommercialLanesCache: EnterpriseCommercialLanesCache | null = null;
+let enterpriseCommercialLanesRequest: Promise<EnterpriseCommercialLane[]> | null = null;
 
 export const ENTERPRISE_MODULE_LABELS: Record<string, string> = {
   users: 'Usuários',
@@ -200,6 +228,72 @@ function throwFeatureLockedError(error: unknown): void {
   throw new Error(message);
 }
 
+function hasAutomationBoundary(
+  item: EnterpriseCatalogItem,
+  boundaries: EnterpriseAutomationBoundary[],
+): boolean {
+  return item.automationBoundary ? boundaries.includes(item.automationBoundary) : false;
+}
+
+export function createEnterpriseCommercialLanesFromCatalog(
+  catalog: EnterpriseCatalogItem[],
+): EnterpriseCommercialLane[] {
+  const assistedBoundaries: EnterpriseAutomationBoundary[] = [
+    'ASSISTED_AUTOMATION',
+    'CRC_VALIDATED',
+  ];
+  const blockedBoundaries: EnterpriseAutomationBoundary[] = ['SOFTWARE_ONLY', 'HUMAN_LED'];
+
+  return [
+    {
+      id: 'direct-sale',
+      title: 'Venda direta',
+      description:
+        'Módulos persistidos, autenticados e aptos para proposta comercial com cliente real.',
+      marketReadiness: 'SELLABLE',
+      automationBoundaries: ['SOFTWARE_ONLY'],
+      modules: catalog.filter((item) => item.marketReadiness === 'SELLABLE'),
+      primaryAction: 'Abrir módulo',
+      operationalGate:
+        'Exige plano ativo, empresa autorizada, tenant validado e endpoint produtivo.',
+    },
+    {
+      id: 'assisted-validation',
+      title: 'Validação assistida',
+      description:
+        'Módulos de roadmap que podem ser discutidos com escopo, evidência e validação humana.',
+      marketReadiness: 'ROADMAP_LOCKED',
+      automationBoundaries: assistedBoundaries,
+      modules: catalog.filter(
+        (item) =>
+          item.marketReadiness === 'ASSISTED_BETA' ||
+          (item.marketReadiness === 'ROADMAP_LOCKED' &&
+            hasAutomationBoundary(item, assistedBoundaries)),
+      ),
+      primaryAction: 'Validar escopo assistido',
+      operationalGate:
+        'Exige SLA interno, evidência fiscal, aceite explícito e validação de contador responsável.',
+    },
+    {
+      id: 'blocked-roadmap',
+      title: 'Roadmap bloqueado',
+      description:
+        'Serviços que não devem ser vendidos como automação pronta até fechar arquitetura e compliance.',
+      marketReadiness: 'ROADMAP_LOCKED',
+      automationBoundaries: blockedBoundaries,
+      modules: catalog.filter(
+        (item) =>
+          item.marketReadiness === 'ROADMAP_LOCKED' &&
+          !hasAutomationBoundary(item, assistedBoundaries) &&
+          hasAutomationBoundary(item, blockedBoundaries),
+      ),
+      primaryAction: 'Planejar entrega',
+      operationalGate:
+        'Exige endpoint oficial, integração homologada, teste de compliance e roteiro operacional.',
+    },
+  ];
+}
+
 export async function resolveEnterpriseCompanyId(): Promise<string | null> {
   const companyId = await resolveEnterpriseCompanyIdWithFallback();
   setActiveCompanyId?.(companyId);
@@ -254,6 +348,55 @@ export const enterpriseUniversalApi = {
   clearCatalogCache(): void {
     enterpriseCatalogCache = null;
     enterpriseCatalogRequest = null;
+    enterpriseCommercialLanesCache = null;
+    enterpriseCommercialLanesRequest = null;
+  },
+
+  async commercialLanes(
+    options: EnterpriseCatalogOptions = {},
+  ): Promise<EnterpriseCommercialLane[]> {
+    const now = Date.now();
+
+    if (
+      !options.forceRefresh &&
+      enterpriseCommercialLanesCache &&
+      enterpriseCommercialLanesCache.expiresAt > now
+    ) {
+      return enterpriseCommercialLanesCache.lanes;
+    }
+
+    if (!options.forceRefresh && enterpriseCommercialLanesRequest) {
+      return enterpriseCommercialLanesRequest;
+    }
+
+    enterpriseCommercialLanesRequest = (async () => {
+      try {
+        const response = await api.get('/enterprise/modules/commercial-lanes');
+        const lanes = Array.isArray(response.data)
+          ? (response.data as EnterpriseCommercialLane[])
+          : createEnterpriseCommercialLanesFromCatalog(createDemoEnterpriseCatalog());
+
+        enterpriseCommercialLanesCache = {
+          lanes,
+          expiresAt: Date.now() + ENTERPRISE_CATALOG_CACHE_TTL_MS,
+        };
+
+        return lanes;
+      } catch (error) {
+        assertOperationalDemoFallbackEnabled(
+          'Trilhas comerciais enterprise indisponiveis e fallback demonstrativo desabilitado neste ambiente.',
+        );
+
+        const status = toEnterpriseApiError(error).response?.status;
+        trackEvent('enterprise_commercial_lanes_fallback', { status });
+
+        return createEnterpriseCommercialLanesFromCatalog(createDemoEnterpriseCatalog());
+      } finally {
+        enterpriseCommercialLanesRequest = null;
+      }
+    })();
+
+    return enterpriseCommercialLanesRequest;
   },
 
   async getModule(

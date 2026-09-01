@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import enterpriseUniversalApi from '../enterprise-universal';
+import enterpriseUniversalApi, {
+  createEnterpriseCommercialLanesFromCatalog,
+} from '../enterprise-universal';
 import { api } from '@/services/api';
 
 vi.mock('@/services/api', () => ({
@@ -119,6 +121,92 @@ describe('enterpriseUniversalApi', () => {
     expect(first[0]?.slug).toBe('companies');
     expect(refreshed[0]?.slug).toBe('banking-products');
     expect(apiGetMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('returns cached commercial lanes from the enterprise endpoint', async () => {
+    apiGetMock.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'direct-sale',
+          title: 'Venda direta',
+          description: 'Módulos vendáveis.',
+          marketReadiness: 'SELLABLE',
+          automationBoundaries: ['SOFTWARE_ONLY'],
+          modules: [
+            {
+              slug: 'companies',
+              model: 'Company',
+              label: 'Empresas',
+              persistence: 'PRISMA',
+              endpoint: '/enterprise/modules/companies/:companyId',
+              marketReadiness: 'SELLABLE',
+              automationBoundary: 'SOFTWARE_ONLY',
+            },
+          ],
+          primaryAction: 'Abrir módulo',
+          operationalGate: 'Plano ativo.',
+        },
+      ],
+    });
+
+    const [first, second] = await Promise.all([
+      enterpriseUniversalApi.commercialLanes(),
+      enterpriseUniversalApi.commercialLanes(),
+    ]);
+    const third = await enterpriseUniversalApi.commercialLanes();
+
+    expect(first[0]?.id).toBe('direct-sale');
+    expect(second[0]?.modules[0]?.slug).toBe('companies');
+    expect(third[0]?.marketReadiness).toBe('SELLABLE');
+    expect(apiGetMock).toHaveBeenCalledTimes(1);
+    expect(apiGetMock).toHaveBeenCalledWith('/enterprise/modules/commercial-lanes');
+  });
+
+  it('derives commercial lanes from catalog metadata without selling roadmap as ready', async () => {
+    apiGetMock.mockRejectedValueOnce({ response: { status: 404 } });
+
+    const lanes = await enterpriseUniversalApi.commercialLanes();
+    const modulesInLanes = lanes.flatMap((lane) => lane.modules);
+
+    expect(lanes.map((lane) => lane.id)).toEqual([
+      'direct-sale',
+      'assisted-validation',
+      'blocked-roadmap',
+    ]);
+    expect(modulesInLanes.length).toBeGreaterThan(0);
+
+    for (const lane of lanes) {
+      for (const module of lane.modules) {
+        if (lane.id === 'direct-sale') {
+          expect(module.marketReadiness).toBe('SELLABLE');
+        } else if (lane.id === 'assisted-validation') {
+          expect(['ASSISTED_BETA', 'ROADMAP_LOCKED']).toContain(module.marketReadiness);
+        } else {
+          expect(module.marketReadiness).toBe('ROADMAP_LOCKED');
+        }
+      }
+    }
+  });
+
+  it('blocks commercial lanes fallback when the environment disables it', async () => {
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'false';
+    apiGetMock.mockRejectedValueOnce({ response: { status: 404 } });
+
+    await expect(enterpriseUniversalApi.commercialLanes()).rejects.toThrow(
+      'Trilhas comerciais enterprise indisponiveis e fallback demonstrativo desabilitado neste ambiente.',
+    );
+  });
+
+  it('creates commercial lanes directly from enterprise catalog items', async () => {
+    const catalog = await enterpriseUniversalApi.catalog();
+    const lanes = createEnterpriseCommercialLanesFromCatalog(catalog);
+
+    expect(lanes.map((lane) => lane.id)).toEqual([
+      'direct-sale',
+      'assisted-validation',
+      'blocked-roadmap',
+    ]);
+    expect(lanes.flatMap((lane) => lane.modules).length).toBe(catalog.length);
   });
 
   it('blocks operational demo fallback when the environment disables it', async () => {
