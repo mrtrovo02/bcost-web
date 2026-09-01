@@ -209,7 +209,9 @@ export default function EnterpriseModulesPage() {
                 <span className="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-700">
                   {getModuleMarketReadinessLabel(module.status)}
                 </span>
-                <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${priorityClass(module.priority)}`}>
+                <span
+                  className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${priorityClass(module.priority)}`}
+                >
                   {module.priority}
                 </span>
               </div>

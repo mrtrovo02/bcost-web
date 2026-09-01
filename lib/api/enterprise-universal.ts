@@ -45,14 +45,16 @@ export type EnterpriseCatalogItem = {
   operationalGuardrails?: string[];
 };
 
-export type EnterpriseAutomationBoundary = NonNullable<
-  EnterpriseCatalogItem['automationBoundary']
->;
+export type EnterpriseAutomationBoundary = NonNullable<EnterpriseCatalogItem['automationBoundary']>;
 
-export type EnterpriseCommercialLaneId =
-  | 'direct-sale'
-  | 'assisted-validation'
-  | 'blocked-roadmap';
+export type EnterpriseCommercialLaneId = 'direct-sale' | 'assisted-validation' | 'blocked-roadmap';
+
+export type EnterpriseCommercialLaneSummary = {
+  total: number;
+  critical: number;
+  high: number;
+  regulated: number;
+};
 
 export type EnterpriseCommercialLane = {
   id: EnterpriseCommercialLaneId;
@@ -61,6 +63,7 @@ export type EnterpriseCommercialLane = {
   marketReadiness: BcostMarketReadiness;
   automationBoundaries: EnterpriseAutomationBoundary[];
   modules: EnterpriseCatalogItem[];
+  summary?: EnterpriseCommercialLaneSummary;
   primaryAction: string;
   operationalGate: string;
 };
@@ -235,6 +238,19 @@ function hasAutomationBoundary(
   return item.automationBoundary ? boundaries.includes(item.automationBoundary) : false;
 }
 
+function summarizeCommercialLaneModules(
+  modules: EnterpriseCatalogItem[],
+): EnterpriseCommercialLaneSummary {
+  return {
+    total: modules.length,
+    critical: modules.filter((item) => item.priority === 'CRITICAL').length,
+    high: modules.filter((item) => item.priority === 'HIGH').length,
+    regulated: modules.filter((item) =>
+      ['ASSISTED_AUTOMATION', 'CRC_VALIDATED', 'HUMAN_LED'].includes(item.automationBoundary ?? ''),
+    ).length,
+  };
+}
+
 export function createEnterpriseCommercialLanesFromCatalog(
   catalog: EnterpriseCatalogItem[],
 ): EnterpriseCommercialLane[] {
@@ -243,6 +259,19 @@ export function createEnterpriseCommercialLanesFromCatalog(
     'CRC_VALIDATED',
   ];
   const blockedBoundaries: EnterpriseAutomationBoundary[] = ['SOFTWARE_ONLY', 'HUMAN_LED'];
+  const directSaleModules = catalog.filter((item) => item.marketReadiness === 'SELLABLE');
+  const assistedValidationModules = catalog.filter(
+    (item) =>
+      item.marketReadiness === 'ASSISTED_BETA' ||
+      (item.marketReadiness === 'ROADMAP_LOCKED' &&
+        hasAutomationBoundary(item, assistedBoundaries)),
+  );
+  const blockedRoadmapModules = catalog.filter(
+    (item) =>
+      item.marketReadiness === 'ROADMAP_LOCKED' &&
+      !hasAutomationBoundary(item, assistedBoundaries) &&
+      hasAutomationBoundary(item, blockedBoundaries),
+  );
 
   return [
     {
@@ -252,7 +281,8 @@ export function createEnterpriseCommercialLanesFromCatalog(
         'Módulos persistidos, autenticados e aptos para proposta comercial com cliente real.',
       marketReadiness: 'SELLABLE',
       automationBoundaries: ['SOFTWARE_ONLY'],
-      modules: catalog.filter((item) => item.marketReadiness === 'SELLABLE'),
+      modules: directSaleModules,
+      summary: summarizeCommercialLaneModules(directSaleModules),
       primaryAction: 'Abrir módulo',
       operationalGate:
         'Exige plano ativo, empresa autorizada, tenant validado e endpoint produtivo.',
@@ -264,12 +294,8 @@ export function createEnterpriseCommercialLanesFromCatalog(
         'Módulos de roadmap que podem ser discutidos com escopo, evidência e validação humana.',
       marketReadiness: 'ROADMAP_LOCKED',
       automationBoundaries: assistedBoundaries,
-      modules: catalog.filter(
-        (item) =>
-          item.marketReadiness === 'ASSISTED_BETA' ||
-          (item.marketReadiness === 'ROADMAP_LOCKED' &&
-            hasAutomationBoundary(item, assistedBoundaries)),
-      ),
+      modules: assistedValidationModules,
+      summary: summarizeCommercialLaneModules(assistedValidationModules),
       primaryAction: 'Validar escopo assistido',
       operationalGate:
         'Exige SLA interno, evidência fiscal, aceite explícito e validação de contador responsável.',
@@ -281,12 +307,8 @@ export function createEnterpriseCommercialLanesFromCatalog(
         'Serviços que não devem ser vendidos como automação pronta até fechar arquitetura e compliance.',
       marketReadiness: 'ROADMAP_LOCKED',
       automationBoundaries: blockedBoundaries,
-      modules: catalog.filter(
-        (item) =>
-          item.marketReadiness === 'ROADMAP_LOCKED' &&
-          !hasAutomationBoundary(item, assistedBoundaries) &&
-          hasAutomationBoundary(item, blockedBoundaries),
-      ),
+      modules: blockedRoadmapModules,
+      summary: summarizeCommercialLaneModules(blockedRoadmapModules),
       primaryAction: 'Planejar entrega',
       operationalGate:
         'Exige endpoint oficial, integração homologada, teste de compliance e roteiro operacional.',

@@ -6,6 +6,7 @@ import { AlertTriangle, Loader2, RefreshCw, Route } from 'lucide-react';
 import {
   enterpriseUniversalApi,
   type EnterpriseCommercialLane,
+  type EnterpriseCommercialLaneSummary,
 } from '@/lib/api/enterprise-universal';
 
 type CommercialLanesState = {
@@ -28,6 +29,21 @@ function laneClass(id: EnterpriseCommercialLane['id']) {
 
 function countCriticalModules(lane: EnterpriseCommercialLane) {
   return lane.modules.filter((module) => module.priority === 'CRITICAL').length;
+}
+
+function resolveLaneSummary(lane: EnterpriseCommercialLane): EnterpriseCommercialLaneSummary {
+  return {
+    total: lane.summary?.total ?? lane.modules.length,
+    critical: lane.summary?.critical ?? countCriticalModules(lane),
+    high: lane.summary?.high ?? lane.modules.filter((module) => module.priority === 'HIGH').length,
+    regulated:
+      lane.summary?.regulated ??
+      lane.modules.filter((module) =>
+        ['ASSISTED_AUTOMATION', 'CRC_VALIDATED', 'HUMAN_LED'].includes(
+          module.automationBoundary ?? '',
+        ),
+      ).length,
+  };
 }
 
 export default function EnterpriseCommercialLanesWidget() {
@@ -56,7 +72,7 @@ export default function EnterpriseCommercialLanesWidget() {
   }, []);
 
   const totalModules = useMemo(
-    () => state.lanes.reduce((total, lane) => total + lane.modules.length, 0),
+    () => state.lanes.reduce((total, lane) => total + resolveLaneSummary(lane).total, 0),
     [state.lanes],
   );
 
@@ -108,73 +124,83 @@ export default function EnterpriseCommercialLanesWidget() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-          {state.lanes.map((lane) => (
-            <div
-              key={lane.id}
-              className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h3 className="text-2xl font-black tracking-tight text-slate-900">
-                  {lane.title}
-                </h3>
-                <span
-                  className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-widest ${laneClass(
-                    lane.id,
-                  )}`}
-                >
-                  {lane.modules.length} módulos
-                </span>
-              </div>
+          {state.lanes.map((lane) => {
+            const summary = resolveLaneSummary(lane);
 
-              <p className="mt-3 text-sm font-bold leading-6 text-slate-500">
-                {lane.description}
-              </p>
-
-              <div className="mt-5 grid grid-cols-2 gap-3">
-                <div className="rounded-2xl bg-slate-50 p-4">
-                  <p className="text-2xl font-black text-slate-950">{lane.modules.length}</p>
-                  <p className="text-xs font-bold text-slate-400">Cobertura</p>
-                </div>
-                <div className="rounded-2xl bg-slate-50 p-4">
-                  <p className="text-2xl font-black text-red-600">
-                    {countCriticalModules(lane)}
-                  </p>
-                  <p className="text-xs font-bold text-slate-400">Críticos</p>
-                </div>
-              </div>
-
-              <div className="mt-5 rounded-2xl bg-slate-50 p-4">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                  Gate operacional
-                </p>
-                <p className="mt-2 text-sm font-bold leading-6 text-slate-700">
-                  {lane.operationalGate}
-                </p>
-              </div>
-
-              <div className="mt-5 flex flex-wrap gap-2">
-                {lane.modules.slice(0, 4).map((module) => (
-                  <Link
-                    href={`/dashboard/modules/${module.slug}`}
-                    key={module.slug}
-                    className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600 transition hover:bg-blue-50 hover:text-blue-700"
+            return (
+              <div
+                key={lane.id}
+                className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h3 className="text-2xl font-black tracking-tight text-slate-900">
+                    {lane.title}
+                  </h3>
+                  <span
+                    className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-widest ${laneClass(
+                      lane.id,
+                    )}`}
                   >
-                    {module.label}
-                  </Link>
-                ))}
-              </div>
+                    {summary.total} módulos
+                  </span>
+                </div>
 
-              <div className="mt-5 flex items-center justify-between gap-3 text-sm">
-                <span className="inline-flex items-center gap-2 font-black text-blue-700">
-                  <Route className="h-4 w-4" />
-                  {lane.primaryAction}
-                </span>
-                <span className="font-bold text-slate-400">
-                  {totalModules ? Math.round((lane.modules.length / totalModules) * 100) : 0}%
-                </span>
+                <p className="mt-3 text-sm font-bold leading-6 text-slate-500">
+                  {lane.description}
+                </p>
+
+                <div className="mt-5 grid grid-cols-2 gap-3">
+                  <div className="rounded-2xl bg-slate-50 p-4">
+                    <p className="text-2xl font-black text-slate-950">{summary.total}</p>
+                    <p className="text-xs font-bold text-slate-400">Cobertura</p>
+                  </div>
+                  <div className="rounded-2xl bg-slate-50 p-4">
+                    <p className="text-2xl font-black text-red-600">{summary.critical}</p>
+                    <p className="text-xs font-bold text-slate-400">Críticos</p>
+                  </div>
+                  <div className="rounded-2xl bg-slate-50 p-4">
+                    <p className="text-2xl font-black text-amber-600">{summary.high}</p>
+                    <p className="text-xs font-bold text-slate-400">Alta prioridade</p>
+                  </div>
+                  <div className="rounded-2xl bg-slate-50 p-4">
+                    <p className="text-2xl font-black text-indigo-600">{summary.regulated}</p>
+                    <p className="text-xs font-bold text-slate-400">Regulados</p>
+                  </div>
+                </div>
+
+                <div className="mt-5 rounded-2xl bg-slate-50 p-4">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                    Gate operacional
+                  </p>
+                  <p className="mt-2 text-sm font-bold leading-6 text-slate-700">
+                    {lane.operationalGate}
+                  </p>
+                </div>
+
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {lane.modules.slice(0, 4).map((module) => (
+                    <Link
+                      href={`/dashboard/modules/${module.slug}`}
+                      key={module.slug}
+                      className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600 transition hover:bg-blue-50 hover:text-blue-700"
+                    >
+                      {module.label}
+                    </Link>
+                  ))}
+                </div>
+
+                <div className="mt-5 flex items-center justify-between gap-3 text-sm">
+                  <span className="inline-flex items-center gap-2 font-black text-blue-700">
+                    <Route className="h-4 w-4" />
+                    {lane.primaryAction}
+                  </span>
+                  <span className="font-bold text-slate-400">
+                    {totalModules ? Math.round((summary.total / totalModules) * 100) : 0}%
+                  </span>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </section>
