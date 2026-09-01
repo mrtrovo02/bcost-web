@@ -219,21 +219,44 @@ function createDemoSimulation(input: SimulateTaxScenarioDto, companyId?: string)
     }),
     buildCalculation({
       model: 'MEI',
+      eligibilityStatus:
+        annualRevenue > MEI_ANNUAL_LIMIT
+          ? 'INELIGIBLE'
+          : annualPayroll > 0
+            ? 'REQUIRES_REVIEW'
+            : 'ELIGIBLE',
+      legalBasis: [
+        'Portal gov.br/Empresas e Negócios: MEI pode faturar até R$ 81.000,00 por ano e contratar no máximo um empregado que receba salário mínimo ou piso da categoria.',
+        'Resolução CGSN nº 140/2018, arts. 100, 101 e 105: ocupações permitidas e limites operacionais do SIMEI.',
+      ],
       annualRevenue,
       annualDeductibleExpenses: 0,
-      annualPayroll: 0,
+      annualPayroll,
       taxableBase: annualRevenue,
-      estimatedTax: annualRevenue > MEI_ANNUAL_LIMIT ? -1 : money(85 * 12),
+      estimatedTax: annualRevenue > MEI_ANNUAL_LIMIT || annualPayroll > 0 ? -1 : money(85 * 12),
       warnings:
         annualRevenue > MEI_ANNUAL_LIMIT
           ? ['Faturamento informado supera o limite anual usual do MEI; exige avaliação de desenquadramento.']
-          : ['MEI depende de atividade permitida e demais limites legais.'],
+          : annualPayroll > 0
+            ? [
+                'MEI bloqueado para recomendação automática: há folha informada e o sistema ainda não validou quantidade de empregados, piso da categoria e ocupação permitida.',
+              ]
+            : ['MEI depende de atividade permitida e demais limites legais.'],
       components: [
         {
-          code: 'MEI_FIXED_MONTHLY_DAS_ESTIMATE',
-          label: 'DAS mensal fixo estimado',
-          amount: annualRevenue > MEI_ANNUAL_LIMIT ? 0 : money(85 * 12),
-          basis: 'Estimativa orientativa; valor real depende da atividade e legislação vigente.',
+          code:
+            annualRevenue > MEI_ANNUAL_LIMIT || annualPayroll > 0
+              ? 'MEI_ELIGIBILITY_REVIEW_REQUIRED'
+              : 'MEI_FIXED_MONTHLY_DAS_ESTIMATE',
+          label:
+            annualRevenue > MEI_ANNUAL_LIMIT || annualPayroll > 0
+              ? 'Elegibilidade MEI exige revisão'
+              : 'DAS mensal fixo estimado',
+          amount: annualRevenue > MEI_ANNUAL_LIMIT || annualPayroll > 0 ? 0 : money(85 * 12),
+          basis:
+            annualRevenue > MEI_ANNUAL_LIMIT || annualPayroll > 0
+              ? 'Motor bloqueia recomendação automática de MEI quando limite de receita ou folha informada impedem validação segura sem evidências adicionais.'
+              : 'Estimativa orientativa; valor real depende da atividade e legislação vigente.',
         },
       ],
     }),
@@ -323,7 +346,12 @@ function createDemoSimulation(input: SimulateTaxScenarioDto, companyId?: string)
       ],
     }),
   ];
-  const viableComparisons = comparisons.filter((comparison) => comparison.estimatedTax >= 0);
+  const viableComparisons = comparisons.filter(
+    (comparison) =>
+      comparison.estimatedTax >= 0 &&
+      comparison.eligibilityStatus !== 'INELIGIBLE' &&
+      comparison.eligibilityStatus !== 'REQUIRES_REVIEW',
+  );
   const best = [...viableComparisons].sort((a, b) => b.netAnnualResult - a.netAnnualResult)[0];
   const bestEstimatedModel = best?.model ?? 'PF';
   const currentResult = comparisons.find((comparison) => comparison.model === input.currentModel);

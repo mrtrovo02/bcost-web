@@ -161,6 +161,29 @@ describe('taxScenariosApi', () => {
     expect(result.guardrails.join(' ')).toContain('R$ 4,8 milhões');
   });
 
+  it('blocks MEI recommendation in demo fallback when payroll requires operational validation', async () => {
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_DEMO_FALLBACK', 'true');
+    getActiveCompanyIdMock.mockReturnValueOnce('demo-001');
+    isDemoSessionMock.mockReturnValue(true);
+    apiPostMock.mockRejectedValueOnce(new Error('Request failed with status code 401'));
+
+    const result = await taxScenariosApi.simulate({
+      activity: 'TECHNOLOGY',
+      monthlyRevenue: 5_000,
+      monthlyDeductibleExpenses: 800,
+      monthlyPayroll: 16_000,
+      dependents: 3,
+      currentModel: 'PF',
+    });
+    const mei = result.comparisons.find((comparison) => comparison.model === 'MEI');
+
+    expect(result.factorR.percentage).toBe(320);
+    expect(result.bestEstimatedModel).not.toBe('MEI');
+    expect(mei?.eligibilityStatus).toBe('REQUIRES_REVIEW');
+    expect(mei?.estimatedTax).toBe(-1);
+    expect(mei?.warnings.join(' ')).toContain('folha informada');
+  });
+
   it('does not use demo fallback for real authenticated company failures', async () => {
     getActiveCompanyIdMock.mockReturnValueOnce('6befc33e-95cd-4ef4-b8d4-9d5bf1e15f1b');
     isDemoSessionMock.mockReturnValue(false);

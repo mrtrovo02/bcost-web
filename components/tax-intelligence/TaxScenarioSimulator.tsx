@@ -281,7 +281,7 @@ export default function TaxScenarioSimulator() {
                   {result.comparisons.map((comparison) => (
                     <div
                       key={comparison.model}
-                      className={`rounded-2xl border p-4 ${comparison.model === bestModel ? 'border-emerald-500/30 bg-emerald-500/5' : comparison.eligibilityStatus === 'INELIGIBLE' ? 'border-amber-500/20 bg-amber-500/5' : 'border-white/5 bg-[#090d16]'}`}
+                      className={`rounded-2xl border p-4 ${comparison.model === bestModel ? 'border-emerald-500/30 bg-emerald-500/5' : comparison.eligibilityStatus === 'INELIGIBLE' || comparison.eligibilityStatus === 'REQUIRES_REVIEW' ? 'border-amber-500/20 bg-amber-500/5' : 'border-white/5 bg-[#090d16]'}`}
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div>
@@ -289,8 +289,11 @@ export default function TaxScenarioSimulator() {
                             {comparison.model.replace('_', ' ')}
                           </p>
                           <p className="mt-2 text-xl font-black text-white">
-                            {comparison.eligibilityStatus === 'INELIGIBLE'
-                              ? 'Inelegível'
+                            {comparison.eligibilityStatus === 'INELIGIBLE' ||
+                            comparison.eligibilityStatus === 'REQUIRES_REVIEW'
+                              ? comparison.eligibilityStatus === 'INELIGIBLE'
+                                ? 'Inelegível'
+                                : 'Revisão'
                               : new Intl.NumberFormat('pt-BR', {
                                   style: 'currency',
                                   currency: 'BRL',
@@ -302,7 +305,8 @@ export default function TaxScenarioSimulator() {
                             líquida anual
                           </p>
                           <p className="mt-2 text-sm font-black text-slate-200">
-                            {comparison.eligibilityStatus === 'INELIGIBLE'
+                            {comparison.eligibilityStatus === 'INELIGIBLE' ||
+                            comparison.eligibilityStatus === 'REQUIRES_REVIEW'
                               ? 'Bloqueado'
                               : new Intl.NumberFormat('pt-BR', {
                                   style: 'currency',
