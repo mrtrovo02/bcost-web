@@ -4,15 +4,18 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   login as apiLogin,
-  persistAuthResponse,
+  verifyMfa,
   getToken,
-  type AuthResponse,
+  isMfaRequiredResponse,
+  type LoginResponse,
 } from '@/services/api';
 import { seedDemoData } from '@/services/demo-data';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [mfaSession, setMfaSession] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const router = useRouter();
@@ -32,15 +35,27 @@ export default function LoginPage() {
     setErrorMessage(null);
 
     try {
-      const authData: AuthResponse = await apiLogin(email, password);
+      if (mfaSession) {
+        const authData = await verifyMfa(mfaSession, otpCode);
+        const token = authData?.access_token ?? authData?.accessToken ?? authData?.token;
+
+        if (!token) throw new Error('Token de acesso nao encontrado na resposta MFA.');
+
+        router.replace('/dashboard/intelligence');
+        return;
+      }
+
+      const authData: LoginResponse = await apiLogin(email, password);
+
+      if (isMfaRequiredResponse(authData)) {
+        setMfaSession(authData.mfaSession);
+        setOtpCode('');
+        return;
+      }
 
       const token = authData?.access_token ?? authData?.accessToken ?? authData?.token;
 
       if (!token) throw new Error('Token de acesso nao encontrado na resposta.');
-
-      // Uma unica chamada persiste token + refreshToken + user + companyId + companies
-      // em cookie (subdomain-wide) e localStorage — sem duplicacao manual
-      persistAuthResponse(authData);
 
       router.replace('/dashboard/intelligence');
     } catch (error: unknown) {
@@ -53,6 +68,12 @@ export default function LoginPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const resetMfaChallenge = () => {
+    setMfaSession(null);
+    setOtpCode('');
+    setErrorMessage(null);
   };
 
   return (
@@ -103,8 +124,9 @@ export default function LoginPage() {
               type="email"
               value={email}
               autoComplete="email"
+              disabled={Boolean(mfaSession)}
               placeholder="contato@bcost.com.br"
-              className="w-full p-4 rounded-2xl bg-black/50 border border-white/10 focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/5 outline-none transition-all placeholder:text-slate-800"
+              className="w-full p-4 rounded-2xl bg-black/50 border border-white/10 focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/5 outline-none transition-all placeholder:text-slate-800 disabled:opacity-70"
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
@@ -118,11 +140,31 @@ export default function LoginPage() {
               type="password"
               value={password}
               autoComplete="current-password"
+              disabled={Boolean(mfaSession)}
               placeholder="••••••••"
-              className="w-full p-4 rounded-2xl bg-black/50 border border-white/10 focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/5 outline-none transition-all placeholder:text-slate-800"
+              className="w-full p-4 rounded-2xl bg-black/50 border border-white/10 focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/5 outline-none transition-all placeholder:text-slate-800 disabled:opacity-70"
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
+
+          {mfaSession && (
+            <div className="group space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1 group-focus-within:text-blue-400 transition-colors">
+                Código de verificação
+              </label>
+              <input
+                required
+                inputMode="text"
+                minLength={6}
+                maxLength={32}
+                value={otpCode}
+                autoComplete="one-time-code"
+                placeholder="123456"
+                className="w-full p-4 rounded-2xl bg-black/50 border border-emerald-500/20 focus:border-emerald-400/60 focus:ring-4 focus:ring-emerald-500/5 outline-none transition-all placeholder:text-slate-800"
+                onChange={(e) => setOtpCode(e.target.value.trim().toUpperCase())}
+              />
+            </div>
+          )}
 
           <button
             type="submit"
@@ -154,15 +196,25 @@ export default function LoginPage() {
                 Sincronizando...
               </div>
             ) : (
-              'Acessar Terminal'
+              mfaSession ? 'Validar Código' : 'Acessar Terminal'
             )}
           </button>
+
+          {mfaSession && (
+            <button
+              type="button"
+              onClick={resetMfaChallenge}
+              className="w-full py-3 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] transition-all flex justify-center items-center bg-transparent border border-white/10 text-slate-400 hover:text-white hover:border-white/20"
+            >
+              Trocar credenciais
+            </button>
+          )}
         </div>
 
         <div className="mt-6 flex gap-2">
           <button
             type="button"
-            disabled={!demoModeEnabled}
+            disabled={!demoModeEnabled || Boolean(mfaSession)}
             onClick={() => {
               const seeded = seedDemoData();
               if (seeded) {
@@ -170,7 +222,9 @@ export default function LoginPage() {
               }
             }}
             className={`flex-1 py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-xs transition-all flex justify-center items-center bg-slate-800 border border-white/5 text-slate-300 active:scale-[0.98] ${
-              !demoModeEnabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-700'
+              !demoModeEnabled || mfaSession
+                ? 'opacity-50 cursor-not-allowed'
+                : 'hover:bg-slate-700'
             }`}
           >
             Modo Demonstração

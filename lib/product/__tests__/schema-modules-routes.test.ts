@@ -35,14 +35,14 @@ function routeHasPage(route: string) {
 
 describe('bcostSchemaModules routes', () => {
   it('usa slugs unicos', () => {
-    const slugs = bcostSchemaModules.map((module) => module.slug);
+    const slugs = bcostSchemaModules.map((schemaModule) => schemaModule.slug);
 
     expect(new Set(slugs).size).toBe(slugs.length);
   });
 
   it('aponta todas as rotas internas para paginas existentes ou rotas dinamicas cobertas', () => {
     const missingRoutes = bcostSchemaModules
-      .map((module) => module.route)
+      .map((schemaModule) => schemaModule.route)
       .filter((route) => route.startsWith('/'))
       .filter((route) => !routeHasPage(route));
 
@@ -52,10 +52,10 @@ describe('bcostSchemaModules routes', () => {
   it('usa a pagina estatica do modulo quando ela existe', () => {
     const appDir = path.join(process.cwd(), 'app');
     const modulesWithStaticPages = bcostSchemaModules
-      .filter((module) =>
-        existsSync(path.join(appDir, 'dashboard', 'modules', module.slug, 'page.tsx')),
+      .filter((schemaModule) =>
+        existsSync(path.join(appDir, 'dashboard', 'modules', schemaModule.slug, 'page.tsx')),
       )
-      .filter((module) => module.route.startsWith('/dashboard/modules/'));
+      .filter((schemaModule) => schemaModule.route.startsWith('/dashboard/modules/'));
 
     expect(modulesWithStaticPages.length).toBeGreaterThan(0);
 
@@ -121,12 +121,14 @@ describe('bcostSchemaModules routes', () => {
 
   it('mantem estatisticas de mercado coerentes com o catalogo', () => {
     const stats = getModuleStats();
-    const sellable = bcostSchemaModules.filter((module) => module.status === 'ACTIVE').length;
+    const sellable = bcostSchemaModules.filter(
+      (schemaModule) => schemaModule.status === 'ACTIVE',
+    ).length;
     const assistedBeta = bcostSchemaModules.filter(
-      (module) => module.status === 'INTEGRATING',
+      (schemaModule) => schemaModule.status === 'INTEGRATING',
     ).length;
     const roadmapLocked = bcostSchemaModules.filter(
-      (module) => module.status === 'PLANNED',
+      (schemaModule) => schemaModule.status === 'PLANNED',
     ).length;
 
     expect(stats.sellable).toBe(sellable);
@@ -140,11 +142,11 @@ describe('bcostSchemaModules routes', () => {
 
     expect(sellableModules.length).toBeGreaterThan(0);
 
-    for (const module of sellableModules) {
-      expect(module.status).toBe('ACTIVE');
-      expect(module.route).toMatch(/^\/dashboard\//);
-      expect(module.apiBase).toMatch(/^\/[a-z0-9/-]+$/);
-      expect(routeHasPage(module.route)).toBe(true);
+    for (const schemaModule of sellableModules) {
+      expect(schemaModule.status).toBe('ACTIVE');
+      expect(schemaModule.route).toMatch(/^\/dashboard\//);
+      expect(schemaModule.apiBase).toMatch(/^\/[a-z0-9/-]+$/);
+      expect(routeHasPage(schemaModule.route)).toBe(true);
     }
   });
 
@@ -152,11 +154,13 @@ describe('bcostSchemaModules routes', () => {
     const { createDemoEnterpriseCatalog } = await import('@/lib/api/enterprise-demo');
     const catalog = createDemoEnterpriseCatalog();
     const readinessBySlug = Object.fromEntries(
-      catalog.map((module) => [module.slug, module.marketReadiness]),
+      catalog.map((schemaModule) => [schemaModule.slug, schemaModule.marketReadiness]),
     );
 
-    for (const module of bcostSchemaModules) {
-      expect(readinessBySlug[module.slug]).toBe(getModuleMarketReadiness(module.status));
+    for (const schemaModule of bcostSchemaModules) {
+      expect(readinessBySlug[schemaModule.slug]).toBe(
+        getModuleMarketReadiness(schemaModule.status),
+      );
     }
   });
 
@@ -206,7 +210,7 @@ describe('bcostSchemaModules routes', () => {
       },
     ]);
 
-    expect(sorted.map((module) => module.slug)).toEqual([
+    expect(sorted.map((schemaModule) => schemaModule.slug)).toEqual([
       'a-sellable',
       'b-sellable',
       'z-roadmap',
@@ -215,9 +219,12 @@ describe('bcostSchemaModules routes', () => {
 
   it('lista areas ja ordenadas para a vitrine enterprise', () => {
     const fiscalModules = getModulesByArea('Fiscal');
-    const firstRoadmapIndex = fiscalModules.findIndex((module) => module.status === 'PLANNED');
+    const firstRoadmapIndex = fiscalModules.findIndex(
+      (schemaModule) => schemaModule.status === 'PLANNED',
+    );
     const lastSellableIndex = fiscalModules.reduce(
-      (lastIndex, module, index) => (module.status === 'ACTIVE' ? index : lastIndex),
+      (lastIndex, schemaModule, index) =>
+        schemaModule.status === 'ACTIVE' ? index : lastIndex,
       -1,
     );
 
@@ -234,11 +241,21 @@ describe('bcostSchemaModules routes', () => {
     expect(summarizedTotal).toBe(bcostSchemaModules.length);
 
     for (const summary of summaries) {
-      const modulesByArea = bcostSchemaModules.filter((module) => module.area === summary.area);
-      const sellable = modulesByArea.filter((module) => module.status === 'ACTIVE').length;
-      const assistedBeta = modulesByArea.filter((module) => module.status === 'INTEGRATING').length;
-      const roadmapLocked = modulesByArea.filter((module) => module.status === 'PLANNED').length;
-      const critical = modulesByArea.filter((module) => module.priority === 'CRITICAL').length;
+      const modulesByArea = bcostSchemaModules.filter(
+        (schemaModule) => schemaModule.area === summary.area,
+      );
+      const sellable = modulesByArea.filter(
+        (schemaModule) => schemaModule.status === 'ACTIVE',
+      ).length;
+      const assistedBeta = modulesByArea.filter(
+        (schemaModule) => schemaModule.status === 'INTEGRATING',
+      ).length;
+      const roadmapLocked = modulesByArea.filter(
+        (schemaModule) => schemaModule.status === 'PLANNED',
+      ).length;
+      const critical = modulesByArea.filter(
+        (schemaModule) => schemaModule.priority === 'CRITICAL',
+      ).length;
 
       expect(summary.total).toBe(modulesByArea.length);
       expect(summary.sellable).toBe(sellable);
@@ -260,16 +277,16 @@ describe('bcostSchemaModules routes', () => {
       'assisted-sale',
       'blocked-roadmap',
     ]);
-    expect(modulesInLanes.map((module) => module.slug).sort()).toEqual(
-      bcostSchemaModules.map((module) => module.slug).sort(),
+    expect(modulesInLanes.map((schemaModule) => schemaModule.slug).sort()).toEqual(
+      bcostSchemaModules.map((schemaModule) => schemaModule.slug).sort(),
     );
 
     for (const lane of lanes) {
       expect(lane.modules.length).toBeGreaterThan(0);
       expect(lane.operationalGate.length).toBeGreaterThan(10);
 
-      for (const module of lane.modules) {
-        expect(getModuleMarketReadiness(module.status)).toBe(lane.readiness);
+      for (const schemaModule of lane.modules) {
+        expect(getModuleMarketReadiness(schemaModule.status)).toBe(lane.readiness);
       }
     }
   });

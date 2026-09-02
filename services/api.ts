@@ -115,11 +115,21 @@ export interface AuthResponse {
   token?: string;
   refresh_token?: string;
   refreshToken?: string;
+  mfaRequired?: false;
   user?: BcostUser;
   companyId?: string;
   activeCompanyId?: string;
   companies?: BcostCompany[];
 }
+
+export interface MfaRequiredResponse {
+  access_token: null;
+  mfaRequired: true;
+  mfaSession: string;
+  user: Pick<BcostUser, 'id' | 'email' | 'name'>;
+}
+
+export type LoginResponse = AuthResponse | MfaRequiredResponse;
 
 export interface AuthMissingError extends Error {
   isAuthMissing: true;
@@ -607,13 +617,33 @@ export const apiDelete = <T = unknown>(
 export async function login(
   emailOrCredentials: string | Record<string, unknown>,
   password?: string,
-): Promise<AuthResponse> {
+): Promise<LoginResponse> {
   const payload: Record<string, unknown> =
     typeof emailOrCredentials === 'string' && password
       ? { email: emailOrCredentials, password }
       : (emailOrCredentials as Record<string, unknown>);
 
-  const { data } = await apiPost<AuthResponse>('/auth/login', payload);
+  const { data } = await apiPost<LoginResponse>('/auth/login', payload);
+  if (!isMfaRequiredResponse(data)) {
+    persistAuthResponse(data);
+  }
+  return data;
+}
+
+export function isMfaRequiredResponse(
+  data: LoginResponse,
+): data is MfaRequiredResponse {
+  return data.mfaRequired === true && typeof data.mfaSession === 'string';
+}
+
+export async function verifyMfa(
+  mfaSession: string,
+  otpCode: string,
+): Promise<AuthResponse> {
+  const { data } = await apiPost<AuthResponse>('/auth/verify-mfa', {
+    mfaSession,
+    otpCode,
+  });
   persistAuthResponse(data);
   return data;
 }

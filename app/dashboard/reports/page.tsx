@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { BookOpen, Layers3, Loader2, RefreshCw, Scale, TrendingUp } from 'lucide-react';
 import { ContabilModuleFactory } from '@/shared/factories/contabil-factory.shared';
 import type {

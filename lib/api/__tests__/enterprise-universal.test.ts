@@ -176,13 +176,15 @@ describe('enterpriseUniversalApi', () => {
     expect(modulesInLanes.length).toBeGreaterThan(0);
 
     for (const lane of lanes) {
-      for (const module of lane.modules) {
+      for (const catalogModule of lane.modules) {
         if (lane.id === 'direct-sale') {
-          expect(module.marketReadiness).toBe('SELLABLE');
+          expect(catalogModule.marketReadiness).toBe('SELLABLE');
         } else if (lane.id === 'assisted-validation') {
-          expect(['ASSISTED_BETA', 'ROADMAP_LOCKED']).toContain(module.marketReadiness);
+          expect(['ASSISTED_BETA', 'ROADMAP_LOCKED']).toContain(
+            catalogModule.marketReadiness,
+          );
         } else {
-          expect(module.marketReadiness).toBe('ROADMAP_LOCKED');
+          expect(catalogModule.marketReadiness).toBe('ROADMAP_LOCKED');
         }
       }
     }
@@ -251,15 +253,15 @@ describe('enterpriseUniversalApi', () => {
   it('serves explicit demo company modules locally even when global fallback is disabled', async () => {
     process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'false';
 
-    const [module, summary, health] = await Promise.all([
+    const [catalogModule, summary, health] = await Promise.all([
       enterpriseUniversalApi.getModule('users', 'demo-001'),
       enterpriseUniversalApi.summary('users', 'demo-001'),
       enterpriseUniversalApi.health('users', 'demo-001'),
     ]);
 
-    expect(module.status).toBe('OK_WITH_FALLBACK');
-    expect(module.companyId).toBe('demo-001');
-    expect(module.items.length).toBeGreaterThan(0);
+    expect(catalogModule.status).toBe('OK_WITH_FALLBACK');
+    expect(catalogModule.companyId).toBe('demo-001');
+    expect(catalogModule.items.length).toBeGreaterThan(0);
     expect(summary).toMatchObject({ fallback: true, mode: 'DEMO_OPERATIONAL' });
     expect(health).toMatchObject({
       slug: 'users',

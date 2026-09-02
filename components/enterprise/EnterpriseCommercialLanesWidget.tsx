@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { AlertTriangle, Loader2, RefreshCw, Route } from 'lucide-react';
 import {
@@ -28,19 +28,21 @@ function laneClass(id: EnterpriseCommercialLane['id']) {
 }
 
 function countCriticalModules(lane: EnterpriseCommercialLane) {
-  return lane.modules.filter((module) => module.priority === 'CRITICAL').length;
+  return lane.modules.filter((laneModule) => laneModule.priority === 'CRITICAL').length;
 }
 
 function resolveLaneSummary(lane: EnterpriseCommercialLane): EnterpriseCommercialLaneSummary {
   return {
     total: lane.summary?.total ?? lane.modules.length,
     critical: lane.summary?.critical ?? countCriticalModules(lane),
-    high: lane.summary?.high ?? lane.modules.filter((module) => module.priority === 'HIGH').length,
+    high:
+      lane.summary?.high ??
+      lane.modules.filter((laneModule) => laneModule.priority === 'HIGH').length,
     regulated:
       lane.summary?.regulated ??
-      lane.modules.filter((module) =>
+      lane.modules.filter((laneModule) =>
         ['ASSISTED_AUTOMATION', 'CRC_VALIDATED', 'HUMAN_LED'].includes(
-          module.automationBoundary ?? '',
+          laneModule.automationBoundary ?? '',
         ),
       ).length,
   };
@@ -49,7 +51,7 @@ function resolveLaneSummary(lane: EnterpriseCommercialLane): EnterpriseCommercia
 export default function EnterpriseCommercialLanesWidget() {
   const [state, setState] = useState<CommercialLanesState>(INITIAL_STATE);
 
-  async function load(forceRefresh = false) {
+  const load = useCallback(async (forceRefresh = false) => {
     setState((current) => ({ ...current, loading: true, error: null }));
 
     try {
@@ -65,11 +67,15 @@ export default function EnterpriseCommercialLanesWidget() {
         lanes: [],
       });
     }
-  }
+  }, []);
 
   useEffect(() => {
-    void load();
-  }, []);
+    const task = window.setTimeout(() => {
+      void load();
+    }, 0);
+
+    return () => window.clearTimeout(task);
+  }, [load]);
 
   const totalModules = useMemo(
     () => state.lanes.reduce((total, lane) => total + resolveLaneSummary(lane).total, 0),
@@ -178,13 +184,13 @@ export default function EnterpriseCommercialLanesWidget() {
                 </div>
 
                 <div className="mt-5 flex flex-wrap gap-2">
-                  {lane.modules.slice(0, 4).map((module) => (
+                  {lane.modules.slice(0, 4).map((laneModule) => (
                     <Link
-                      href={`/dashboard/modules/${module.slug}`}
-                      key={module.slug}
+                      href={`/dashboard/modules/${laneModule.slug}`}
+                      key={laneModule.slug}
                       className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600 transition hover:bg-blue-50 hover:text-blue-700"
                     >
-                      {module.label}
+                      {laneModule.label}
                     </Link>
                   ))}
                 </div>

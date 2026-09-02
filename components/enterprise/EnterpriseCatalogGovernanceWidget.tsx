@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { AlertTriangle, Database, Loader2, RefreshCw, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, Loader2, RefreshCw, ShieldCheck } from 'lucide-react';
 import {
   enterpriseUniversalApi,
   type EnterpriseCatalogItem,
@@ -95,7 +95,7 @@ function sortCriticalRoadmap(items: EnterpriseCatalogItem[]) {
 export default function EnterpriseCatalogGovernanceWidget() {
   const [state, setState] = useState<CatalogState>(INITIAL_STATE);
 
-  async function load(forceRefresh = false) {
+  const load = useCallback(async (forceRefresh = false) => {
     setState((current) => ({ ...current, loading: true, error: null }));
 
     try {
@@ -111,11 +111,15 @@ export default function EnterpriseCatalogGovernanceWidget() {
         items: [],
       });
     }
-  }
+  }, []);
 
   useEffect(() => {
-    void load();
-  }, []);
+    const task = window.setTimeout(() => {
+      void load();
+    }, 0);
+
+    return () => window.clearTimeout(task);
+  }, [load]);
 
   const stats = useMemo(() => {
     const persistence = countBy(state.items, (item) => item.persistence);
