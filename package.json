@@ -9,6 +9,7 @@
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "format": "prettier --write .",
     "test": "vitest run",
+    "test:tax-scenarios": "vitest run lib/api/__tests__/tax-scenarios.test.ts --pool=forks",
     "test:watch": "vitest"
   },
   "dependencies": {

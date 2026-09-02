@@ -14,6 +14,72 @@ const apiPostMock = vi.mocked(api.post);
 const getActiveCompanyIdMock = vi.mocked(getActiveCompanyId);
 const isDemoSessionMock = vi.mocked(isDemoSession);
 
+const DEMO_REGRESSION_CASES = [
+  {
+    id: 'MEI_LIMIT_WITHOUT_PAYROLL',
+    input: {
+      activity: 'CREATOR' as const,
+      monthlyRevenue: 6_750,
+      monthlyDeductibleExpenses: 500,
+      monthlyPayroll: 0,
+      dependents: 0,
+      currentModel: 'MEI' as const,
+    },
+    expected: {
+      bestEstimatedModel: 'MEI',
+      factorRPercentage: 0,
+      cbsInformative2026: 729,
+      ibsInformative2026: 81,
+      targetModel: 'MEI',
+      eligibilityStatus: 'ELIGIBLE',
+      estimatedTax: 1_020,
+      checkoutAllowed: true,
+    },
+  },
+  {
+    id: 'SIMPLES_OVER_LIMIT_BLOCKED',
+    input: {
+      activity: 'LEGAL' as const,
+      monthlyRevenue: 410_000,
+      monthlyDeductibleExpenses: 35_000,
+      monthlyPayroll: 115_000,
+      dependents: 0,
+      currentModel: 'SIMPLES_NACIONAL' as const,
+    },
+    expected: {
+      bestEstimatedModel: 'PF',
+      factorRPercentage: 28.05,
+      cbsInformative2026: 44_280,
+      ibsInformative2026: 4_920,
+      targetModel: 'SIMPLES_NACIONAL',
+      eligibilityStatus: 'INELIGIBLE',
+      estimatedTax: -1,
+      checkoutAllowed: false,
+    },
+  },
+  {
+    id: 'SERVICE_FACTOR_R_BELOW_THRESHOLD_ANNEX_V',
+    input: {
+      activity: 'SERVICE_PROVIDER' as const,
+      monthlyRevenue: 220_000,
+      monthlyDeductibleExpenses: 35_000,
+      monthlyPayroll: 50_000,
+      dependents: 1,
+      currentModel: 'PF' as const,
+    },
+    expected: {
+      bestEstimatedModel: 'PF',
+      factorRPercentage: 22.73,
+      cbsInformative2026: 23_760,
+      ibsInformative2026: 2_640,
+      targetModel: 'SIMPLES_NACIONAL',
+      eligibilityStatus: 'ELIGIBLE',
+      estimatedTax: 545_100,
+      checkoutAllowed: false,
+    },
+  },
+];
+
 const API_RESPONSE: SimulationResponse = {
   status: 'OK',
   input: {
@@ -338,5 +404,33 @@ describe('taxScenariosApi', () => {
         currentModel: 'SIMPLES_NACIONAL',
       }),
     ).rejects.toThrow('Request failed with status code 401');
+  });
+
+  describe('demo tax scenario regression contract', () => {
+    it.each(DEMO_REGRESSION_CASES)(
+      'preserves demo fiscal contract $id',
+      async (regressionCase) => {
+        vi.stubEnv('NEXT_PUBLIC_ENABLE_DEMO_FALLBACK', 'true');
+        getActiveCompanyIdMock.mockReturnValueOnce('demo-001');
+        isDemoSessionMock.mockReturnValue(true);
+        apiPostMock.mockRejectedValueOnce(new Error('Request failed with status code 401'));
+
+        const result = await taxScenariosApi.simulate(regressionCase.input);
+        const targetComparison = result.comparisons.find(
+          (comparison) => comparison.model === regressionCase.expected.targetModel,
+        );
+
+        expect(result.bestEstimatedModel).toBe(regressionCase.expected.bestEstimatedModel);
+        expect(result.factorR.percentage).toBe(regressionCase.expected.factorRPercentage);
+        expect(result.reformImpact.estimatedCbs).toBe(regressionCase.expected.cbsInformative2026);
+        expect(result.reformImpact.estimatedIbs).toBe(regressionCase.expected.ibsInformative2026);
+        expect(targetComparison?.eligibilityStatus).toBe(regressionCase.expected.eligibilityStatus);
+        expect(targetComparison?.estimatedTax).toBe(regressionCase.expected.estimatedTax);
+        expect(result.preProposal?.checkoutAllowed).toBe(
+          regressionCase.expected.checkoutAllowed,
+        );
+        expect(result.complianceTrail?.officialAssessment).toBe(false);
+      },
+    );
   });
 });
