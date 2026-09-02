@@ -72,6 +72,7 @@ export default function TaxScenarioSimulator() {
   const complianceRules =
     result?.complianceTrail?.rules.filter((rule) => rule.severity !== 'INFO') ?? [];
   const commercialDecision = result?.complianceTrail?.commercialDecision;
+  const serviceQualification = result?.serviceQualification;
   const auditLines = result?.calculationAudit?.lines ?? [];
 
   return (
@@ -331,6 +332,46 @@ export default function TaxScenarioSimulator() {
                         </p>
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {serviceQualification && (
+                <div className="rounded-[2rem] border border-emerald-500/20 bg-emerald-500/5 p-5">
+                  <div className="flex flex-col gap-3 border-b border-white/5 pb-4 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-200">
+                        Qualificação comercial segura
+                      </p>
+                      <h4 className="mt-2 text-lg font-black text-white">
+                        {serviceQualification.primaryOffer.title}
+                      </h4>
+                    </div>
+                    <span className="rounded-full border border-white/10 px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-slate-200">
+                      {serviceQualification.primaryOffer.checkoutMode.replaceAll('_', ' ')}
+                    </span>
+                  </div>
+                  <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                        Ações permitidas
+                      </p>
+                      <ul className="mt-3 space-y-2 text-xs text-slate-300">
+                        {serviceQualification.allowedActions.map((action) => (
+                          <li key={action}>{action.replaceAll('_', ' ')}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                        Avisos comerciais
+                      </p>
+                      <ul className="mt-3 space-y-2 text-xs text-amber-100/90">
+                        {serviceQualification.salesWarnings.slice(0, 3).map((warning) => (
+                          <li key={warning}>{warning}</li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
                 </div>
               )}

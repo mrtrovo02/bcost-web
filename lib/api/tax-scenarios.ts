@@ -121,6 +121,30 @@ export interface TaxScenarioCalculationAudit {
   lines: TaxCalculationAuditLine[];
 }
 
+export interface TaxScenarioServiceQualification {
+  stage: 'QUALIFIED_LEAD' | 'NEEDS_DISCOVERY' | 'BLOCKED';
+  primaryOffer: {
+    sku:
+      | 'PF_TAX_REVIEW'
+      | 'TAX_REGIME_CRC_REVIEW'
+      | 'PJ_MIGRATION_STUDY'
+      | 'COMPLIANCE_BLOCKER_REVIEW';
+    title: string;
+    checkoutMode:
+      | 'ASSISTED_CHECKOUT'
+      | 'SALES_REVIEW_ONLY'
+      | 'BLOCKED';
+  };
+  allowedActions: Array<
+    | 'REQUEST_DOCUMENTS'
+    | 'SCHEDULE_CRC_REVIEW'
+    | 'CREATE_ASSISTED_PROPOSAL'
+    | 'BLOCK_AUTOMATIC_CHECKOUT'
+  >;
+  missingEvidence: string[];
+  salesWarnings: string[];
+}
+
 export interface SimulationResponse {
   status: 'OK';
   input: SimulateTaxScenarioDto;
@@ -147,6 +171,7 @@ export interface SimulationResponse {
   recommendation: TaxScenarioRecommendation;
   complianceTrail?: TaxScenarioComplianceTrail;
   calculationAudit?: TaxScenarioCalculationAudit;
+  serviceQualification?: TaxScenarioServiceQualification;
   guardrails: string[];
   generatedAt: string;
   scenarioId?: string;
@@ -511,6 +536,83 @@ function isBlockingRuleRelevantForCommercialDecision(
   return true;
 }
 
+function buildDemoServiceQualification(
+  recommendation: TaxScenarioRecommendation,
+  complianceTrail: TaxScenarioComplianceTrail,
+  bestModel: TaxScenarioCalculation['model'],
+): TaxScenarioServiceQualification {
+  const commercialDecision = complianceTrail.commercialDecision;
+  const missingEvidence = Array.from(
+    new Set(
+      complianceTrail.rules
+        .filter((rule) => rule.status === 'BLOCKED' || rule.status === 'REQUIRES_REVIEW')
+        .flatMap((rule) => rule.evidenceRequired),
+    ),
+  );
+
+  if (commercialDecision.status === 'BLOCKED_BY_COMPLIANCE') {
+    return {
+      stage: 'BLOCKED',
+      primaryOffer: {
+        sku: 'COMPLIANCE_BLOCKER_REVIEW',
+        title: 'Revisão de bloqueio fiscal antes da proposta',
+        checkoutMode: 'BLOCKED',
+      },
+      allowedActions: ['REQUEST_DOCUMENTS', 'SCHEDULE_CRC_REVIEW', 'BLOCK_AUTOMATIC_CHECKOUT'],
+      missingEvidence,
+      salesWarnings: [
+        'Não apresentar economia, migração ou enquadramento enquanto houver regra crítica bloqueada.',
+        ...commercialDecision.reasons,
+      ],
+    };
+  }
+
+  if (bestModel === 'PF') {
+    return {
+      stage: 'NEEDS_DISCOVERY',
+      primaryOffer: {
+        sku: 'PF_TAX_REVIEW',
+        title: 'Revisão fiscal PF e livro caixa',
+        checkoutMode: 'SALES_REVIEW_ONLY',
+      },
+      allowedActions: ['REQUEST_DOCUMENTS', 'SCHEDULE_CRC_REVIEW'],
+      missingEvidence,
+      salesWarnings: [
+        'Não vender abertura ou migração PJ com base neste cenário preliminar.',
+        'Oferta indicada: diagnóstico PF, livro caixa, retenções e validação documental.',
+      ],
+    };
+  }
+
+  if (recommendation.decision === 'SIMPLES_WITH_FACTOR_R_REVIEW') {
+    return {
+      stage: 'NEEDS_DISCOVERY',
+      primaryOffer: {
+        sku: 'TAX_REGIME_CRC_REVIEW',
+        title: 'Revisão CRC de Fator R e regime tributário',
+        checkoutMode: 'SALES_REVIEW_ONLY',
+      },
+      allowedActions: ['REQUEST_DOCUMENTS', 'SCHEDULE_CRC_REVIEW'],
+      missingEvidence,
+      salesWarnings: ['Não prometer enquadramento no Anexo III antes de validar folha, pró-labore e RBT12.'],
+    };
+  }
+
+  return {
+    stage: 'QUALIFIED_LEAD',
+    primaryOffer: {
+      sku: 'PJ_MIGRATION_STUDY',
+      title: 'Estudo assistido de abertura ou migração PJ',
+      checkoutMode: commercialDecision.canGenerateProposal ? 'ASSISTED_CHECKOUT' : 'SALES_REVIEW_ONLY',
+    },
+    allowedActions: commercialDecision.canGenerateProposal
+      ? ['REQUEST_DOCUMENTS', 'SCHEDULE_CRC_REVIEW', 'CREATE_ASSISTED_PROPOSAL']
+      : ['REQUEST_DOCUMENTS', 'SCHEDULE_CRC_REVIEW'],
+    missingEvidence,
+    salesWarnings: ['Proposta deve manter cláusula de estimativa e revisão CRC antes de enquadramento definitivo.'],
+  };
+}
+
 function createDemoSimulation(input: SimulateTaxScenarioDto, companyId?: string): SimulationResponse {
   const annualRevenue = money(input.monthlyRevenue * 12);
   const annualDeductibleExpenses = money(input.monthlyDeductibleExpenses * 12);
@@ -709,6 +811,57 @@ function createDemoSimulation(input: SimulateTaxScenarioDto, companyId?: string)
     annualPayroll,
     factorRPercentage,
   );
+  const recommendation: TaxScenarioRecommendation = {
+    decision:
+      annualRevenue > SIMPLES_ANNUAL_LIMIT
+        ? 'ASSISTED_TAX_PLANNING_REQUIRED'
+        : bestEstimatedModel === 'PF'
+          ? 'PF_REVIEW_RECOMMENDED'
+          : factorRPercentage > 0 && factorRPercentage < FACTOR_R_THRESHOLD
+            ? 'SIMPLES_WITH_FACTOR_R_REVIEW'
+            : 'PJ_SIMULATION_RECOMMENDED',
+    title:
+      annualRevenue > SIMPLES_ANNUAL_LIMIT
+        ? 'Simples Nacional bloqueado pelo limite de receita'
+        : bestEstimatedModel === 'PF'
+          ? 'PF permanece melhor na simulação preliminar'
+          : factorRPercentage > 0 && factorRPercentage < FACTOR_R_THRESHOLD
+            ? 'Revisar Fator R antes de decidir o modelo'
+            : 'Estrutura PJ merece análise assistida',
+    rationale: [
+      annualRevenue > SIMPLES_ANNUAL_LIMIT
+        ? 'A receita anualizada supera R$ 4.800.000,00, limite geral de EPP para permanência no Simples Nacional.'
+        : bestEstimatedModel === 'PF'
+          ? 'Com os valores informados, os regimes PJ elegíveis não superam o resultado líquido estimado da pessoa física.'
+          : `Modelo com melhor resultado estimado: ${bestEstimatedModel}.`,
+      bestEstimatedModel === 'PF' && factorRPercentage > 0 && factorRPercentage < FACTOR_R_THRESHOLD
+        ? `Fator R estimado em ${factorRPercentage}%, abaixo do limiar de 28%; Simples para serviços tende a exigir Anexo V até revisão da folha/pró-labore.`
+        : potentialGain > 0
+          ? `Ganho anual estimado contra o modelo atual: R$ ${potentialGain.toLocaleString('pt-BR')}.`
+          : 'A comparação indica necessidade de detalhamento antes de decisão.',
+    ],
+    requiredEvidence:
+      bestEstimatedModel === 'PF'
+        ? [
+            'Recibos/notas e retenções dos últimos 12 meses',
+            'Despesas dedutíveis com documentação hábil',
+            'CNAE pretendido e município de prestação',
+          ]
+        : ['CNAE pretendido', 'Município de prestação', 'Notas/recibos recentes'],
+    nextActions:
+      bestEstimatedModel === 'PF'
+        ? [
+            'Manter recomendação como triagem, sem promessa de economia',
+            'Validar livro caixa e retenções',
+            'Submeter revisão CRC antes de proposta de migração',
+          ]
+        : ['Rodar onboarding de abertura/migração', 'Validar regime tributário', 'Submeter revisão CRC'],
+  };
+  const serviceQualification = buildDemoServiceQualification(
+    recommendation,
+    complianceTrail,
+    bestEstimatedModel,
+  );
 
   return {
     status: 'OK',
@@ -742,54 +895,10 @@ function createDemoSimulation(input: SimulateTaxScenarioDto, companyId?: string)
       estimatedIbs: money(annualRevenue * IBS_INFORMATIVE_2026),
       note: 'Valores de CBS/IBS são informativos para 2026 e devem ser revisados conforme ato técnico, município, atividade e documento fiscal.',
     },
-    recommendation: {
-      decision:
-        annualRevenue > SIMPLES_ANNUAL_LIMIT
-          ? 'ASSISTED_TAX_PLANNING_REQUIRED'
-          : bestEstimatedModel === 'PF'
-            ? 'PF_REVIEW_RECOMMENDED'
-            : factorRPercentage > 0 && factorRPercentage < FACTOR_R_THRESHOLD
-              ? 'SIMPLES_WITH_FACTOR_R_REVIEW'
-            : 'PJ_SIMULATION_RECOMMENDED',
-      title:
-        annualRevenue > SIMPLES_ANNUAL_LIMIT
-          ? 'Simples Nacional bloqueado pelo limite de receita'
-          : bestEstimatedModel === 'PF'
-            ? 'PF permanece melhor na simulação preliminar'
-            : factorRPercentage > 0 && factorRPercentage < FACTOR_R_THRESHOLD
-              ? 'Revisar Fator R antes de decidir o modelo'
-            : 'Estrutura PJ merece análise assistida',
-      rationale: [
-        annualRevenue > SIMPLES_ANNUAL_LIMIT
-          ? 'A receita anualizada supera R$ 4.800.000,00, limite geral de EPP para permanência no Simples Nacional.'
-          : bestEstimatedModel === 'PF'
-            ? 'Com os valores informados, os regimes PJ elegíveis não superam o resultado líquido estimado da pessoa física.'
-            : `Modelo com melhor resultado estimado: ${bestEstimatedModel}.`,
-        bestEstimatedModel === 'PF' && factorRPercentage > 0 && factorRPercentage < FACTOR_R_THRESHOLD
-          ? `Fator R estimado em ${factorRPercentage}%, abaixo do limiar de 28%; Simples para serviços tende a exigir Anexo V até revisão da folha/pró-labore.`
-          : potentialGain > 0
-            ? `Ganho anual estimado contra o modelo atual: R$ ${potentialGain.toLocaleString('pt-BR')}.`
-            : 'A comparação indica necessidade de detalhamento antes de decisão.',
-      ],
-      requiredEvidence:
-        bestEstimatedModel === 'PF'
-          ? [
-              'Recibos/notas e retenções dos últimos 12 meses',
-              'Despesas dedutíveis com documentação hábil',
-              'CNAE pretendido e município de prestação',
-            ]
-          : ['CNAE pretendido', 'Município de prestação', 'Notas/recibos recentes'],
-      nextActions:
-        bestEstimatedModel === 'PF'
-          ? [
-              'Manter recomendação como triagem, sem promessa de economia',
-              'Validar livro caixa e retenções',
-              'Submeter revisão CRC antes de proposta de migração',
-            ]
-          : ['Rodar onboarding de abertura/migração', 'Validar regime tributário', 'Submeter revisão CRC'],
-    },
+    recommendation,
     complianceTrail,
     calculationAudit,
+    serviceQualification,
     guardrails: [
       'Fallback demonstrativo restrito a sessão demo; empresas reais continuam exigindo API autenticada e dados oficiais.',
       ...(annualRevenue > SIMPLES_ANNUAL_LIMIT
