@@ -202,6 +202,16 @@ describe('taxScenariosApi', () => {
       canGenerateProposal: false,
       requiresCrcReview: true,
     });
+    expect(result.calculationAudit?.version).toBe('tax-scenarios-calculation-audit-2026.1');
+    expect(result.calculationAudit?.lines).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'FACTOR_R',
+          formula: 'folha_12_meses / receita_bruta_12_meses * 100',
+          result: 320,
+        }),
+      ]),
+    );
     expect(mei?.eligibilityStatus).toBe('REQUIRES_REVIEW');
     expect(mei?.estimatedTax).toBe(-1);
     expect(mei?.warnings.join(' ')).toContain('folha informada');

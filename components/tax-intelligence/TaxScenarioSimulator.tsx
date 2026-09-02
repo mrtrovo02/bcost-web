@@ -72,6 +72,7 @@ export default function TaxScenarioSimulator() {
   const complianceRules =
     result?.complianceTrail?.rules.filter((rule) => rule.severity !== 'INFO') ?? [];
   const commercialDecision = result?.complianceTrail?.commercialDecision;
+  const auditLines = result?.calculationAudit?.lines ?? [];
 
   return (
     <section className="bg-[#090d16] border border-white/5 rounded-[2.5rem] p-6 shadow-[0_4px_25px_rgba(0,0,0,0.25)]">
@@ -327,6 +328,30 @@ export default function TaxScenarioSimulator() {
                         </div>
                         <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
                           Evidências: {rule.evidenceRequired.slice(0, 3).join(', ')}.
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {auditLines.length > 0 && (
+                <div className="rounded-[2rem] border border-white/5 bg-[#0d1320] p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Calculator className="text-emerald-400" size={18} />
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                      Memória de cálculo
+                    </p>
+                  </div>
+                  <div className="grid gap-3 lg:grid-cols-2">
+                    {auditLines.slice(0, 6).map((line) => (
+                      <div key={line.code} className="rounded-2xl border border-white/5 bg-[#090d16] p-4">
+                        <p className="text-sm font-black text-white">{line.title}</p>
+                        <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
+                          {line.formula}
+                        </p>
+                        <p className="mt-3 text-xs font-black text-emerald-200">
+                          Resultado: {line.result}
                         </p>
                       </div>
                     ))}

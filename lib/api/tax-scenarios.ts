@@ -105,6 +105,22 @@ export interface TaxScenarioComplianceTrail {
   disclaimers: string[];
 }
 
+export interface TaxCalculationAuditLine {
+  code: string;
+  title: string;
+  formula: string;
+  inputs: Record<string, string | number | boolean>;
+  result: string | number;
+  sourceBasis: string[];
+  officialAssessment: false;
+}
+
+export interface TaxScenarioCalculationAudit {
+  version: string;
+  generatedAt: string;
+  lines: TaxCalculationAuditLine[];
+}
+
 export interface SimulationResponse {
   status: 'OK';
   input: SimulateTaxScenarioDto;
@@ -130,6 +146,7 @@ export interface SimulationResponse {
   };
   recommendation: TaxScenarioRecommendation;
   complianceTrail?: TaxScenarioComplianceTrail;
+  calculationAudit?: TaxScenarioCalculationAudit;
   guardrails: string[];
   generatedAt: string;
   scenarioId?: string;
@@ -365,6 +382,119 @@ function buildDemoComplianceTrail(
   };
 }
 
+function buildDemoCalculationAudit(
+  input: SimulateTaxScenarioDto,
+  comparisons: TaxScenarioCalculation[],
+  annualRevenue: number,
+  annualDeductibleExpenses: number,
+  annualPayroll: number,
+  factorRPercentage: number,
+): TaxScenarioCalculationAudit {
+  const findComparison = (model: TaxScenarioCalculation['model']) =>
+    comparisons.find((comparison) => comparison.model === model);
+  const pf = findComparison('PF');
+  const mei = findComparison('MEI');
+  const simples = findComparison('SIMPLES_NACIONAL');
+  const lucroPresumido = findComparison('LUCRO_PRESUMIDO');
+
+  return {
+    version: 'tax-scenarios-calculation-audit-2026.1',
+    generatedAt: new Date().toISOString(),
+    lines: [
+      {
+        code: 'NORMALIZED_ANNUAL_INPUTS',
+        title: 'Entradas anualizadas',
+        formula: 'valor_mensal * 12',
+        inputs: {
+          monthlyRevenue: input.monthlyRevenue,
+          monthlyDeductibleExpenses: input.monthlyDeductibleExpenses,
+          monthlyPayroll: input.monthlyPayroll,
+        },
+        result: `Receita ${annualRevenue}; despesas ${annualDeductibleExpenses}; folha ${annualPayroll}`,
+        sourceBasis: ['Critério matemático de anualização para triagem; RBT12 oficial deve ser informado para apuração final.'],
+        officialAssessment: false,
+      },
+      {
+        code: 'FACTOR_R',
+        title: 'Fator R',
+        formula: 'folha_12_meses / receita_bruta_12_meses * 100',
+        inputs: {
+          annualPayroll,
+          annualRevenue,
+          thresholdPercentage: FACTOR_R_THRESHOLD,
+        },
+        result: factorRPercentage,
+        sourceBasis: ['Lei Complementar 123/2006, Anexos III/V.'],
+        officialAssessment: false,
+      },
+      {
+        code: 'PF_IRPF_ESTIMATE',
+        title: 'IRPF pessoa física estimado',
+        formula: 'base tributável aplicada à tabela progressiva anualizada',
+        inputs: {
+          taxableBase: pf?.taxableBase ?? 0,
+          dependents: input.dependents,
+        },
+        result: pf?.estimatedTax ?? 0,
+        sourceBasis: ['Tabela progressiva mensal do IRPF anualizada para simulação preliminar.'],
+        officialAssessment: false,
+      },
+      {
+        code: 'MEI_ELIGIBILITY_AND_DAS',
+        title: 'MEI elegibilidade e DAS estimado',
+        formula: 'receita_anual <= 81.000 e ausência de folha não validada',
+        inputs: {
+          annualRevenue,
+          annualPayroll,
+          annualLimit: MEI_ANNUAL_LIMIT,
+          eligibilityStatus: mei?.eligibilityStatus ?? 'REQUIRES_REVIEW',
+        },
+        result: mei?.estimatedTax ?? -1,
+        sourceBasis: ['Portal gov.br/Empresas e Negócios.', 'Resolução CGSN nº 140/2018.'],
+        officialAssessment: false,
+      },
+      {
+        code: 'SIMPLES_EFFECTIVE_RATE',
+        title: 'Simples Nacional estimado',
+        formula: '(RBT12 * aliquota_nominal - parcela_a_deduzir) / RBT12',
+        inputs: {
+          annualRevenue,
+          annualLimit: SIMPLES_ANNUAL_LIMIT,
+          effectiveRate: simples?.estimatedEffectiveRate ?? 0,
+        },
+        result: simples?.estimatedTax ?? -1,
+        sourceBasis: ['Lei Complementar 123/2006, art. 18 e Anexos III/V.'],
+        officialAssessment: false,
+      },
+      {
+        code: 'LUCRO_PRESUMIDO_ESTIMATE',
+        title: 'Lucro Presumido estimado',
+        formula: 'receita * margem_presumida * IRPJ/CSLL + PIS/COFINS + ISS',
+        inputs: {
+          annualRevenue,
+          presumedTaxableBase: lucroPresumido?.taxableBase ?? 0,
+        },
+        result: lucroPresumido?.estimatedTax ?? 0,
+        sourceBasis: ['Validação oficial exige atividade, adicional de IRPJ, retenções e ISS municipal.'],
+        officialAssessment: false,
+      },
+      {
+        code: 'CBS_IBS_INFORMATIVE_2026',
+        title: 'CBS/IBS informativo 2026',
+        formula: 'receita_anual * CBS 0,9%; receita_anual * IBS 0,1%',
+        inputs: {
+          annualRevenue,
+          cbsRate: CBS_INFORMATIVE_2026,
+          ibsRate: IBS_INFORMATIVE_2026,
+        },
+        result: `CBS ${money(annualRevenue * CBS_INFORMATIVE_2026)}; IBS ${money(annualRevenue * IBS_INFORMATIVE_2026)}`,
+        sourceBasis: ['EC 132/2023, art. 125; LC 214/2025.'],
+        officialAssessment: false,
+      },
+    ],
+  };
+}
+
 function isBlockingRuleRelevantForCommercialDecision(
   ruleCode: string,
   currentModel?: SimulateTaxScenarioDto['currentModel'],
@@ -571,6 +701,14 @@ function createDemoSimulation(input: SimulateTaxScenarioDto, companyId?: string)
     annualPayroll,
     factorRPercentage,
   );
+  const calculationAudit = buildDemoCalculationAudit(
+    input,
+    comparisons,
+    annualRevenue,
+    annualDeductibleExpenses,
+    annualPayroll,
+    factorRPercentage,
+  );
 
   return {
     status: 'OK',
@@ -651,6 +789,7 @@ function createDemoSimulation(input: SimulateTaxScenarioDto, companyId?: string)
           : ['Rodar onboarding de abertura/migração', 'Validar regime tributário', 'Submeter revisão CRC'],
     },
     complianceTrail,
+    calculationAudit,
     guardrails: [
       'Fallback demonstrativo restrito a sessão demo; empresas reais continuam exigindo API autenticada e dados oficiais.',
       ...(annualRevenue > SIMPLES_ANNUAL_LIMIT
