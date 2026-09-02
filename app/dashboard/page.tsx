@@ -32,6 +32,58 @@ interface FiscalData {
   history: DashboardHistoryEntry[];
 }
 
+type RevenueMetricsPayload = {
+  totalInvoiced?: number;
+  taxProvision?: number;
+  invoiceCount?: number;
+  fiscalIntelligence?: { isEligibleAnexoIII?: boolean };
+};
+
+type FactorRPayload = {
+  fatorR?: number;
+  value?: number;
+};
+
+type DashboardOverviewPayload = {
+  summary?: { financialScore?: number };
+  revenueChart?: DashboardHistoryEntry[];
+};
+
+type DashboardApiResponse<T> = {
+  data: T;
+};
+
+function isCanceledRequest(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    (error.name === 'CanceledError' || (error as { code?: string }).code === 'ERR_CANCELED')
+  );
+}
+
+function getErrorStatus(error: unknown): number | undefined {
+  const responseStatus =
+    typeof error === 'object' &&
+    error !== null &&
+    'response' in error &&
+    typeof (error as { response?: { status?: unknown } }).response?.status === 'number'
+      ? (error as { response: { status: number } }).response.status
+      : undefined;
+
+  const directStatus =
+    typeof error === 'object' &&
+    error !== null &&
+    'status' in error &&
+    typeof (error as Record<string, unknown>).status === 'number'
+      ? (error as { status?: number }).status
+      : undefined;
+
+  return responseStatus ?? directStatus;
+}
+
+function settledData<T>(result: PromiseSettledResult<DashboardApiResponse<T>>): T | null {
+  return result.status === 'fulfilled' ? result.value.data : null;
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const { selectedCompany } = useCompany();
@@ -83,8 +135,7 @@ export default function DashboardPage() {
         return;
       }
 
-      // Consultas simultâneas otimizadas no Motor bCost
-      const [metricsRes, fatorRRes, overviewRes] = await Promise.all([
+      const [metricsResult, fatorRResult, overviewResult] = await Promise.allSettled([
         api.get(`/revenue/metrics/${selectedCompany.id}`, {
           params: { month, year },
           signal: abortControllerRef.current.signal,
@@ -98,19 +149,31 @@ export default function DashboardPage() {
         }),
       ]);
 
+      const rejectedResults = [metricsResult, fatorRResult, overviewResult].filter(
+        (result): result is PromiseRejectedResult => result.status === 'rejected',
+      );
+
+      if (
+        rejectedResults.length === 3 &&
+        rejectedResults.some((result) => isCanceledRequest(result.reason))
+      ) {
+        return;
+      }
+
+      if (rejectedResults.some((result) => getErrorStatus(result.reason) === 401)) {
+        router.push('/login');
+        return;
+      }
+
+      if (rejectedResults.length === 3) {
+        throw rejectedResults[0]?.reason ?? new Error('Motor bCost indisponível.');
+      }
+
       lastLoadedId.current = selectedCompany.id;
 
-      const metrics = metricsRes.data as {
-        totalInvoiced?: number;
-        taxProvision?: number;
-        invoiceCount?: number;
-        fiscalIntelligence?: { isEligibleAnexoIII?: boolean };
-      };
-      const fatorR = fatorRRes.data as { fatorR?: number; value?: number };
-      const overview = overviewRes.data as {
-        summary?: { financialScore?: number };
-        revenueChart?: DashboardHistoryEntry[];
-      };
+      const metrics = settledData<RevenueMetricsPayload>(metricsResult) ?? {};
+      const fatorR = settledData<FactorRPayload>(fatorRResult) ?? {};
+      const overview = settledData<DashboardOverviewPayload>(overviewResult) ?? {};
 
       const totalRevenue = metrics.totalInvoiced || 0;
       const estimatedTax = metrics.taxProvision || 0;
@@ -135,28 +198,11 @@ export default function DashboardPage() {
         history: overview.revenueChart || [],
       });
     } catch (error: unknown) {
-      const isCanceled =
-        error instanceof Error &&
-        (error.name === 'CanceledError' || (error as { code?: string }).code === 'ERR_CANCELED');
-      if (isCanceled) return;
+      if (isCanceledRequest(error)) return;
 
       console.error('Erro crítico no Motor bCost:', error);
 
-      const responseStatus =
-        typeof error === 'object' &&
-        error !== null &&
-        'response' in error &&
-        typeof (error as { response?: { status?: unknown } }).response?.status === 'number'
-          ? (error as { response: { status: number } }).response.status
-          : undefined;
-      const directStatus =
-        typeof error === 'object' &&
-        error !== null &&
-        'status' in error &&
-        typeof (error as Record<string, unknown>).status === 'number'
-          ? (error as { status?: number }).status
-          : undefined;
-      const status = responseStatus ?? directStatus;
+      const status = getErrorStatus(error);
 
       if (isDemoSession()) {
         const demoData = getDemoFiscalData(selectedCompany.name);
