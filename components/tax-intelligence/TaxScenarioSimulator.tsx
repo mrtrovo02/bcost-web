@@ -71,6 +71,7 @@ export default function TaxScenarioSimulator() {
     result?.guardrails.filter((item) => item.toLowerCase().includes('bloqueia')) ?? [];
   const complianceRules =
     result?.complianceTrail?.rules.filter((rule) => rule.severity !== 'INFO') ?? [];
+  const commercialDecision = result?.complianceTrail?.commercialDecision;
 
   return (
     <section className="bg-[#090d16] border border-white/5 rounded-[2.5rem] p-6 shadow-[0_4px_25px_rgba(0,0,0,0.25)]">
@@ -286,9 +287,31 @@ export default function TaxScenarioSimulator() {
                       </h4>
                     </div>
                     <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-amber-200">
-                      {result.complianceTrail.calculationMode.replace('_', ' ')}
+                      {commercialDecision?.status.replaceAll('_', ' ') ?? result.complianceTrail.calculationMode.replace('_', ' ')}
                     </span>
                   </div>
+
+                  {commercialDecision && (
+                    <div className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4">
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-200">
+                        Gate comercial
+                      </p>
+                      <p className="mt-2 text-sm font-bold text-white">
+                        {commercialDecision.canGenerateProposal
+                          ? 'Proposta assistida permitida após validação CRC.'
+                          : commercialDecision.status === 'BLOCKED_BY_COMPLIANCE'
+                            ? 'Proposta automática bloqueada por regra de compliance.'
+                            : 'Proposta automática bloqueada até revisão assistida.'}
+                      </p>
+                      {commercialDecision.reasons.length > 0 && (
+                        <ul className="mt-3 space-y-2 text-xs leading-relaxed text-amber-50/90">
+                          {commercialDecision.reasons.slice(0, 3).map((reason) => (
+                            <li key={reason}>{reason}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
 
                   <div className="mt-4 space-y-3">
                     {(complianceRules.length > 0 ? complianceRules : result.complianceTrail.rules.slice(0, 2)).map((rule) => (

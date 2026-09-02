@@ -197,6 +197,11 @@ describe('taxScenariosApi', () => {
         }),
       ]),
     );
+    expect(result.complianceTrail?.commercialDecision).toMatchObject({
+      status: 'ASSISTED_REVIEW_REQUIRED',
+      canGenerateProposal: false,
+      requiresCrcReview: true,
+    });
     expect(mei?.eligibilityStatus).toBe('REQUIRES_REVIEW');
     expect(mei?.estimatedTax).toBe(-1);
     expect(mei?.warnings.join(' ')).toContain('folha informada');
@@ -221,6 +226,8 @@ describe('taxScenariosApi', () => {
 
     expect(result.bestEstimatedModel).toBe('PF');
     expect(result.annualSavings).toBe(0);
+    expect(result.complianceTrail?.commercialDecision.status).toBe('BLOCKED_BY_COMPLIANCE');
+    expect(result.complianceTrail?.commercialDecision.canGenerateProposal).toBe(false);
     expect(result.recommendation.rationale.join(' ')).not.toContain('Ganho anual estimado');
   });
 
