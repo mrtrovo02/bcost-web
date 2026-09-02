@@ -14,7 +14,7 @@ const isDemoSessionMock = vi.mocked(isDemoSession);
 
 describe('AxiosFiscalRepository', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     isDemoSessionMock.mockReturnValue(true);
   });
 
@@ -31,6 +31,29 @@ describe('AxiosFiscalRepository', () => {
       fatorR: expect.any(String),
       totalInvoices: expect.any(Number),
     });
+  });
+
+  it('sends the active company id header for real fiscal data requests', async () => {
+    isDemoSessionMock.mockReturnValue(false);
+    apiGetMock.mockResolvedValueOnce({
+      data: {
+        totalRevenue: 100000,
+        estimatedTax: 10000,
+        netRevenue: 90000,
+        fatorR: '28.00%',
+        totalInvoices: 12,
+      },
+    });
+
+    const repository = new AxiosFiscalRepository();
+    await repository.getTaxDataByCompany('company-real');
+
+    expect(apiGetMock).toHaveBeenCalledWith(
+      '/modules/fiscal/tax-data?company_id=company-real',
+      {
+        headers: { 'x-company-id': 'company-real' },
+      },
+    );
   });
 
   it('does not return demo fiscal data when the backend endpoint fails for a real company', async () => {

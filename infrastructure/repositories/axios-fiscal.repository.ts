@@ -38,7 +38,9 @@ export class AxiosFiscalRepository implements FiscalRepository {
     }
 
     try {
-      const { data } = await apiGet<TaxDataProps>(url);
+      const { data } = await apiGet<TaxDataProps>(url, {
+        headers: { 'x-company-id': companyId },
+      });
 
       if (!data) {
         throw new Error('Nenhum dado retornado pelo servidor de infraestrutura fiscal.');
