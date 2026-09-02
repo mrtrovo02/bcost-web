@@ -158,6 +158,8 @@ describe('taxScenariosApi', () => {
       serviceSku: 'TAX_REGIME_CRC_REVIEW',
     });
     expect(result.preProposal?.reviewReasons).toContain('FACTOR_R_THRESHOLD');
+    expect(new Date(result.preProposal?.validUntil ?? '').getTime()).toBeGreaterThan(Date.now());
+    expect(result.preProposal?.refreshTriggers.join(' ')).toContain('Alteração de faturamento');
   });
 
   it('keeps demo simulator operational when the protected API rejects the request', async () => {
@@ -272,6 +274,8 @@ describe('taxScenariosApi', () => {
       nextRoute: '/dashboard/modules/company-formation',
     });
     expect(result.preProposal?.readinessScore).toBeLessThan(80);
+    expect(new Date(result.preProposal?.validUntil ?? '').getTime()).toBeGreaterThan(Date.now());
+    expect(result.preProposal?.refreshTriggers.join(' ')).toContain('Alteração de faturamento');
     expect(result.preProposal?.documentChecklist).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

@@ -77,6 +77,9 @@ export default function TaxScenarioSimulator() {
   const preProposal = result?.preProposal;
   const auditLines = result?.calculationAudit?.lines ?? [];
   const preProposalRiskTone = resolvePreProposalRiskTone(preProposal?.riskLevel);
+  const preProposalValidUntil = preProposal
+    ? new Intl.DateTimeFormat('pt-BR').format(new Date(preProposal.validUntil))
+    : null;
 
   return (
     <section className="bg-[#090d16] border border-white/5 rounded-[2.5rem] p-6 shadow-[0_4px_25px_rgba(0,0,0,0.25)]">
@@ -397,6 +400,11 @@ export default function TaxScenarioSimulator() {
                         <span className="rounded-full border border-blue-400/20 bg-blue-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-blue-100">
                           Prontidão {preProposal.readinessScore}%
                         </span>
+                        {preProposalValidUntil && (
+                          <span className="rounded-full border border-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-slate-200">
+                            Válido até {preProposalValidUntil}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <Link
@@ -444,6 +452,14 @@ export default function TaxScenarioSimulator() {
                       <ul className="mt-3 space-y-2 text-xs leading-relaxed text-cyan-50/90">
                         {preProposal.legalTerms.slice(0, 3).map((term) => (
                           <li key={term}>{term}</li>
+                        ))}
+                      </ul>
+                      <p className="mt-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                        Recalcular se houver
+                      </p>
+                      <ul className="mt-3 space-y-2 text-xs leading-relaxed text-slate-300">
+                        {preProposal.refreshTriggers.slice(0, 2).map((trigger) => (
+                          <li key={trigger}>{trigger}</li>
                         ))}
                       </ul>
                     </div>

@@ -160,6 +160,7 @@ export interface TaxScenarioPreProposal {
     | 'BLOCKED_BY_COMPLIANCE';
   riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   readinessScore: number;
+  validUntil: string;
   title: string;
   ctaLabel: string;
   nextRoute:
@@ -172,6 +173,7 @@ export interface TaxScenarioPreProposal {
   documentChecklist: TaxScenarioPreProposalDocument[];
   blockingReasons: string[];
   reviewReasons: string[];
+  refreshTriggers: string[];
   legalTerms: string[];
 }
 
@@ -666,6 +668,7 @@ function buildDemoPreProposal(
       documentChecklist,
       complianceTrail,
     ),
+    validUntil: resolveDemoPreProposalValidityDate(),
     title: resolveDemoPreProposalTitle(serviceQualification, status),
     ctaLabel: resolveDemoPreProposalCtaLabel(status, checkoutAllowed),
     nextRoute: resolveDemoPreProposalRoute(status, checkoutAllowed),
@@ -675,12 +678,23 @@ function buildDemoPreProposal(
     documentChecklist,
     blockingReasons: complianceTrail.commercialDecision.blockedRuleCodes,
     reviewReasons: complianceTrail.commercialDecision.reviewRuleCodes,
+    refreshTriggers: [
+      'Alteração de faturamento, folha, pró-labore, dependentes, CNAE, município ou regime atual.',
+      'Recebimento de RBT12 oficial, XMLs, notas, retenções, extratos ou escrituração que divirjam dos valores simulados.',
+      'Publicação de ato legal, nota técnica, tabela ou orientação fiscal que altere alíquotas, limites, anexos ou obrigações aplicáveis.',
+    ],
     legalTerms: [
       'Pré-proposta condicionada à validação documental, CNAE, município, RBT12, retenções, folha/pró-labore e revisão de contador responsável.',
       'A simulação é estimativa de triagem e não representa apuração oficial, parecer tributário definitivo ou promessa de economia.',
       'Contratação, abertura, migração, enquadramento e desenquadramento devem manter evidências arquivadas para trilha de auditoria.',
     ],
   };
+}
+
+function resolveDemoPreProposalValidityDate(): string {
+  const validUntil = new Date();
+  validUntil.setUTCDate(validUntil.getUTCDate() + 7);
+  return validUntil.toISOString();
 }
 
 function resolveDemoPreProposalRiskLevel(
@@ -1207,10 +1221,23 @@ function normalizeSimulationResponse(
     (data.serviceQualification && data.complianceTrail
       ? buildDemoPreProposal(requestPayload, data.serviceQualification, data.complianceTrail)
       : undefined);
+  const compatiblePreProposal = normalizedPreProposal
+    ? {
+        ...normalizedPreProposal,
+        validUntil: normalizedPreProposal.validUntil ?? resolveDemoPreProposalValidityDate(),
+        refreshTriggers:
+          normalizedPreProposal.refreshTriggers ??
+          [
+            'Alteração de faturamento, folha, pró-labore, dependentes, CNAE, município ou regime atual.',
+            'Recebimento de RBT12 oficial, XMLs, notas, retenções, extratos ou escrituração que divirjam dos valores simulados.',
+            'Publicação de ato legal, nota técnica, tabela ou orientação fiscal que altere alíquotas, limites, anexos ou obrigações aplicáveis.',
+          ],
+      }
+    : undefined;
 
   return {
     ...data,
-    preProposal: normalizedPreProposal,
+    preProposal: compatiblePreProposal,
     companyId,
     recommendedRegime: bestModel,
     annualSavings,
