@@ -218,6 +218,19 @@ export default function TaxScenarioSimulator() {
                 />
               </div>
 
+              {result.regressionSuite && (
+                <div className="rounded-2xl border border-white/5 bg-[#0d1320] px-4 py-3">
+                  <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                      QA fiscal: {result.regressionSuite.version}
+                    </p>
+                    <p className="text-[11px] font-bold text-slate-300">
+                      Regras críticas: {result.regressionSuite.blockingCriticalities.join(', ')} • Cobertura {result.regressionSuite.coveredRules.length}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="rounded-[2rem] border border-white/5 bg-[#0d1320] p-5">
                 <div className="flex items-center justify-between gap-3 pb-4 border-b border-white/5">
                   <div>

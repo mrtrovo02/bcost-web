@@ -217,6 +217,11 @@ describe('taxScenariosApi', () => {
     expect(result.companyId).toBe('demo-001');
     expect(result.recommendedRegime).toBe('SIMPLES_NACIONAL');
     expect(result.annualSavings).toBe(610_800);
+    expect(result.regressionSuite).toMatchObject({
+      version: 'tax-scenarios-regression-2026.1',
+      owner: 'tax-scenarios',
+    });
+    expect(result.regressionSuite?.coveredRules).toContain('SIMPLES_EPP_REVENUE_LIMIT');
     expect(result.preProposal).toMatchObject({
       status: 'NEEDS_DISCOVERY',
       riskLevel: 'HIGH',
@@ -246,6 +251,7 @@ describe('taxScenariosApi', () => {
     expect(result.status).toBe('OK');
     expect(result.companyId).toBe('demo-001');
     expect(result.scenarioId).toBe('demo-local-tax-scenario');
+    expect(result.regressionSuite?.coveredRules).toContain('CBS_IBS_2026_INFORMATIVE_RATES');
     expect(result.comparisons).toHaveLength(4);
     expect(result.scenarios?.some((scenario) => scenario.isRecommended)).toBe(true);
     expect(result.guardrails.join(' ')).toContain('empresas reais continuam exigindo API autenticada');

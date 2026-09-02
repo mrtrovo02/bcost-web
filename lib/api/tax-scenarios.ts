@@ -179,6 +179,12 @@ export interface TaxScenarioPreProposal {
 
 export interface SimulationResponse {
   status: 'OK';
+  regressionSuite?: {
+    version: string;
+    owner: 'tax-scenarios';
+    coveredRules: string[];
+    blockingCriticalities: string[];
+  };
   input: SimulateTaxScenarioDto;
   assumptions: Array<{
     code: string;
@@ -226,6 +232,21 @@ const SIMPLES_ANNUAL_LIMIT = 4_800_000;
 const FACTOR_R_THRESHOLD = 28;
 const CBS_INFORMATIVE_2026 = 0.009;
 const IBS_INFORMATIVE_2026 = 0.001;
+const TAX_SCENARIO_REGRESSION_SUITE = {
+  version: 'tax-scenarios-regression-2026.1',
+  owner: 'tax-scenarios' as const,
+  coveredRules: [
+    'MEI_ANNUAL_REVENUE_LIMIT',
+    'MEI_PAYROLL_REVIEW',
+    'SIMPLES_EPP_REVENUE_LIMIT',
+    'SIMPLES_EFFECTIVE_RATE_ANNEX_III',
+    'SIMPLES_EFFECTIVE_RATE_ANNEX_V',
+    'FACTOR_R_THRESHOLD_28_PERCENT',
+    'CBS_IBS_2026_INFORMATIVE_RATES',
+    'COMMERCIAL_PROPOSAL_COMPLIANCE_GATE',
+  ],
+  blockingCriticalities: ['BLOCKER', 'HIGH'],
+};
 
 type SimplesBracket = {
   upperLimit: number;
@@ -1148,6 +1169,7 @@ function createDemoSimulation(input: SimulateTaxScenarioDto, companyId?: string)
 
   return {
     status: 'OK',
+    regressionSuite: TAX_SCENARIO_REGRESSION_SUITE,
     input,
     assumptions: [
       {
@@ -1237,6 +1259,7 @@ function normalizeSimulationResponse(
 
   return {
     ...data,
+    regressionSuite: data.regressionSuite ?? TAX_SCENARIO_REGRESSION_SUITE,
     preProposal: compatiblePreProposal,
     companyId,
     recommendedRegime: bestModel,
