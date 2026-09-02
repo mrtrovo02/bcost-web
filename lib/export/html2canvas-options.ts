@@ -4,16 +4,25 @@ const UNSUPPORTED_COLOR_FUNCTION = /\b(?:lab|lch|oklab|oklch|color)\(/i;
 
 const COLOR_PROPERTIES = [
   'color',
+  'accentColor',
   'backgroundColor',
+  'borderColor',
   'borderTopColor',
   'borderRightColor',
   'borderBottomColor',
   'borderLeftColor',
+  'caretColor',
+  'columnRuleColor',
   'outlineColor',
   'textDecorationColor',
 ] as const;
 
 type ColorProperty = (typeof COLOR_PROPERTIES)[number];
+
+const DECORATIVE_BACKGROUND_PROPERTIES = [
+  'background',
+  'backgroundImage',
+] as const;
 
 export type BcostHtml2CanvasOptions = {
   scale: number;
@@ -43,8 +52,24 @@ function sanitizeElementColors(element: HTMLElement, view: Window): void {
     element.style[property] = normalizeCssColor(computed[property], fallback);
   });
 
+  DECORATIVE_BACKGROUND_PROPERTIES.forEach((property) => {
+    const value = computed[property];
+    element.style[property] = UNSUPPORTED_COLOR_FUNCTION.test(value)
+      ? element.style.backgroundColor || 'transparent'
+      : value;
+  });
+
   element.style.boxShadow = normalizeShadow(computed.boxShadow);
   element.style.textShadow = normalizeShadow(computed.textShadow);
+}
+
+function sanitizeSvgColors(element: SVGElement, view: Window): void {
+  const computed = view.getComputedStyle(element);
+  const fill = normalizeCssColor(computed.fill, 'currentColor');
+  const stroke = normalizeCssColor(computed.stroke, 'currentColor');
+
+  element.style.fill = fill;
+  element.style.stroke = stroke;
 }
 
 export function buildDashboardPdfCanvasOptions(
@@ -64,6 +89,10 @@ export function buildDashboardPdfCanvasOptions(
       [root, ...Array.from(root.querySelectorAll('*'))].forEach((element) => {
         if (isStyledElement(element)) {
           sanitizeElementColors(element, view);
+        }
+
+        if (element instanceof view.SVGElement) {
+          sanitizeSvgColors(element, view);
         }
       });
     },
