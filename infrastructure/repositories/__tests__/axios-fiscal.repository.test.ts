@@ -33,19 +33,13 @@ describe('AxiosFiscalRepository', () => {
     });
   });
 
-  it('returns demo fiscal data when the backend endpoint returns 404 for a real company', async () => {
+  it('does not return demo fiscal data when the backend endpoint fails for a real company', async () => {
     isDemoSessionMock.mockReturnValue(false);
     apiGetMock.mockRejectedValueOnce({ status: 404, message: 'Not Found' });
 
     const repository = new AxiosFiscalRepository();
-    const entity = await repository.getTaxDataByCompany('company-real');
-
-    expect(entity.toJSON()).toMatchObject({
-      totalRevenue: expect.any(Number),
-      estimatedTax: expect.any(Number),
-      netRevenue: expect.any(Number),
-      fatorR: expect.any(String),
-      totalInvoices: expect.any(Number),
+    await expect(repository.getTaxDataByCompany('company-real')).rejects.toMatchObject({
+      status: 404,
     });
   });
 });

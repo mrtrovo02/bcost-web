@@ -1,7 +1,7 @@
-import { FiscalRepository } from "@/domain/fiscal/fiscal.repository";
-import { TaxDataEntity, TaxDataProps } from "@/domain/fiscal/tax-data.entity";
-import { apiGet, apiPost, isDemoSession } from "@/services/api";
-import { getDemoFiscalData } from "@/services/demo-data";
+import { FiscalRepository } from '@/domain/fiscal/fiscal.repository';
+import { TaxDataEntity, TaxDataProps } from '@/domain/fiscal/tax-data.entity';
+import { apiGet, apiPost, isDemoSession } from '@/services/api';
+import { getDemoFiscalData } from '@/services/demo-data';
 
 export class AxiosFiscalRepository implements FiscalRepository {
   private buildDemoTaxData(companyId: string): TaxDataProps {
@@ -28,7 +28,7 @@ export class AxiosFiscalRepository implements FiscalRepository {
   }
 
   public async getTaxDataByCompany(companyId: string, period?: string): Promise<TaxDataEntity> {
-    const periodParam = period ? `&period=${encodeURIComponent(period)}` : "";
+    const periodParam = period ? `&period=${encodeURIComponent(period)}` : '';
     const url = `/modules/fiscal/tax-data?company_id=${encodeURIComponent(companyId)}${periodParam}`;
 
     const shouldUseDemoFallback = isDemoSession() || companyId.toLowerCase().startsWith('demo-');
@@ -41,19 +41,15 @@ export class AxiosFiscalRepository implements FiscalRepository {
       const { data } = await apiGet<TaxDataProps>(url);
 
       if (!data) {
-        throw new Error("Nenhum dado retornado pelo servidor de infraestrutura fiscal.");
+        throw new Error('Nenhum dado retornado pelo servidor de infraestrutura fiscal.');
       }
 
       return new TaxDataEntity(data);
     } catch (error) {
-      const status =
-        typeof error === 'object' && error !== null && 'status' in error && typeof (error as { status?: unknown }).status === 'number'
-          ? (error as { status?: number }).status
-          : undefined;
-
-      if (isDemoSession() || companyId.toLowerCase().startsWith('demo-') || status === 404 || status === 401 || status === 0) {
+      if (shouldUseDemoFallback) {
         return new TaxDataEntity(this.buildDemoTaxData(companyId));
       }
+
       throw error;
     }
   }
