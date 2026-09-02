@@ -74,6 +74,44 @@ const API_RESPONSE: SimulationResponse = {
     requiredEvidence: [],
     nextActions: [],
   },
+  complianceTrail: {
+    version: 'tax-scenarios-compliance-2026.1',
+    calculationMode: 'ESTIMATIVE_TRIAGE',
+    officialAssessment: false,
+    evaluatedAt: '2026-09-01T00:00:00.000Z',
+    commercialDecision: {
+      status: 'ASSISTED_REVIEW_REQUIRED',
+      canGenerateProposal: false,
+      requiresCrcReview: true,
+      reasons: ['Fator R exige revisão assistida.'],
+      blockedRuleCodes: [],
+      reviewRuleCodes: ['FACTOR_R_THRESHOLD', 'OFFICIAL_ASSESSMENT_LOCK'],
+    },
+    rules: [
+      {
+        code: 'FACTOR_R_THRESHOLD',
+        status: 'REQUIRES_REVIEW',
+        severity: 'HIGH',
+        title: 'Fator R',
+        result: 'Fator R abaixo de 28%.',
+        legalBasis: ['Lei Complementar 123/2006, art. 18.'],
+        evidenceRequired: ['Folha e pró-labore dos últimos 12 meses', 'RBT12 oficial'],
+        officialAssessment: false,
+      },
+    ],
+    disclaimers: [],
+  },
+  serviceQualification: {
+    stage: 'NEEDS_DISCOVERY',
+    primaryOffer: {
+      sku: 'TAX_REGIME_CRC_REVIEW',
+      title: 'Revisão CRC de Fator R e regime tributário',
+      checkoutMode: 'SALES_REVIEW_ONLY',
+    },
+    allowedActions: ['REQUEST_DOCUMENTS', 'SCHEDULE_CRC_REVIEW'],
+    missingEvidence: ['Folha e pró-labore dos últimos 12 meses', 'RBT12 oficial'],
+    salesWarnings: ['Não prometer enquadramento no Anexo III antes de validar folha.'],
+  },
   guardrails: [],
   generatedAt: '2026-09-01T00:00:00.000Z',
 };
@@ -113,6 +151,13 @@ describe('taxScenariosApi', () => {
     expect(result.companyId).toBe('demo-001');
     expect(result.recommendedRegime).toBe('SIMPLES_NACIONAL');
     expect(result.annualSavings).toBe(610_800);
+    expect(result.preProposal).toMatchObject({
+      status: 'NEEDS_DISCOVERY',
+      riskLevel: 'HIGH',
+      checkoutAllowed: false,
+      serviceSku: 'TAX_REGIME_CRC_REVIEW',
+    });
+    expect(result.preProposal?.reviewReasons).toContain('FACTOR_R_THRESHOLD');
   });
 
   it('keeps demo simulator operational when the protected API rejects the request', async () => {
@@ -221,10 +266,12 @@ describe('taxScenariosApi', () => {
     });
     expect(result.preProposal).toMatchObject({
       status: 'NEEDS_DISCOVERY',
+      riskLevel: 'HIGH',
       checkoutAllowed: false,
       serviceSku: 'PF_TAX_REVIEW',
       nextRoute: '/dashboard/modules/company-formation',
     });
+    expect(result.preProposal?.readinessScore).toBeLessThan(80);
     expect(result.preProposal?.documentChecklist).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -263,10 +310,12 @@ describe('taxScenariosApi', () => {
     expect(result.serviceQualification?.allowedActions).toContain('BLOCK_AUTOMATIC_CHECKOUT');
     expect(result.preProposal).toMatchObject({
       status: 'BLOCKED_BY_COMPLIANCE',
+      riskLevel: 'CRITICAL',
       checkoutAllowed: false,
       serviceSku: 'COMPLIANCE_BLOCKER_REVIEW',
       nextRoute: '/dashboard/modules/audit-intelligence',
     });
+    expect(result.preProposal?.readinessScore).toBeLessThan(50);
     expect(result.recommendation.rationale.join(' ')).not.toContain('Ganho anual estimado');
   });
 

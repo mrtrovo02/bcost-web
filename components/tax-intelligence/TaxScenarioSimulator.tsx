@@ -76,6 +76,7 @@ export default function TaxScenarioSimulator() {
   const serviceQualification = result?.serviceQualification;
   const preProposal = result?.preProposal;
   const auditLines = result?.calculationAudit?.lines ?? [];
+  const preProposalRiskTone = resolvePreProposalRiskTone(preProposal?.riskLevel);
 
   return (
     <section className="bg-[#090d16] border border-white/5 rounded-[2.5rem] p-6 shadow-[0_4px_25px_rgba(0,0,0,0.25)]">
@@ -386,9 +387,17 @@ export default function TaxScenarioSimulator() {
                         Pré-proposta com segurança jurídica
                       </p>
                       <h4 className="mt-2 text-lg font-black text-white">{preProposal.title}</h4>
-                      <p className="mt-2 text-xs leading-relaxed text-slate-400">
-                        ID {preProposal.id} • {preProposal.status.replaceAll('_', ' ')}
-                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <span className="rounded-full border border-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-slate-200">
+                          ID {preProposal.id}
+                        </span>
+                        <span className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${preProposalRiskTone}`}>
+                          Risco {preProposal.riskLevel}
+                        </span>
+                        <span className="rounded-full border border-blue-400/20 bg-blue-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-blue-100">
+                          Prontidão {preProposal.readinessScore}%
+                        </span>
+                      </div>
                     </div>
                     <Link
                       href={preProposal.nextRoute}
@@ -415,6 +424,21 @@ export default function TaxScenarioSimulator() {
                     </div>
                     <div>
                       <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                        Gate comercial
+                      </p>
+                      {(preProposal.blockingReasons.length > 0 || preProposal.reviewReasons.length > 0) && (
+                        <div className="mt-3 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-3">
+                          <p className="text-xs font-bold leading-relaxed text-amber-50">
+                            {preProposal.checkoutAllowed
+                              ? 'Proposta assistida habilitada com revisão CRC.'
+                              : 'Checkout automático bloqueado até fechamento do dossiê.'}
+                          </p>
+                          <p className="mt-2 text-[11px] leading-relaxed text-amber-100/80">
+                            Regras: {[...preProposal.blockingReasons, ...preProposal.reviewReasons].slice(0, 4).join(', ')}.
+                          </p>
+                        </div>
+                      )}
+                      <p className="mt-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
                         Termos de controle
                       </p>
                       <ul className="mt-3 space-y-2 text-xs leading-relaxed text-cyan-50/90">
@@ -515,6 +539,15 @@ export default function TaxScenarioSimulator() {
       </div>
     </section>
   );
+}
+
+function resolvePreProposalRiskTone(
+  riskLevel?: NonNullable<SimulationResponse['preProposal']>['riskLevel'],
+) {
+  if (riskLevel === 'CRITICAL') return 'border-rose-400/30 bg-rose-500/10 text-rose-100';
+  if (riskLevel === 'HIGH') return 'border-amber-400/30 bg-amber-500/10 text-amber-100';
+  if (riskLevel === 'MEDIUM') return 'border-yellow-400/30 bg-yellow-500/10 text-yellow-100';
+  return 'border-emerald-400/30 bg-emerald-500/10 text-emerald-100';
 }
 
 function MetricTile({
