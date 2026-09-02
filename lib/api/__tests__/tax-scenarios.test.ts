@@ -219,6 +219,20 @@ describe('taxScenariosApi', () => {
         checkoutMode: 'SALES_REVIEW_ONLY',
       },
     });
+    expect(result.preProposal).toMatchObject({
+      status: 'NEEDS_DISCOVERY',
+      checkoutAllowed: false,
+      serviceSku: 'PF_TAX_REVIEW',
+      nextRoute: '/dashboard/modules/company-formation',
+    });
+    expect(result.preProposal?.documentChecklist).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'RBT12_AND_REVENUE_SEGREGATION',
+          required: true,
+        }),
+      ]),
+    );
     expect(mei?.eligibilityStatus).toBe('REQUIRES_REVIEW');
     expect(mei?.estimatedTax).toBe(-1);
     expect(mei?.warnings.join(' ')).toContain('folha informada');
@@ -247,6 +261,12 @@ describe('taxScenariosApi', () => {
     expect(result.complianceTrail?.commercialDecision.canGenerateProposal).toBe(false);
     expect(result.serviceQualification?.stage).toBe('BLOCKED');
     expect(result.serviceQualification?.allowedActions).toContain('BLOCK_AUTOMATIC_CHECKOUT');
+    expect(result.preProposal).toMatchObject({
+      status: 'BLOCKED_BY_COMPLIANCE',
+      checkoutAllowed: false,
+      serviceSku: 'COMPLIANCE_BLOCKER_REVIEW',
+      nextRoute: '/dashboard/modules/audit-intelligence',
+    });
     expect(result.recommendation.rationale.join(' ')).not.toContain('Ganho anual estimado');
   });
 

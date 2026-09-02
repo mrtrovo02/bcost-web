@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import {
   AlertTriangle,
   ArrowRight,
@@ -73,6 +74,7 @@ export default function TaxScenarioSimulator() {
     result?.complianceTrail?.rules.filter((rule) => rule.severity !== 'INFO') ?? [];
   const commercialDecision = result?.complianceTrail?.commercialDecision;
   const serviceQualification = result?.serviceQualification;
+  const preProposal = result?.preProposal;
   const auditLines = result?.calculationAudit?.lines ?? [];
 
   return (
@@ -369,6 +371,55 @@ export default function TaxScenarioSimulator() {
                       <ul className="mt-3 space-y-2 text-xs text-amber-100/90">
                         {serviceQualification.salesWarnings.slice(0, 3).map((warning) => (
                           <li key={warning}>{warning}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {preProposal && (
+                <div className="rounded-[2rem] border border-cyan-500/20 bg-cyan-500/5 p-5">
+                  <div className="flex flex-col gap-4 border-b border-white/5 pb-4 xl:flex-row xl:items-center xl:justify-between">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">
+                        Pré-proposta com segurança jurídica
+                      </p>
+                      <h4 className="mt-2 text-lg font-black text-white">{preProposal.title}</h4>
+                      <p className="mt-2 text-xs leading-relaxed text-slate-400">
+                        ID {preProposal.id} • {preProposal.status.replaceAll('_', ' ')}
+                      </p>
+                    </div>
+                    <Link
+                      href={preProposal.nextRoute}
+                      className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-cyan-400/30 bg-cyan-500/10 px-4 py-3 text-center text-[11px] font-black uppercase tracking-[0.16em] text-cyan-100 transition hover:border-cyan-300 hover:bg-cyan-500/20"
+                    >
+                      {preProposal.ctaLabel}
+                    </Link>
+                  </div>
+                  <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_0.8fr]">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                        Checklist documental
+                      </p>
+                      <div className="mt-3 grid gap-2 md:grid-cols-2">
+                        {preProposal.documentChecklist.slice(0, 6).map((document) => (
+                          <div key={document.code} className="rounded-2xl border border-white/5 bg-[#090d16] p-3">
+                            <p className="text-xs font-bold leading-relaxed text-white">{document.label}</p>
+                            <p className="mt-2 text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">
+                              {document.source.replaceAll('_', ' ')} • {document.required ? 'Obrigatório' : 'Opcional'}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                        Termos de controle
+                      </p>
+                      <ul className="mt-3 space-y-2 text-xs leading-relaxed text-cyan-50/90">
+                        {preProposal.legalTerms.slice(0, 3).map((term) => (
+                          <li key={term}>{term}</li>
                         ))}
                       </ul>
                     </div>
