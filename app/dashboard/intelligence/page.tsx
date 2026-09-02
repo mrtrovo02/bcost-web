@@ -13,8 +13,6 @@ import { MonthlyPerformance } from '@/lib/types/fiscal';
 import { CBS_IBS_TRANSITION } from '@/lib/tax-reform/official-data';
 import { buildDashboardPdfCanvasOptions } from '@/lib/export/html2canvas-options';
 import { FiscalModuleFactory } from '@/shared/factories/fiscal-factory.shared';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import {
   TrendingUp,
   Download,
@@ -41,17 +39,39 @@ interface FiscalData {
   history: MonthlyPerformance[];
 }
 
+function getErrorStatus(error: unknown): number | undefined {
+  const responseStatus =
+    typeof error === 'object' &&
+    error !== null &&
+    'response' in error &&
+    typeof (error as { response?: { status?: unknown } }).response?.status === 'number'
+      ? (error as { response: { status: number } }).response.status
+      : undefined;
+
+  const directStatus =
+    typeof error === 'object' &&
+    error !== null &&
+    'status' in error &&
+    typeof (error as Record<string, unknown>).status === 'number'
+      ? (error as { status?: number }).status
+      : undefined;
+
+  return responseStatus ?? directStatus;
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const { selectedCompany } = useCompany();
   const [data, setData] = useState<FiscalData | null>(null);
   const [loading, setLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [operationalError, setOperationalError] = useState<string | null>(null);
   const lastLoadedId = useRef<string | null>(null);
 
   const fetchTaxData = useCallback(async (companyId: string) => {
     if (companyId === lastLoadedId.current) return;
     setLoading(true);
+    setOperationalError(null);
 
     try {
       if (isDemoSession()) {
@@ -97,17 +117,18 @@ export default function DashboardPage() {
       lastLoadedId.current = companyId;
     } catch (error: unknown) {
       console.error('Erro capturado pela esteira Clean Architecture:', error);
-      const status =
-        typeof error === 'object' &&
-        error !== null &&
-        'status' in error &&
-        typeof (error as Record<string, unknown>).status === 'number'
-          ? (error as { status?: number }).status
-          : undefined;
+      const status = getErrorStatus(error);
 
       if (status === 401) {
         router.push('/login');
+        return;
       }
+
+      setOperationalError(
+        status
+          ? `Não foi possível carregar os dados fiscais reais desta empresa (HTTP ${status}).`
+          : 'Não foi possível carregar os dados fiscais reais desta empresa.',
+      );
       setData(null);
       lastLoadedId.current = null;
     } finally {
@@ -120,6 +141,7 @@ export default function DashboardPage() {
       fetchTaxData(selectedCompany.id);
     } else {
       setData(null);
+      setOperationalError(null);
       lastLoadedId.current = null;
     }
   }, [selectedCompany?.id, fetchTaxData]);
@@ -129,6 +151,10 @@ export default function DashboardPage() {
     if (!element || !data) return;
     setIsExporting(true);
     try {
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ]);
       const canvas = await html2canvas(element, buildDashboardPdfCanvasOptions('#020408'));
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
@@ -200,6 +226,27 @@ export default function DashboardPage() {
             ))}
           </div>
           <div className="h-96 bg-[#090d16] border border-white/5 rounded-[2.5rem] animate-pulse" />
+        </div>
+      ) : operationalError ? (
+        <div className="p-10 border border-amber-500/20 rounded-[2rem] bg-amber-500/[0.06] animate-in fade-in duration-500">
+          <div className="flex items-start gap-4">
+            <div className="w-11 h-11 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center justify-center flex-shrink-0">
+              <AlertCircle className="text-amber-400" size={20} />
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-amber-300">
+                Integração fiscal indisponível
+              </p>
+              <h3 className="mt-2 text-xl font-black text-white">
+                Dados reais não carregados para esta empresa
+              </h3>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+                {operationalError} O painel não exibirá dados demonstrativos para uma empresa real;
+                valide autenticação, `x-company-id`, permissões e o endpoint fiscal antes de usar o
+                relatório como evidência operacional.
+              </p>
+            </div>
+          </div>
         </div>
       ) : (
         <div
