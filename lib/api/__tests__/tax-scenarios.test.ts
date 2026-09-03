@@ -233,11 +233,10 @@ describe('taxScenariosApi', () => {
     expect(result.preProposal?.refreshTriggers.join(' ')).toContain('Alteração de faturamento');
   });
 
-  it('keeps demo simulator operational when the protected API rejects the request', async () => {
+  it('keeps demo simulator operational without calling the protected API', async () => {
     vi.stubEnv('NEXT_PUBLIC_ENABLE_DEMO_FALLBACK', 'true');
     getActiveCompanyIdMock.mockReturnValueOnce('demo-001');
     isDemoSessionMock.mockReturnValue(true);
-    apiPostMock.mockRejectedValueOnce(new Error('Request failed with status code 401'));
 
     const result = await taxScenariosApi.simulate({
       activity: 'SERVICE_PROVIDER',
@@ -248,6 +247,7 @@ describe('taxScenariosApi', () => {
       currentModel: 'SIMPLES_NACIONAL',
     });
 
+    expect(apiPostMock).not.toHaveBeenCalled();
     expect(result.status).toBe('OK');
     expect(result.companyId).toBe('demo-001');
     expect(result.scenarioId).toBe('demo-local-tax-scenario');
@@ -261,7 +261,6 @@ describe('taxScenariosApi', () => {
     vi.stubEnv('NEXT_PUBLIC_ENABLE_DEMO_FALLBACK', 'true');
     getActiveCompanyIdMock.mockReturnValueOnce('demo-001');
     isDemoSessionMock.mockReturnValue(true);
-    apiPostMock.mockRejectedValueOnce(new Error('Request failed with status code 401'));
 
     const result = await taxScenariosApi.simulate({
       activity: 'SERVICE_PROVIDER',
@@ -284,7 +283,6 @@ describe('taxScenariosApi', () => {
     vi.stubEnv('NEXT_PUBLIC_ENABLE_DEMO_FALLBACK', 'true');
     getActiveCompanyIdMock.mockReturnValueOnce('demo-001');
     isDemoSessionMock.mockReturnValue(true);
-    apiPostMock.mockRejectedValueOnce(new Error('Request failed with status code 401'));
 
     const result = await taxScenariosApi.simulate({
       activity: 'TECHNOLOGY',
@@ -367,7 +365,6 @@ describe('taxScenariosApi', () => {
     vi.stubEnv('NEXT_PUBLIC_ENABLE_DEMO_FALLBACK', 'true');
     getActiveCompanyIdMock.mockReturnValueOnce('demo-001');
     isDemoSessionMock.mockReturnValue(true);
-    apiPostMock.mockRejectedValueOnce(new Error('Request failed with status code 401'));
 
     const result = await taxScenariosApi.simulate({
       activity: 'SERVICE_PROVIDER',
@@ -419,7 +416,6 @@ describe('taxScenariosApi', () => {
         vi.stubEnv('NEXT_PUBLIC_ENABLE_DEMO_FALLBACK', 'true');
         getActiveCompanyIdMock.mockReturnValueOnce('demo-001');
         isDemoSessionMock.mockReturnValue(true);
-        apiPostMock.mockRejectedValueOnce(new Error('Request failed with status code 401'));
 
         const result = await taxScenariosApi.simulate(regressionCase.input);
         const targetComparison = result.comparisons.find(

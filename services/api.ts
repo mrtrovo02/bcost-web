@@ -549,10 +549,6 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${authMetadata.token}`;
     }
 
-    if (authMetadata.isDemoRequest) {
-      config.headers['x-demo-session'] = 'true';
-    }
-
     if (requestCompanyId) {
       config.headers['x-company-id'] = requestCompanyId;
     }

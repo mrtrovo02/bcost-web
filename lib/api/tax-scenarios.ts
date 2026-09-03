@@ -1285,22 +1285,21 @@ export const taxScenariosApi = {
       ...payload,
       ...(companyId ? { companyId } : {}),
     };
-    try {
-      const { data } = await api.post<SimulationResponse>(
-        '/tax-scenarios/simulate',
-        requestPayload,
-      );
 
-      return normalizeSimulationResponse(data, requestPayload, companyId);
-    } catch (error) {
-      if (!isDemoSession()) throw error;
-
+    if (isDemoSession()) {
       assertOperationalDemoFallbackEnabled(
         'Simulador tributário demo indisponível porque o fallback demonstrativo está desabilitado neste ambiente.',
       );
 
       return normalizeSimulationResponse(createDemoSimulation(requestPayload, companyId), requestPayload, companyId);
     }
+
+    const { data } = await api.post<SimulationResponse>(
+      '/tax-scenarios/simulate',
+      requestPayload,
+    );
+
+    return normalizeSimulationResponse(data, requestPayload, companyId);
   },
 
   async getLatestSimulation(companyId: string): Promise<SimulationResponse | null> {
