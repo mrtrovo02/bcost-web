@@ -4,6 +4,12 @@ import { buildDashboardPdfCanvasOptions } from '../html2canvas-options';
 describe('buildDashboardPdfCanvasOptions', () => {
   it('sanitizes unsupported modern CSS color functions in cloned documents', () => {
     document.body.innerHTML = `
+      <style>
+        #dashboard-content .modern-token {
+          color: oklch(95% 0.02 240);
+          border-color: lab(40% 0 0);
+        }
+      </style>
       <div id="dashboard-content">
         <section
           id="card"
@@ -14,6 +20,7 @@ describe('buildDashboardPdfCanvasOptions', () => {
           "
         >
           <svg id="icon"><path id="path" style="fill: oklch(70% 0.2 140); stroke: lab(60% 0 0);" /></svg>
+          <span class="modern-token">Dossiê executivo</span>
           Conteúdo fiscal
         </section>
       </div>
@@ -28,6 +35,9 @@ describe('buildDashboardPdfCanvasOptions', () => {
 
     expect(card).toBeInstanceOf(HTMLElement);
     expect(path).toBeInstanceOf(SVGElement);
+    expect(document.querySelector('style')?.textContent).not.toMatch(
+      /\b(?:lab|lch|oklab|oklch|color)\(/i,
+    );
     expect(card?.getAttribute('style')).not.toMatch(/\b(?:lab|lch|oklab|oklch|color)\(/i);
     expect(path?.getAttribute('style')).not.toMatch(/\b(?:lab|lch|oklab|oklch|color)\(/i);
   });

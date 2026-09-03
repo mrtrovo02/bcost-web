@@ -36,6 +36,12 @@ function normalizeCssColor(value: string, fallback: string): string {
   return UNSUPPORTED_COLOR_FUNCTION.test(value) ? fallback : value;
 }
 
+function replaceUnsupportedColorFunctions(value: string, fallback: string): string {
+  if (!UNSUPPORTED_COLOR_FUNCTION.test(value)) return value;
+
+  return value.replace(/\b(?:lab|lch|oklab|oklch|color)\([^;{}]*\)/gi, fallback);
+}
+
 function normalizeShadow(value: string): string {
   return UNSUPPORTED_COLOR_FUNCTION.test(value) ? 'none' : value;
 }
@@ -46,6 +52,11 @@ function isStyledElement(element: Element): element is HTMLElement {
 
 function sanitizeElementColors(element: HTMLElement, view: Window): void {
   const computed = view.getComputedStyle(element);
+  const inlineStyle = element.getAttribute('style');
+
+  if (inlineStyle) {
+    element.setAttribute('style', replaceUnsupportedColorFunctions(inlineStyle, '#e5edf7'));
+  }
 
   COLOR_PROPERTIES.forEach((property: ColorProperty) => {
     const fallback = property === 'backgroundColor' ? 'transparent' : '#e5edf7';
@@ -65,11 +76,27 @@ function sanitizeElementColors(element: HTMLElement, view: Window): void {
 
 function sanitizeSvgColors(element: SVGElement, view: Window): void {
   const computed = view.getComputedStyle(element);
+  const inlineStyle = element.getAttribute('style');
+
+  if (inlineStyle) {
+    element.setAttribute('style', replaceUnsupportedColorFunctions(inlineStyle, 'currentColor'));
+  }
+
   const fill = normalizeCssColor(computed.fill, 'currentColor');
   const stroke = normalizeCssColor(computed.stroke, 'currentColor');
 
   element.style.fill = fill;
   element.style.stroke = stroke;
+}
+
+function sanitizeStyleSheets(clonedDocument: Document): void {
+  clonedDocument.querySelectorAll('style').forEach((styleElement) => {
+    const rawCss = styleElement.textContent;
+
+    if (!rawCss || !UNSUPPORTED_COLOR_FUNCTION.test(rawCss)) return;
+
+    styleElement.textContent = replaceUnsupportedColorFunctions(rawCss, '#e5edf7');
+  });
 }
 
 export function buildDashboardPdfCanvasOptions(
@@ -85,6 +112,8 @@ export function buildDashboardPdfCanvasOptions(
       const root = clonedDocument.getElementById(rootId);
 
       if (!view || !root) return;
+
+      sanitizeStyleSheets(clonedDocument);
 
       [root, ...Array.from(root.querySelectorAll('*'))].forEach((element) => {
         if (isStyledElement(element)) {
