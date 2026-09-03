@@ -326,6 +326,11 @@ export function seedDemoData(): boolean {
     'bcost_token',
     'bcost_access_token',
     'bcost_refresh_token',
+    'token',
+    'access_token',
+    'accessToken',
+    'refresh_token',
+    'refreshToken',
   ]) {
     localStorage.removeItem(key);
   }
