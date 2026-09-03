@@ -1,6 +1,6 @@
 'use strict';
 
-import { api, getActiveCompanyId, setActiveCompanyId } from '@/services/api';
+import { api, getActiveCompanyId, isDemoSession, setActiveCompanyId } from '@/services/api';
 import { resolveEnterpriseCompanyIdWithFallback } from '@/lib/api/enterprise-company';
 import { safeLocalStorageGet } from '@/lib/utils/runtime-guards';
 import { trackEvent } from '@/lib/utils/telemetry';
@@ -326,6 +326,10 @@ export const enterpriseUniversalApi = {
   async catalog(options: EnterpriseCatalogOptions = {}): Promise<EnterpriseCatalogItem[]> {
     const now = Date.now();
 
+    if (isDemoSession()) {
+      return createDemoEnterpriseCatalog();
+    }
+
     if (!options.forceRefresh && enterpriseCatalogCache && enterpriseCatalogCache.expiresAt > now) {
       return enterpriseCatalogCache.items;
     }
@@ -378,6 +382,10 @@ export const enterpriseUniversalApi = {
     options: EnterpriseCatalogOptions = {},
   ): Promise<EnterpriseCommercialLane[]> {
     const now = Date.now();
+
+    if (isDemoSession()) {
+      return createEnterpriseCommercialLanesFromCatalog(createDemoEnterpriseCatalog());
+    }
 
     if (
       !options.forceRefresh &&

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import enterpriseUniversalApi, {
   createEnterpriseCommercialLanesFromCatalog,
 } from '../enterprise-universal';
-import { api } from '@/services/api';
+import { api, isDemoSession } from '@/services/api';
 
 vi.mock('@/services/api', () => ({
   api: {
@@ -15,6 +15,7 @@ vi.mock('@/services/api', () => ({
 }));
 
 const apiGetMock = vi.mocked(api.get);
+const isDemoSessionMock = vi.mocked(isDemoSession);
 
 describe('enterpriseUniversalApi', () => {
   const originalDemoFallback = process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK;
@@ -22,6 +23,7 @@ describe('enterpriseUniversalApi', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     enterpriseUniversalApi.clearCatalogCache();
+    isDemoSessionMock.mockReturnValue(false);
     process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'true';
   });
 
@@ -65,6 +67,24 @@ describe('enterpriseUniversalApi', () => {
       canonicalOwner: 'enterprise-modules',
       automationBoundary: 'SOFTWARE_ONLY',
     });
+  });
+
+  it('serves catalog and commercial lanes locally during demo sessions', async () => {
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'false';
+    isDemoSessionMock.mockReturnValue(true);
+
+    const [catalog, lanes] = await Promise.all([
+      enterpriseUniversalApi.catalog(),
+      enterpriseUniversalApi.commercialLanes(),
+    ]);
+
+    expect(catalog.length).toBeGreaterThan(0);
+    expect(lanes.map((lane) => lane.id)).toEqual([
+      'direct-sale',
+      'assisted-validation',
+      'blocked-roadmap',
+    ]);
+    expect(apiGetMock).not.toHaveBeenCalled();
   });
 
   it('caches successful enterprise catalog responses to reduce duplicate requests', async () => {
