@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const SESSION_COOKIE_NAMES = ['bcost_token', 'bcost_access_token'];
+const SESSION_COOKIE_NAMES = [
+  'bcost_token',
+  'bcost_access_token',
+  'token',
+  'access_token',
+  'accessToken',
+] as const;
 const AUTH_REQUIRED_PATHS = ['/dashboard', '/upload-xml'];
 const PUBLIC_PATHS = ['/login'];
 const DEFAULT_AUTH_REDIRECT = '/dashboard/intelligence';
