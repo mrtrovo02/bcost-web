@@ -47,9 +47,18 @@ export default function OperationsPage() {
 
       setData(await getManagementCockpit());
     } catch (err) {
-      const fallback = getDemoManagementCockpit(selectedCompany?.name);
-      setData(fallback);
-      setError(err instanceof Error ? err.message : 'API indisponível; exibindo leitura local.');
+      if (isDemoSession()) {
+        setData(getDemoManagementCockpit(selectedCompany?.name));
+        setError(err instanceof Error ? err.message : 'API indisponível; exibindo leitura local.');
+        return;
+      }
+
+      setData(null);
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Não foi possível carregar a controladoria para a empresa real.',
+      );
     } finally {
       setLoading(false);
     }
@@ -75,7 +84,35 @@ export default function OperationsPage() {
     );
   }
 
-  if (!data) return null;
+  if (!data) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center px-4">
+        <div className="w-full max-w-2xl rounded-3xl border border-rose-400/25 bg-rose-500/10 p-8 text-rose-50 shadow-2xl shadow-black/30">
+          <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl border border-rose-300/30 bg-rose-400/10">
+            <AlertTriangle size={24} />
+          </div>
+          <p className="text-xs font-black uppercase tracking-widest text-rose-200">
+            Controladoria indisponível
+          </p>
+          <h1 className="mt-3 text-2xl font-black tracking-tight text-white">
+            Não foi possível carregar dados reais desta empresa
+          </h1>
+          <p className="mt-3 text-sm leading-relaxed text-rose-100/80">
+            {error ??
+              'O painel não exibirá dados demonstrativos para uma empresa real. Verifique a API, autenticação e vínculo da empresa antes de liberar este módulo.'}
+          </p>
+          <button
+            onClick={loadData}
+            disabled={loading}
+            className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl bg-rose-600 px-5 py-3 text-xs font-black uppercase tracking-wider text-white transition hover:bg-rose-500 disabled:opacity-50"
+          >
+            {loading ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
+            Tentar novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-7 pb-10">
