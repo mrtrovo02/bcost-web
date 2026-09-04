@@ -47,10 +47,12 @@ export default function InvoicesPage() {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const fetchInvoices = useCallback(async () => {
     try {
       setIsLoading(true);
+      setLoadError(null);
       if (isDemoSession()) {
         const demoData = getDemoInvoices();
         setInvoices(Array.isArray(demoData) ? demoData : []);
@@ -67,6 +69,7 @@ export default function InvoicesPage() {
       const message = error instanceof Error ? error.message : String(error);
       console.error('🔴 [bCost Invoices Engine Error]:', message);
       setInvoices([]);
+      setLoadError(message || 'Não foi possível carregar documentos fiscais reais.');
     } finally {
       setIsLoading(false);
     }
@@ -237,10 +240,21 @@ export default function InvoicesPage() {
               <tr>
                 <td colSpan={5} className="p-32 text-center">
                   <div className="flex flex-col items-center gap-3">
-                    <AlertCircle className="text-slate-200" size={48} />
+                    <AlertCircle
+                      className={loadError ? 'text-rose-300' : 'text-slate-200'}
+                      size={48}
+                    />
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                      Nenhum XML encontrado no banco de dados.
+                      {loadError
+                        ? 'Não foi possível carregar os XMLs reais desta empresa.'
+                        : 'Nenhum XML encontrado no banco de dados.'}
                     </p>
+                    {loadError ? (
+                      <p className="max-w-xl text-xs font-bold leading-relaxed text-rose-600">
+                        {loadError} O módulo não exibirá documentos demonstrativos fora de uma
+                        sessão demo explícita.
+                      </p>
+                    ) : null}
                   </div>
                 </td>
               </tr>
