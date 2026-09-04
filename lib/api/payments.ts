@@ -97,17 +97,64 @@ export type PaymentWebhookEventsQuery = {
   limit?: number;
 };
 
+type PaymentApiErrorPayload = {
+  status?: string;
+  message?: string;
+  currentPlanLevel?: string;
+  subscriptionStatus?: string;
+};
+
+type PaymentApiError = {
+  response?: {
+    status?: number;
+    data?: PaymentApiErrorPayload;
+  };
+};
+
+function toPaymentApiError(error: unknown): PaymentApiError {
+  return error && typeof error === 'object' && 'response' in error
+    ? (error as PaymentApiError)
+    : {};
+}
+
+function throwCommercialCheckoutError(error: unknown): never {
+  const apiError = toPaymentApiError(error);
+  const payload = apiError.response?.data;
+
+  if (
+    apiError.response?.status === 400 &&
+    payload?.status === 'ACTIVE_SUBSCRIPTION_EXISTS'
+  ) {
+    const currentPlan = payload.currentPlanLevel
+      ? ` Plano atual: ${payload.currentPlanLevel}.`
+      : '';
+    const subscriptionStatus = payload.subscriptionStatus
+      ? ` Status: ${payload.subscriptionStatus}.`
+      : '';
+
+    throw new Error(
+      `${payload.message ?? 'Empresa já possui assinatura ativa.'}${currentPlan}${subscriptionStatus}`,
+    );
+  }
+
+  throw error;
+}
+
 export const paymentsApi = {
   createCheckoutSession: async (
     companyId: string,
     input: CreateCheckoutSessionInput,
   ): Promise<CheckoutSessionResponse> => {
-    const response = await api.post<CheckoutSessionResponse>(
-      `/payments/checkout/${companyId}`,
-      input,
-    );
+    try {
+      const response = await api.post<CheckoutSessionResponse>(
+        `/payments/checkout/${companyId}`,
+        input,
+      );
 
-    return response.data;
+      return response.data;
+    } catch (error) {
+      throwCommercialCheckoutError(error);
+    }
   },
 
   createBillingPortalSession: async (

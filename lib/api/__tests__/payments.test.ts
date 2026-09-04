@@ -49,6 +49,31 @@ describe('paymentsApi', () => {
     });
   });
 
+  it('surfaces active subscription checkout blocks as commercial guidance', async () => {
+    apiPostMock.mockRejectedValueOnce({
+      response: {
+        status: 400,
+        data: {
+          status: 'ACTIVE_SUBSCRIPTION_EXISTS',
+          message:
+            'Empresa já possui assinatura ativa. Use o portal de cobrança para alterar o plano.',
+          currentPlanLevel: 'PRO',
+          subscriptionStatus: 'ACTIVE',
+        },
+      },
+    });
+
+    await expect(
+      paymentsApi.createCheckoutSession('company-001', {
+        planLevel: 'ENTERPRISE',
+        successUrl: 'https://app.bcost.com.br/dashboard/settings?billing=success',
+        cancelUrl: 'https://app.bcost.com.br/dashboard/settings?billing=cancel',
+      }),
+    ).rejects.toThrow(
+      'Empresa já possui assinatura ativa. Use o portal de cobrança para alterar o plano. Plano atual: PRO. Status: ACTIVE.',
+    );
+  });
+
   it('loads subscription status with entitlements for the active company', async () => {
     apiGetMock.mockResolvedValueOnce({
       data: {
