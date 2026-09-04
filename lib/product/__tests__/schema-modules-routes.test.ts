@@ -77,6 +77,9 @@ describe('bcostSchemaModules routes', () => {
     );
 
     expect(existsSync(legacyWrapper)).toBe(true);
+    expect(readFileSync(legacyWrapper, 'utf8')).toContain(
+      "schemaModule?.route ?? '/dashboard/enterprise'",
+    );
   });
 
   it('mantem apiBase alinhado aos endpoints enterprise canonicos', () => {

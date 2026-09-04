@@ -274,7 +274,7 @@ export default function Sidebar() {
       {
         icon: ClipboardCheck,
         label: 'Regras & Catálogo',
-        href: '/dashboard/modules/business-rules',
+        href: '/dashboard/enterprise',
         desc: 'Escopo de serviços',
         signal: 'new',
       },

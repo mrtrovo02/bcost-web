@@ -27,6 +27,7 @@ import {
 import {
   paymentsApi,
   type PaymentSubscriptionResponse,
+  type PaymentSubscriptionStatus,
   type PaymentWebhookDeliveryStatus,
   type PaymentWebhookEvent,
 } from '@/lib/api/payments';
@@ -46,7 +47,11 @@ const SECTIONS: { key: SectionKey; label: string; icon: typeof User }[] = [
 ];
 
 const PLAN_ORDER: Record<PlanLevel, number> = { FREE: 1, PRO: 2, ENTERPRISE: 3 };
-const BILLABLE_SUBSCRIPTION_STATUSES = new Set(['ACTIVE', 'TRIALING', 'PAST_DUE']);
+const BILLABLE_SUBSCRIPTION_STATUSES = new Set<PaymentSubscriptionStatus>([
+  'ACTIVE',
+  'TRIALING',
+  'PAST_DUE',
+]);
 const WEBHOOK_STATUS_OPTIONS: Array<PaymentWebhookDeliveryStatus | 'ALL'> = [
   'ALL',
   'FAILED',

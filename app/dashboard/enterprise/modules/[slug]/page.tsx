@@ -11,5 +11,5 @@ export default async function EnterpriseCoverageModulePage({ params }: PageProps
   const resolvedParams = await params;
   const schemaModule = getSchemaModuleBySlug(resolvedParams.slug);
 
-  redirect(schemaModule?.route ?? `/dashboard/modules/${resolvedParams.slug}`);
+  redirect(schemaModule?.route ?? '/dashboard/enterprise');
 }

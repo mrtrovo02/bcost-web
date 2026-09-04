@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Sidebar from '../Sidebar';
 
 const mockPush = vi.fn();
@@ -31,6 +31,10 @@ vi.mock('@/services/api', () => ({
 }));
 
 describe('Sidebar', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('renders the main navigation and company name', () => {
     render(<Sidebar />);
 
@@ -38,5 +42,14 @@ describe('Sidebar', () => {
     expect(screen.getByText('Visão Geral')).toBeInTheDocument();
     expect(screen.getByText('Intelligence')).toBeInTheDocument();
     expect(screen.getByText('Documentos XML')).toBeInTheDocument();
+  });
+
+  it('routes service catalog navigation to the enterprise storefront instead of a roadmap module', () => {
+    render(<Sidebar />);
+
+    fireEvent.click(screen.getByText('Regras & Catálogo'));
+
+    expect(mockPush).toHaveBeenCalledWith('/dashboard/enterprise');
+    expect(mockPush).not.toHaveBeenCalledWith('/dashboard/modules/business-rules');
   });
 });

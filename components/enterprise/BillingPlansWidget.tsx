@@ -30,7 +30,11 @@ import {
 } from '@/lib/api/billing';
 import { isDemoEntityId, isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
 import { resolveEnterpriseCompanyIdWithFallback } from '@/lib/api/enterprise-company';
-import { paymentsApi, type PaymentSubscriptionResponse } from '@/lib/api/payments';
+import {
+  paymentsApi,
+  type PaymentSubscriptionResponse,
+  type PaymentSubscriptionStatus,
+} from '@/lib/api/payments';
 import { getToken } from '@/services/api';
 
 type UiMessage = {
@@ -39,7 +43,11 @@ type UiMessage = {
   description?: string;
 };
 
-const BILLABLE_SUBSCRIPTION_STATUSES = new Set(['ACTIVE', 'TRIALING', 'PAST_DUE']);
+const BILLABLE_SUBSCRIPTION_STATUSES = new Set<PaymentSubscriptionStatus>([
+  'ACTIVE',
+  'TRIALING',
+  'PAST_DUE',
+]);
 
 function hasRealAuthToken(): boolean {
   const token = getToken();

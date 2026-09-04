@@ -22,6 +22,11 @@ import {
   AuditLogRecord,
 } from '@/lib/api/automation-jobs';
 import { resolveEnterpriseCompanyIdWithFallback } from '@/lib/api/enterprise-company';
+import {
+  getModuleCommercialActionLabel,
+  getSchemaModuleBySlug,
+  isModuleOperationallyAccessible,
+} from '@/lib/product/schema-modules';
 
 type WidgetState = {
   loading: boolean;
@@ -40,6 +45,14 @@ const INITIAL_STATE: WidgetState = {
   payload: null,
   latestRetryAudit: null,
 };
+
+const AUTOMATION_JOBS_MODULE = getSchemaModuleBySlug('automation-jobs');
+const automationJobsCtaEnabled = AUTOMATION_JOBS_MODULE
+  ? isModuleOperationallyAccessible(AUTOMATION_JOBS_MODULE.status)
+  : true;
+const automationJobsCtaLabel = AUTOMATION_JOBS_MODULE
+  ? getModuleCommercialActionLabel(AUTOMATION_JOBS_MODULE.status)
+  : 'Abrir central';
 
 function formatDate(value?: string | null) {
   if (!value) return '—';
@@ -330,13 +343,20 @@ export default function AutomationJobsExecutiveWidget() {
             Atualizar
           </button>
 
-          <Link
-            href="/dashboard/modules/automation-jobs"
-            className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-3 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-          >
-            Abrir central
-            <ArrowRight className="h-4 w-4" />
-          </Link>
+          {automationJobsCtaEnabled ? (
+            <Link
+              href="/dashboard/modules/automation-jobs"
+              className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-3 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
+              {automationJobsCtaLabel}
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          ) : (
+            <span className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
+              {automationJobsCtaLabel}
+              <AlertTriangle className="h-4 w-4" />
+            </span>
+          )}
         </div>
       </div>
 

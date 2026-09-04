@@ -4,6 +4,15 @@ import { api } from '@/services/api';
 import type { BillingEntitlementsResponse, PlanLevel } from './billing';
 
 export type MonetizablePlanLevel = Exclude<PlanLevel, 'FREE'>;
+export type PaymentProvider = 'STRIPE' | 'PAGARME' | 'MERCADO_PAGO';
+export type PaymentSubscriptionStatus =
+  | 'INCOMPLETE'
+  | 'TRIALING'
+  | 'ACTIVE'
+  | 'PAST_DUE'
+  | 'UNPAID'
+  | 'CANCELED'
+  | 'PAUSED';
 
 export type CreateCheckoutSessionInput = {
   planLevel: MonetizablePlanLevel;
@@ -46,11 +55,11 @@ export type PaymentSubscriptionResponse = {
   companyId: string;
   subscription: {
     id: string;
-    provider: string;
+    provider: PaymentProvider;
     providerSubscriptionId: string;
     providerCustomerId?: string | null;
     planLevel: PlanLevel;
-    status: string;
+    status: PaymentSubscriptionStatus;
     currentPeriodStart?: string | null;
     currentPeriodEnd?: string | null;
     cancelAtPeriodEnd: boolean;
@@ -71,7 +80,7 @@ export type PaymentWebhookDeliveryStatus =
 
 export type PaymentWebhookEvent = {
   id: string;
-  provider: 'STRIPE' | 'PAGARME' | 'MERCADO_PAGO';
+  provider: PaymentProvider;
   providerEventId: string;
   eventType: string;
   status: PaymentWebhookDeliveryStatus;
