@@ -12,6 +12,7 @@ import {
   getModulesByArea,
   getModuleStats,
   getSellableModules,
+  isModuleOperationallyAccessible,
   sortModulesByMarketPriority,
 } from '../schema-modules';
 
@@ -117,6 +118,9 @@ describe('bcostSchemaModules routes', () => {
     expect(getModuleCommercialActionLabel('ACTIVE')).toBe('Abrir módulo');
     expect(getModuleCommercialActionLabel('INTEGRATING')).toBe('Ver escopo assistido');
     expect(getModuleCommercialActionLabel('PLANNED')).toBe('Ver roadmap');
+    expect(isModuleOperationallyAccessible('ACTIVE')).toBe(true);
+    expect(isModuleOperationallyAccessible('INTEGRATING')).toBe(true);
+    expect(isModuleOperationallyAccessible('PLANNED')).toBe(false);
   });
 
   it('mantem estatisticas de mercado coerentes com o catalogo', () => {

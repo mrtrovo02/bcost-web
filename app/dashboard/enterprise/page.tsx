@@ -7,7 +7,9 @@ import {
   getModulesByArea,
   getModuleStats,
   getSellableModules,
+  isModuleOperationallyAccessible,
   type BcostModulePriority,
+  type BcostSchemaModule,
   type BcostModuleStatus,
 } from '@/lib/product/schema-modules';
 import AccountingArchitectureRegistryWidget from '@/components/enterprise/AccountingArchitectureRegistryWidget';
@@ -48,6 +50,71 @@ function operationClass(status: BcostModuleStatus) {
   if (status === 'ACTIVE') return 'bg-emerald-50 text-emerald-700 border-emerald-100';
   if (status === 'INTEGRATING') return 'bg-indigo-50 text-indigo-700 border-indigo-100';
   return 'bg-slate-50 text-slate-500 border-slate-100';
+}
+
+function ModuleCardContent({ module }: { module: BcostSchemaModule }) {
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-2">
+        <span
+          className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-widest ${statusClass(
+            module.status,
+          )}`}
+        >
+          {statusLabel(module.status)}
+        </span>
+
+        <span
+          className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-widest ${operationClass(
+            module.status,
+          )}`}
+        >
+          {operationLabel(module.status)}
+        </span>
+
+        <span
+          className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${priorityClass(
+            module.priority,
+          )}`}
+        >
+          {module.priority}
+        </span>
+      </div>
+
+      <h3 className="mt-5 text-2xl font-black tracking-tight text-slate-900 group-hover:text-blue-700">
+        {module.title}
+      </h3>
+
+      <p className="mt-1 text-xs font-black uppercase tracking-[0.2em] text-slate-400">
+        Contrato operacional: {module.model}
+      </p>
+
+      <p className="mt-4 text-sm leading-6 text-slate-500">{module.description}</p>
+
+      <div className="mt-5 rounded-2xl bg-slate-50 p-4">
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+          Valor comercial
+        </p>
+        <p className="mt-2 text-sm font-bold leading-6 text-slate-700">
+          {module.commercialValue}
+        </p>
+      </div>
+
+      <div className="mt-5 flex flex-wrap gap-2">
+        {module.kpis.slice(0, 3).map((kpi) => (
+          <span
+            key={kpi}
+            className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500"
+          >
+            {kpi}
+          </span>
+        ))}
+      </div>
+      <p className="mt-5 text-sm font-black text-blue-700">
+        {getModuleCommercialActionLabel(module.status)}
+      </p>
+    </>
+  );
 }
 
 export default function EnterpriseModulesPage() {
@@ -248,72 +315,24 @@ export default function EnterpriseModulesPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-              {modules.map((module) => (
-                <Link
-                  href={module.route}
-                  key={module.slug}
-                  className="group rounded-[2rem] border border-slate-100 bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:border-blue-100 hover:shadow-xl"
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span
-                      className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-widest ${statusClass(
-                        module.status,
-                      )}`}
-                    >
-                      {statusLabel(module.status)}
-                    </span>
-
-                    <span
-                      className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-widest ${operationClass(
-                        module.status,
-                      )}`}
-                    >
-                      {operationLabel(module.status)}
-                    </span>
-
-                    <span
-                      className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${priorityClass(
-                        module.priority,
-                      )}`}
-                    >
-                      {module.priority}
-                    </span>
-                  </div>
-
-                  <h3 className="mt-5 text-2xl font-black tracking-tight text-slate-900 group-hover:text-blue-700">
-                    {module.title}
-                  </h3>
-
-                  <p className="mt-1 text-xs font-black uppercase tracking-[0.2em] text-slate-400">
-                    Contrato operacional: {module.model}
-                  </p>
-
-                  <p className="mt-4 text-sm leading-6 text-slate-500">{module.description}</p>
-
-                  <div className="mt-5 rounded-2xl bg-slate-50 p-4">
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                      Valor comercial
-                    </p>
-                    <p className="mt-2 text-sm font-bold leading-6 text-slate-700">
-                      {module.commercialValue}
-                    </p>
-                  </div>
-
-                  <div className="mt-5 flex flex-wrap gap-2">
-                    {module.kpis.slice(0, 3).map((kpi) => (
-                      <span
-                        key={kpi}
-                        className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500"
-                      >
-                        {kpi}
-                      </span>
-                    ))}
-                  </div>
-                  <p className="mt-5 text-sm font-black text-blue-700">
-                    {getModuleCommercialActionLabel(module.status)}
-                  </p>
-                </Link>
-              ))}
+              {modules.map((module) =>
+                isModuleOperationallyAccessible(module.status) ? (
+                  <Link
+                    href={module.route}
+                    key={module.slug}
+                    className="group rounded-[2rem] border border-slate-100 bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:border-blue-100 hover:shadow-xl"
+                  >
+                    <ModuleCardContent module={module} />
+                  </Link>
+                ) : (
+                  <article
+                    key={module.slug}
+                    className="group rounded-[2rem] border border-slate-100 bg-white p-7 opacity-85 shadow-sm"
+                  >
+                    <ModuleCardContent module={module} />
+                  </article>
+                ),
+              )}
             </div>
           </section>
         );

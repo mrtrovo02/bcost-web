@@ -93,6 +93,10 @@ export function getModuleCommercialActionLabel(status: BcostModuleStatus): strin
   return 'Ver roadmap';
 }
 
+export function isModuleOperationallyAccessible(status: BcostModuleStatus): boolean {
+  return getModuleMarketReadiness(status) !== 'ROADMAP_LOCKED';
+}
+
 export function sortModulesByMarketPriority(
   modules: BcostSchemaModule[],
 ): BcostSchemaModule[] {
