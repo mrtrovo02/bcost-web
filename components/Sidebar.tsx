@@ -31,7 +31,6 @@ import {
   setActiveCompanyId,
 } from '@/services/api';
 import { DEMO_COMPANIES, type DemoCompany } from '@/services/demo-data';
-import { isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
 
 type SidebarCompany = Company & Partial<Pick<DemoCompany, 'role' | 'status' | 'plan'>>;
 type RequestFailureStatus = 401 | 429;
@@ -158,12 +157,6 @@ export default function Sidebar() {
           status: blockedStatus,
           timestamp: Date.now(),
         };
-      }
-
-      if (isOperationalDemoFallbackEnabled()) {
-        console.warn('[bCost Sidebar]: API indisponível, usando dados de demonstração.');
-        applyCompanies(DEMO_COMPANIES);
-        return;
       }
 
       console.warn(
