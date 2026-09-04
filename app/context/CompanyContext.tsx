@@ -63,6 +63,10 @@ function removeDemoCompanies(companies: Company[]): Company[] {
   return companies.filter((company) => !isDemoEntityId(company.id));
 }
 
+function canUseCompanyInCurrentSession(company: Company, isDemo: boolean): boolean {
+  return isDemo || !isDemoEntityId(company.id);
+}
+
 export function CompanyProvider({ children }: { children: ReactNode }) {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
@@ -93,7 +97,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         if (saved) {
           const parsedCompany = safeJsonParse<Company | null>(saved, null);
           if (parsedCompany?.id) {
-            if (isDemoEntityId(parsedCompany.id) && !isDemo) {
+            if (!canUseCompanyInCurrentSession(parsedCompany, isDemo)) {
               clearCompanyContextStorage();
               setSelectedCompany(null);
               setCompanies([]);
@@ -167,17 +171,14 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       const { companyId, companies: eventCompanies = [] } =
         (event as CompanyContextUpdateEvent).detail ?? {};
       const storedCompanies = safeJsonParse<Company[]>(safeLocalStorageGet('bcost_companies'), []);
-      const nextCompanies = eventCompanies.length > 0 ? eventCompanies : storedCompanies;
+      const isDemo = detectDemoSession();
+      const rawNextCompanies = eventCompanies.length > 0 ? eventCompanies : storedCompanies;
+      const nextCompanies = isDemo ? rawNextCompanies : removeDemoCompanies(rawNextCompanies);
       const nextCompany =
         nextCompanies.find((company) => company.id === companyId) ?? nextCompanies[0] ?? null;
 
-      const isDemo = detectDemoSession();
-      const containsStaleDemoContext = Boolean(
-        nextCompany?.id && isDemoEntityId(nextCompany.id) && !isDemo,
-      );
-
       if (
-        containsStaleDemoContext ||
+        (nextCompany && !canUseCompanyInCurrentSession(nextCompany, isDemo)) ||
         (nextCompany?.id && isDemoEntityId(nextCompany.id) && !isOperationalDemoFallbackEnabled())
       ) {
         clearCompanyContextStorage();
@@ -211,7 +212,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
    * Sempre que a empresa for trocada, atualizamos o LocalStorage e o Header Global.
    */
   const handleSetSelected = (company: Company) => {
-    if (isDemoEntityId(company.id) && !detectDemoSession() && !isOperationalDemoFallbackEnabled()) {
+    if (!canUseCompanyInCurrentSession(company, detectDemoSession())) {
       clearCompanyContextStorage();
       setSelectedCompany(null);
       setCompanies([]);
