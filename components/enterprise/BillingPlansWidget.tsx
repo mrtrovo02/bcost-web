@@ -106,6 +106,70 @@ function groupFeatures(features: BillingFeature[]) {
   }, {});
 }
 
+function formatMarketReadiness(readiness?: BillingFeature['marketReadiness']) {
+  if (!readiness) return null;
+  if (readiness === 'SELLABLE') return 'Vendável';
+  if (readiness === 'ASSISTED_BETA') return 'Venda assistida';
+  return 'Roadmap bloqueado';
+}
+
+function readinessTone(readiness?: BillingFeature['marketReadiness']) {
+  if (readiness === 'SELLABLE') return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+  if (readiness === 'ASSISTED_BETA') return 'border-blue-200 bg-blue-50 text-blue-700';
+  if (readiness === 'ROADMAP_LOCKED') return 'border-amber-200 bg-amber-50 text-amber-700';
+  return 'border-slate-200 bg-slate-50 text-slate-600';
+}
+
+function BillingFeatureCard({
+  feature,
+  mode,
+}: {
+  feature: BillingFeature;
+  mode: 'enabled' | 'locked';
+}) {
+  const readinessLabel = formatMarketReadiness(feature.marketReadiness);
+  const Icon = mode === 'enabled' ? CheckCircle2 : AlertTriangle;
+  const iconClass = mode === 'enabled' ? 'text-emerald-600' : 'text-amber-600';
+
+  return (
+    <div
+      key={feature.key}
+      className={`rounded-2xl border bg-white p-3 ${
+        mode === 'enabled' ? 'border-emerald-100' : 'border-slate-200'
+      }`}
+    >
+      <div className="flex items-start gap-2">
+        <Icon className={`mt-0.5 h-4 w-4 flex-none ${iconClass}`} />
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-900">
+            <span>{feature.label}</span>
+            {readinessLabel && (
+              <span
+                className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${readinessTone(
+                  feature.marketReadiness,
+                )}`}
+              >
+                {readinessLabel}
+              </span>
+            )}
+          </div>
+          <div className="mt-1 text-xs leading-5 text-slate-500">{feature.description}</div>
+          {feature.commercialGuardrail && feature.marketReadiness !== 'SELLABLE' && (
+            <div className="mt-2 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-[11px] leading-5 text-amber-800">
+              {feature.commercialGuardrail}
+            </div>
+          )}
+          {mode === 'locked' && (
+            <div className="mt-2 inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-700">
+              Exige {feature.minPlan}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PlanBadge({ plan }: { plan: PlanLevel }) {
   const tone = planTone(plan);
 
@@ -533,22 +597,7 @@ export default function BillingPlansWidget() {
 
                       <div className="grid gap-2">
                         {features.map((feature) => (
-                          <div
-                            key={feature.key}
-                            className="rounded-2xl border border-emerald-100 bg-white p-3"
-                          >
-                            <div className="flex items-start gap-2">
-                              <CheckCircle2 className="mt-0.5 h-4 w-4 flex-none text-emerald-600" />
-                              <div>
-                                <div className="text-sm font-semibold text-slate-900">
-                                  {feature.label}
-                                </div>
-                                <div className="mt-1 text-xs leading-5 text-slate-500">
-                                  {feature.description}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
+                          <BillingFeatureCard key={feature.key} feature={feature} mode="enabled" />
                         ))}
                       </div>
                     </div>
@@ -583,25 +632,7 @@ export default function BillingPlansWidget() {
 
                       <div className="grid gap-2">
                         {features.map((feature) => (
-                          <div
-                            key={feature.key}
-                            className="rounded-2xl border border-slate-200 bg-white p-3"
-                          >
-                            <div className="flex items-start gap-2">
-                              <AlertTriangle className="mt-0.5 h-4 w-4 flex-none text-amber-600" />
-                              <div>
-                                <div className="text-sm font-semibold text-slate-900">
-                                  {feature.label}
-                                </div>
-                                <div className="mt-1 text-xs leading-5 text-slate-500">
-                                  {feature.description}
-                                </div>
-                                <div className="mt-2 inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-700">
-                                  Exige {feature.minPlan}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
+                          <BillingFeatureCard key={feature.key} feature={feature} mode="locked" />
                         ))}
                       </div>
                     </div>
