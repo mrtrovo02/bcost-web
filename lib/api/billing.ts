@@ -2,6 +2,11 @@
 
 import { api, getToken, isDemoSession } from '@/services/api';
 import { assertOperationalDemoFallbackEnabled, isDemoEntityId } from '@/lib/config/demo-policy';
+import {
+  getModuleMarketReadiness,
+  getSchemaModuleBySlug,
+  type BcostMarketReadiness,
+} from '@/lib/product/schema-modules';
 
 export type PlanLevel = 'FREE' | 'PRO' | 'ENTERPRISE';
 
@@ -27,6 +32,9 @@ export type BillingFeature = {
   label: string;
   description: string;
   minPlan: PlanLevel;
+  moduleSlug?: string;
+  marketReadiness?: BcostMarketReadiness;
+  commercialGuardrail?: string;
   enabled?: boolean;
   locked?: boolean;
 };
@@ -161,38 +169,66 @@ export const DEMO_BILLING_FEATURES: BillingFeature[] = [
     label: 'Dashboard Enterprise',
     description: 'Visão executiva consolidada com indicadores operacionais.',
     minPlan: 'FREE',
+    moduleSlug: 'command-center',
   },
   {
     key: 'fiscal.diagnostics',
     label: 'Diagnóstico fiscal',
     description: 'Análise fiscal, saúde tributária e indicadores do Simples.',
     minPlan: 'FREE',
+    moduleSlug: 'tax-scenarios',
   },
   {
     key: 'banking.reconciliation',
     label: 'Conciliação bancária',
     description: 'Motor de conciliação automática entre banco e documentos fiscais.',
     minPlan: 'PRO',
+    moduleSlug: 'bank-transactions',
   },
   {
     key: 'accounting.entries',
     label: 'Lançamentos contábeis',
     description: 'Base contábil para fechamento e classificação.',
     minPlan: 'PRO',
+    moduleSlug: 'accounting-entries',
   },
   {
     key: 'digital.certificates',
     label: 'Certificados digitais',
-    description: 'Gestão de certificados e alertas de vencimento.',
+    description: 'Gestão de metadados, validade e alertas de vencimento de certificados.',
     minPlan: 'ENTERPRISE',
+    moduleSlug: 'digital-certificates',
   },
   {
     key: 'ai.copilot',
     label: 'Copilot fiscal',
     description: 'Assistente fiscal/financeiro com IA e contexto da empresa.',
     minPlan: 'ENTERPRISE',
+    marketReadiness: 'ROADMAP_LOCKED',
+    commercialGuardrail:
+      'Não vender como automação fiscal autônoma até existir módulo, trilha de auditoria e política de revisão humana.',
   },
 ];
+
+function enrichBillingFeatureWithReadiness(feature: BillingFeature): BillingFeature {
+  if (feature.marketReadiness) return feature;
+  if (!feature.moduleSlug) return feature;
+
+  const module = getSchemaModuleBySlug(feature.moduleSlug);
+  const marketReadiness = module ? getModuleMarketReadiness(module.status) : 'ROADMAP_LOCKED';
+  const commercialGuardrail =
+    marketReadiness === 'SELLABLE'
+      ? 'Feature pode ser oferecida conforme plano ativo, tenant válido e endpoint produtivo.'
+      : marketReadiness === 'ASSISTED_BETA'
+        ? 'Feature exige venda assistida, evidência operacional e aceite explícito de escopo.'
+        : 'Feature não deve ser prometida como operação produtiva até o módulo sair do roadmap bloqueado.';
+
+  return {
+    ...feature,
+    marketReadiness,
+    commercialGuardrail,
+  };
+}
 
 export function getDemoBillingEntitlements(
   company?: { id?: string; name?: string; cnpj?: string } | null,
@@ -200,7 +236,7 @@ export function getDemoBillingEntitlements(
 ): BillingEntitlementsResponse {
   const plan = DEMO_BILLING_PLANS.find((item) => item.level === planLevel) ?? DEMO_BILLING_PLANS[0];
   const planOrder: Record<PlanLevel, number> = { FREE: 1, PRO: 2, ENTERPRISE: 3 };
-  const features = DEMO_BILLING_FEATURES.map((feature) => {
+  const features = DEMO_BILLING_FEATURES.map(enrichBillingFeatureWithReadiness).map((feature) => {
     const enabled = planOrder[planLevel] >= planOrder[feature.minPlan];
 
     return {
@@ -247,7 +283,7 @@ export const billingApi = {
       return {
         status: 'OK_DEMO',
         plans: DEMO_BILLING_PLANS,
-        features: DEMO_BILLING_FEATURES,
+        features: DEMO_BILLING_FEATURES.map(enrichBillingFeatureWithReadiness),
         generatedAt: new Date().toISOString(),
       };
     }

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { api, getToken, isDemoSession } from '@/services/api';
-import { billingApi } from '../billing';
+import { billingApi, getDemoBillingEntitlements } from '../billing';
 
 vi.mock('@/services/api', () => ({
   api: {
@@ -50,6 +50,26 @@ describe('billingApi demo mode', () => {
     expect(planChange.audit.recorded).toBe(true);
     expect(apiGetMock).not.toHaveBeenCalled();
     expect(apiPatchMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps commercial billing features aligned with module market readiness', () => {
+    const entitlements = getDemoBillingEntitlements({ id: 'demo-001' });
+    const digitalCertificates = entitlements.features.find(
+      (item) => item.key === 'digital.certificates',
+    );
+    const copilot = entitlements.features.find((item) => item.key === 'ai.copilot');
+
+    expect(digitalCertificates).toMatchObject({
+      enabled: true,
+      marketReadiness: 'ROADMAP_LOCKED',
+      commercialGuardrail:
+        'Feature não deve ser prometida como operação produtiva até o módulo sair do roadmap bloqueado.',
+    });
+    expect(copilot).toMatchObject({
+      enabled: true,
+      marketReadiness: 'ROADMAP_LOCKED',
+      commercialGuardrail: expect.stringContaining('Não vender como automação fiscal autônoma'),
+    });
   });
 
   it('does not mask plans endpoint failures for real authenticated sessions', async () => {
