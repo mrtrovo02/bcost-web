@@ -84,6 +84,8 @@ type EnterpriseApiErrorPayload = {
   feature?: string;
   planLevel?: string;
   requiredPlan?: string;
+  marketReadiness?: BcostMarketReadiness;
+  commercialGuardrail?: string;
 };
 
 type EnterpriseApiError = {
@@ -219,14 +221,23 @@ function throwFeatureLockedError(error: unknown): void {
   const apiError = toEnterpriseApiError(error);
   const payload = apiError.response?.data;
 
-  if (apiError.response?.status !== 403 || payload?.status !== 'FEATURE_LOCKED') {
+  const isFeatureBoundary =
+    payload?.status === 'FEATURE_LOCKED' || payload?.status === 'FEATURE_ROADMAP_LOCKED';
+
+  if (apiError.response?.status !== 403 || !isFeatureBoundary) {
     return;
   }
 
   const feature = payload.feature ? ` (${payload.feature})` : '';
   const requiredPlan = payload.requiredPlan ? ` Exige plano ${payload.requiredPlan}.` : '';
+  const readiness =
+    payload.status === 'FEATURE_ROADMAP_LOCKED' && payload.marketReadiness
+      ? ` Status comercial: ${payload.marketReadiness}.`
+      : '';
   const message =
-    payload.message || `Feature bloqueada para o plano atual${feature}.${requiredPlan}`;
+    payload.message ||
+    payload.commercialGuardrail ||
+    `Feature bloqueada para o plano atual${feature}.${requiredPlan}${readiness}`;
 
   throw new Error(message);
 }

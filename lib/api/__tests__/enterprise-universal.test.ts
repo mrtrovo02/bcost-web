@@ -259,6 +259,29 @@ describe('enterpriseUniversalApi', () => {
     ).rejects.toThrow('Feature exige plano mínimo ENTERPRISE.');
   });
 
+  it('surfaces roadmap-locked feature errors without falling back to demo data', async () => {
+    apiGetMock.mockRejectedValueOnce({
+      response: {
+        status: 403,
+        data: {
+          status: 'FEATURE_ROADMAP_LOCKED',
+          message:
+            'Não prometer automação fiscal baseada em certificado até existir cofre seguro.',
+          feature: 'digital.certificates',
+          planLevel: 'ENTERPRISE',
+          requiredPlan: 'ENTERPRISE',
+          marketReadiness: 'ROADMAP_LOCKED',
+        },
+      },
+    });
+
+    await expect(
+      enterpriseUniversalApi.getModule('digital-certificates', 'company-123'),
+    ).rejects.toThrow(
+      'Não prometer automação fiscal baseada em certificado até existir cofre seguro.',
+    );
+  });
+
   it('does not return summary or health demo data for real companies', async () => {
     apiGetMock.mockRejectedValue({ response: { status: 404 } });
 
