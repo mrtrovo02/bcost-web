@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import EnterpriseModuleClient from '../EnterpriseModuleClient';
 import {
   enterpriseUniversalApi,
@@ -36,6 +36,10 @@ const getModuleMock = vi.mocked(enterpriseUniversalApi.getModule);
 const resolveCompanyMock = vi.mocked(resolveEnterpriseCompanyId);
 
 describe('EnterpriseModuleClient dynamic page', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('renders module governance from the enriched enterprise catalog', async () => {
     resolveCompanyMock.mockResolvedValueOnce('company-123');
     catalogMock.mockResolvedValueOnce([
@@ -89,5 +93,39 @@ describe('EnterpriseModuleClient dynamic page', () => {
       limit: 100,
       offset: 0,
     });
+  });
+
+  it('renders roadmap state locally for planned modules without calling operational API', async () => {
+    resolveCompanyMock.mockResolvedValueOnce('company-123');
+    catalogMock.mockResolvedValueOnce([
+      {
+        slug: 'digital-certificates',
+        model: 'DigitalCertificate',
+        label: 'Certificados Digitais',
+        persistence: 'ROADMAP',
+        endpoint: '/digital-certificates/enterprise',
+        canonicalOwner: 'integrations',
+        automationBoundary: 'CRC_VALIDATED',
+        marketReadiness: 'ROADMAP_LOCKED',
+        operationalGuardrails: [
+          'Exige cofre seguro, criptografia e política de rotação antes de uso produtivo.',
+        ],
+      },
+    ]);
+
+    render(<EnterpriseModuleClient slug="digital-certificates" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Roadmap técnico controlado')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Certificados Digitais está mapeado, mas ainda não opera com persistência própria')).toBeInTheDocument();
+    expect(screen.getAllByText('/digital-certificates/enterprise')).toHaveLength(2);
+    expect(
+      screen.getAllByText(
+        'Exige cofre seguro, criptografia e política de rotação antes de uso produtivo.',
+      ),
+    ).toHaveLength(2);
+    expect(getModuleMock).not.toHaveBeenCalled();
   });
 });

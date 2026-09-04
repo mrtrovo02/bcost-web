@@ -240,6 +240,37 @@ function getRoadmapSummary(data: EnterpriseModuleResponse | null): RoadmapModule
   };
 }
 
+function createRoadmapModuleResponse(
+  slug: string,
+  catalogItem: EnterpriseCatalogItem,
+  companyId: string,
+): EnterpriseModuleResponse {
+  return {
+    slug,
+    model: catalogItem.model || getEnterpriseModuleModel(slug),
+    label: catalogItem.label || getEnterpriseModuleLabel(slug),
+    companyId,
+    status: 'ROADMAP_LOCKED',
+    items: [],
+    total: 0,
+    limit: 0,
+    offset: 0,
+    hasMore: false,
+    summary: {
+      roadmap: true,
+      area: catalogItem.area,
+      priority: catalogItem.priority,
+      endpoint: catalogItem.endpoint,
+      canonicalOwner: catalogItem.canonicalOwner,
+      automationBoundary: catalogItem.automationBoundary,
+      operationalGuardrails: catalogItem.operationalGuardrails ?? [],
+      nextStep:
+        'Implementar persistência, endpoints produtivos, isolamento multi-tenant, testes regressivos e critérios de aceite antes de liberar operação comercial.',
+    },
+    generatedAt: new Date().toISOString(),
+  };
+}
+
 function getModuleGovernanceDetails(
   data: EnterpriseModuleResponse | null,
   catalogItem: EnterpriseCatalogItem | null,
@@ -1220,6 +1251,11 @@ export default function EnterpriseModuleClient({ slug }: EnterpriseModuleClientP
 
         companyIdRef.current = resolvedCompanyId;
         setCompanyId(resolvedCompanyId);
+
+        if (nextCatalogItem?.marketReadiness === 'ROADMAP_LOCKED') {
+          setData(createRoadmapModuleResponse(slug, nextCatalogItem, resolvedCompanyId));
+          return;
+        }
 
         const response = await enterpriseUniversalApi.getModule(slug, resolvedCompanyId, {
           limit: 100,
