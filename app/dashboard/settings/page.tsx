@@ -46,6 +46,7 @@ const SECTIONS: { key: SectionKey; label: string; icon: typeof User }[] = [
 ];
 
 const PLAN_ORDER: Record<PlanLevel, number> = { FREE: 1, PRO: 2, ENTERPRISE: 3 };
+const BILLABLE_SUBSCRIPTION_STATUSES = new Set(['ACTIVE', 'TRIALING', 'PAST_DUE']);
 const WEBHOOK_STATUS_OPTIONS: Array<PaymentWebhookDeliveryStatus | 'ALL'> = [
   'ALL',
   'FAILED',
@@ -85,6 +86,12 @@ function webhookStatusClass(status: PaymentWebhookDeliveryStatus): string {
   };
 
   return classes[status];
+}
+
+function hasBillableSubscription(
+  subscription: PaymentSubscriptionResponse['subscription'],
+): boolean {
+  return Boolean(subscription?.status && BILLABLE_SUBSCRIPTION_STATUSES.has(subscription.status));
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -179,6 +186,15 @@ function BillingSection() {
     setFeedback(null);
     try {
       if (planLevel !== 'FREE') {
+        if (hasBillableSubscription(subscription)) {
+          const portal = await paymentsApi.createBillingPortalSession(selectedCompany.id, {
+            returnUrl: `${window.location.origin}/dashboard/settings?billing=portal`,
+          });
+
+          window.location.assign(portal.portalSession.portalUrl);
+          return;
+        }
+
         const checkout = await paymentsApi.createCheckoutSession(selectedCompany.id, {
           planLevel,
           successUrl: `${window.location.origin}/dashboard/settings?billing=success`,

@@ -30,7 +30,7 @@ import {
 } from '@/lib/api/billing';
 import { isDemoEntityId, isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
 import { resolveEnterpriseCompanyIdWithFallback } from '@/lib/api/enterprise-company';
-import { paymentsApi } from '@/lib/api/payments';
+import { paymentsApi, type PaymentSubscriptionResponse } from '@/lib/api/payments';
 import { getToken } from '@/services/api';
 
 type UiMessage = {
@@ -39,9 +39,17 @@ type UiMessage = {
   description?: string;
 };
 
+const BILLABLE_SUBSCRIPTION_STATUSES = new Set(['ACTIVE', 'TRIALING', 'PAST_DUE']);
+
 function hasRealAuthToken(): boolean {
   const token = getToken();
   return Boolean(token && token !== 'demo-token-local');
+}
+
+function hasBillableSubscription(
+  subscription: PaymentSubscriptionResponse['subscription'],
+): boolean {
+  return Boolean(subscription?.status && BILLABLE_SUBSCRIPTION_STATUSES.has(subscription.status));
 }
 
 async function resolveCompanyId(): Promise<string> {
@@ -298,6 +306,8 @@ export default function BillingPlansWidget() {
   const [companyId, setCompanyId] = useState<string>('');
   const [entitlements, setEntitlements] = useState<BillingEntitlementsResponse | null>(null);
   const [plans, setPlans] = useState<BillingPlan[]>([]);
+  const [subscription, setSubscription] =
+    useState<PaymentSubscriptionResponse['subscription']>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [actionLoading, setActionLoading] = useState<PlanLevel | null>(null);
   const [message, setMessage] = useState<UiMessage | null>(null);
@@ -317,6 +327,12 @@ export default function BillingPlansWidget() {
 
       setPlans(plansResponse.plans || []);
       setEntitlements(entitlementsResponse);
+      setSubscription(null);
+
+      if (hasRealAuthToken() && !isDemoEntityId(resolvedCompanyId)) {
+        const subscriptionResponse = await paymentsApi.subscription(resolvedCompanyId);
+        setSubscription(subscriptionResponse.subscription ?? null);
+      }
 
       if (
         String(plansResponse.status).includes('DEMO') ||
@@ -333,6 +349,7 @@ export default function BillingPlansWidget() {
       if (hasRealAuthToken() || !isOperationalDemoFallbackEnabled()) {
         setPlans([]);
         setEntitlements(null);
+        setSubscription(null);
         setMessage({
           type: 'error',
           title: 'Billing indisponível',
@@ -351,6 +368,7 @@ export default function BillingPlansWidget() {
       setCompanyId(fallbackCompany.id);
       setPlans(DEMO_BILLING_PLANS);
       setEntitlements(getDemoBillingEntitlements(fallbackCompany, 'ENTERPRISE'));
+      setSubscription(null);
       setMessage({
         type: 'warning',
         title: 'Billing carregado em fallback',
@@ -391,6 +409,16 @@ export default function BillingPlansWidget() {
       try {
         if (hasRealAuthToken() && !isDemoEntityId(companyId) && planLevel !== 'FREE') {
           const origin = typeof window !== 'undefined' ? window.location.origin : '';
+
+          if (hasBillableSubscription(subscription)) {
+            const portal = await paymentsApi.createBillingPortalSession(companyId, {
+              returnUrl: `${origin}/dashboard/settings?billing=portal`,
+            });
+
+            window.location.assign(portal.portalSession.portalUrl);
+            return;
+          }
+
           const checkout = await paymentsApi.createCheckoutSession(companyId, {
             planLevel,
             successUrl: `${origin}/dashboard/settings?billing=success`,
@@ -431,7 +459,7 @@ export default function BillingPlansWidget() {
         setActionLoading(null);
       }
     },
-    [companyId],
+    [companyId, subscription],
   );
 
   return (
