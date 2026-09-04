@@ -23,6 +23,13 @@ import {
 } from 'lucide-react';
 
 import {
+  getModuleCommercialActionLabel,
+  getSchemaModuleBySlug,
+  isModuleOperationallyAccessible,
+  type BcostModuleStatus,
+  type BcostSchemaModule,
+} from '@/lib/product/schema-modules';
+import {
   CommandCenterActivityRecord,
   CommandCenterAuditFinding,
   CommandCenterAuditRecommendation,
@@ -111,6 +118,33 @@ function moduleRoute(slug: string) {
   };
 
   return directRoutes[slug] || `/dashboard/modules/${slug}`;
+}
+
+type ModuleNavigation = {
+  enabled: boolean;
+  href: string;
+  label: string;
+  reason?: string;
+};
+
+function moduleNavigation(slug: string): ModuleNavigation {
+  const schemaModule: BcostSchemaModule | undefined = getSchemaModuleBySlug(slug);
+  const status: BcostModuleStatus | undefined = schemaModule?.status;
+
+  if (status && !isModuleOperationallyAccessible(status)) {
+    return {
+      enabled: false,
+      href: moduleRoute(slug),
+      label: getModuleCommercialActionLabel(status),
+      reason: 'Roadmap bloqueado: módulo sem navegação operacional neste ambiente.',
+    };
+  }
+
+  return {
+    enabled: true,
+    href: schemaModule?.route ?? moduleRoute(slug),
+    label: status ? getModuleCommercialActionLabel(status) : 'Abrir módulo',
+  };
 }
 
 function moduleIcon(slug: string) {
@@ -762,12 +796,23 @@ export default function CommandCenterEnterpriseWorkspace() {
                     <MiniMetric label="Open" value={selectedModule.open || 0} />
                   </div>
 
-                  <a
-                    href={moduleRoute(selectedModule.slug)}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-3 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-                  >
-                    Abrir módulo
-                  </a>
+                  {(() => {
+                    const navigation = moduleNavigation(selectedModule.slug);
+
+                    return navigation.enabled ? (
+                      <Link
+                        href={navigation.href}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-3 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+                      >
+                        {navigation.label}
+                      </Link>
+                    ) : (
+                      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                        <div className="font-bold">{navigation.label}</div>
+                        <div className="mt-1">{navigation.reason}</div>
+                      </div>
+                    );
+                  })()}
 
                   {selectedModule.slug === 'audit-intelligence' && (
                     <div className="rounded-2xl border border-purple-100 bg-purple-50 p-4 text-sm text-purple-800">
