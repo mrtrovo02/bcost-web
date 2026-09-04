@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { revenueApi } from '../../../lib/api/revenue';
 import { RevenueStats } from '../../../lib/types/global';
-import { TrendingUp, Users, Target, DollarSign, ArrowUpRight, BarChart3 } from 'lucide-react';
+import { AlertCircle, TrendingUp, Users, Target, DollarSign, ArrowUpRight, BarChart3 } from 'lucide-react';
 import SplitPaymentProjector from '@/components/split-payment/SplitPaymentProjector';
 import { isDemoSession } from '@/services/api';
 
@@ -22,6 +22,7 @@ export default function RevenuePage() {
   const [stats, setStats] = useState<RevenueStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [faturamento, setFaturamento] = useState(150000);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setFaturamento(readCompanyRevenue());
@@ -29,6 +30,7 @@ export default function RevenuePage() {
     const loadRevenueData = async () => {
       try {
         setLoading(true);
+        setError(null);
         if (isDemoSession()) {
           setStats({
             totalRevenue: 830000,
@@ -46,12 +48,12 @@ export default function RevenuePage() {
         }
       } catch (error) {
         console.error('🔴 [Revenue Engine Error]:', error);
-        setStats({
-          totalRevenue: 0,
-          projectedRevenue: 0,
-          growthRate: 0,
-          activeContracts: 0,
-        });
+        setStats(null);
+        setError(
+          error instanceof Error
+            ? error.message
+            : 'Não foi possível carregar as métricas reais de receita.',
+        );
       } finally {
         setLoading(false);
       }
@@ -68,6 +70,27 @@ export default function RevenuePage() {
         </p>
       </div>
     );
+
+  if (error && !stats) {
+    return (
+      <div className="min-h-screen bg-[#fcfdfe] p-10">
+        <div className="max-w-3xl rounded-[2rem] border border-rose-200 bg-rose-50 p-8 text-rose-950 shadow-sm">
+          <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl border border-rose-200 bg-white text-rose-600">
+            <AlertCircle size={24} />
+          </div>
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-rose-600">
+            Revenue indisponível
+          </p>
+          <h1 className="mt-3 text-3xl font-black tracking-tight text-slate-950">
+            Dados reais de receita não carregados
+          </h1>
+          <p className="mt-3 text-sm leading-relaxed text-rose-900/80">
+            {error} O módulo não exibirá valores zerados ou demonstrativos para uma empresa produtiva.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-10 space-y-10 bg-[#fcfdfe] min-h-screen animate-in fade-in duration-700">
