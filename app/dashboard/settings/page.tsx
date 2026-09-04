@@ -429,7 +429,7 @@ function BillingSection() {
                   <FeatureRow label={`${formatLimit(plan.limits.invoicesPerMonth)} notas/mês`} />
                   <FeatureRow label={`Auditoria: ${plan.limits.auditRetentionDays} dias`} />
                   {planFeatures.map((f) => (
-                    <FeatureRow key={f.key} label={f.label} />
+                    <FeatureRow key={f.key} label={f.label} feature={f} />
                   ))}
                 </div>
 
@@ -486,11 +486,34 @@ function LimitStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function FeatureRow({ label }: { label: string }) {
+function formatMarketReadiness(readiness?: BillingFeature['marketReadiness']): string | null {
+  if (!readiness) return null;
+  if (readiness === 'SELLABLE') return 'Vendável';
+  if (readiness === 'ASSISTED_BETA') return 'Venda assistida';
+  return 'Roadmap bloqueado';
+}
+
+function FeatureRow({ label, feature }: { label: string; feature?: BillingFeature }) {
+  const readinessLabel = formatMarketReadiness(feature?.marketReadiness);
+
   return (
-    <div className="flex items-center gap-2">
-      <Check size={12} className="text-emerald-500 shrink-0" />
-      <span>{label}</span>
+    <div className="flex items-start gap-2">
+      <Check size={12} className="mt-0.5 text-emerald-500 shrink-0" />
+      <span className="min-w-0">
+        <span className="flex flex-wrap items-center gap-2">
+          <span>{label}</span>
+          {readinessLabel && (
+            <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-slate-400">
+              {readinessLabel}
+            </span>
+          )}
+        </span>
+        {feature?.commercialGuardrail && feature.marketReadiness !== 'SELLABLE' && (
+          <span className="mt-1 block text-[11px] leading-4 text-amber-200/80">
+            {feature.commercialGuardrail}
+          </span>
+        )}
+      </span>
     </div>
   );
 }
