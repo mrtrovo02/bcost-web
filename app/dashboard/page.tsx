@@ -84,12 +84,19 @@ function settledData<T>(result: PromiseSettledResult<DashboardApiResponse<T>>): 
   return result.status === 'fulfilled' ? result.value.data : null;
 }
 
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value,
+  );
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const { selectedCompany } = useCompany();
   const [data, setData] = useState<FiscalData | null>(null);
   const [loading, setLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
 
   const lastLoadedId = useRef<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -97,6 +104,7 @@ export default function DashboardPage() {
   const fetchTaxData = useCallback(async () => {
     if (!selectedCompany?.id) {
       setData(null);
+      setDashboardError(null);
       lastLoadedId.current = null;
       return;
     }
@@ -107,6 +115,7 @@ export default function DashboardPage() {
     abortControllerRef.current = new AbortController();
 
     setLoading(true);
+    setDashboardError(null);
 
     try {
       const now = new Date();
@@ -132,6 +141,15 @@ export default function DashboardPage() {
           history: demoData.evolucao,
         });
         lastLoadedId.current = selectedCompany.id;
+        return;
+      }
+
+      if (!isUuid(selectedCompany.id)) {
+        setData(null);
+        setDashboardError(
+          'Contexto da empresa inválido para rotas produtivas. Selecione novamente a empresa ou refaça o login antes de usar o painel fiscal.',
+        );
+        lastLoadedId.current = null;
         return;
       }
 
@@ -224,6 +242,11 @@ export default function DashboardPage() {
         });
       } else if (status === 401) {
         router.push('/login');
+      } else {
+        setData(null);
+        setDashboardError(
+          'Não foi possível carregar os dados fiscais reais desta empresa. O painel não exibirá valores demonstrativos em sessão produtiva.',
+        );
       }
       lastLoadedId.current = null;
     } finally {
@@ -312,6 +335,34 @@ export default function DashboardPage() {
             ))}
           </div>
           <div className="h-96 bg-[#090d16] border border-white/5 rounded-[2.5rem] animate-pulse" />
+        </div>
+      ) : dashboardError && !data ? (
+        <div className="rounded-[2rem] border border-rose-400/25 bg-rose-500/10 p-8 text-rose-50 shadow-2xl shadow-black/30">
+          <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl border border-rose-300/30 bg-rose-400/10">
+            <AlertCircle size={24} />
+          </div>
+          <p className="text-xs font-black uppercase tracking-widest text-rose-200">
+            Painel fiscal indisponível
+          </p>
+          <h3 className="mt-3 text-2xl font-black tracking-tight text-white">
+            Dados reais não carregados
+          </h3>
+          <p className="mt-3 max-w-3xl text-sm leading-relaxed text-rose-100/80">
+            {dashboardError}
+          </p>
+          <button
+            type="button"
+            onClick={fetchTaxData}
+            disabled={loading}
+            className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl bg-rose-600 px-5 py-3 text-xs font-black uppercase tracking-wider text-white transition hover:bg-rose-500 disabled:opacity-50"
+          >
+            {loading ? (
+              <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+            ) : (
+              <Activity size={15} />
+            )}
+            Tentar novamente
+          </button>
         </div>
       ) : (
         <div
