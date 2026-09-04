@@ -6,6 +6,7 @@ import {
   bcostSchemaModules,
   getAreaMarketSummaries,
   getCommercialLanes,
+  getModuleLaunchGate,
   getModuleCommercialActionLabel,
   getModuleMarketReadiness,
   getModuleMarketReadinessLabel,
@@ -296,5 +297,30 @@ describe('bcostSchemaModules routes', () => {
         expect(getModuleMarketReadiness(schemaModule.status)).toBe(lane.readiness);
       }
     }
+  });
+
+  it('aplica gate de lancamento comercial antes de vender modulos ao mercado', () => {
+    const plannedModule = bcostSchemaModules.find((schemaModule) => schemaModule.status === 'PLANNED');
+    const fiscalModule = bcostSchemaModules.find(
+      (schemaModule) => schemaModule.area === 'Fiscal' && schemaModule.status === 'ACTIVE',
+    );
+
+    expect(plannedModule).toBeDefined();
+    expect(fiscalModule).toBeDefined();
+
+    const plannedGate = getModuleLaunchGate(plannedModule!);
+    const fiscalGate = getModuleLaunchGate(fiscalModule!);
+
+    expect(plannedGate).toMatchObject({
+      status: 'BLOCK',
+      canSell: false,
+      readiness: 'ROADMAP_LOCKED',
+    });
+    expect(plannedGate.blockers).toContain('módulo planejado não pode entrar em venda direta');
+
+    expect(fiscalGate.requiredEvidence).toContain(
+      'memória de cálculo ou evidência operacional auditável',
+    );
+    expect(fiscalGate.warnings.join(' ')).toContain('CNAE');
   });
 });

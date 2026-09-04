@@ -43,6 +43,13 @@ export type EnterpriseCatalogItem = {
   canonicalOwner?: string;
   automationBoundary?: 'SOFTWARE_ONLY' | 'ASSISTED_AUTOMATION' | 'CRC_VALIDATED' | 'HUMAN_LED';
   operationalGuardrails?: string[];
+  launchGate?: {
+    status: 'PASS' | 'WARN' | 'BLOCK';
+    canSell: boolean;
+    requiredEvidence: string[];
+    blockers: string[];
+    warnings?: string[];
+  };
 };
 
 export type EnterpriseAutomationBoundary = NonNullable<EnterpriseCatalogItem['automationBoundary']>;

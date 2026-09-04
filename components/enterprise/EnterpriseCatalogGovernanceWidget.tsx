@@ -8,8 +8,10 @@ import {
   type EnterpriseCatalogItem,
 } from '@/lib/api/enterprise-universal';
 import {
+  getModuleLaunchGate,
   getModuleMarketReadinessLabel,
   type BcostMarketReadiness,
+  type BcostModuleArea,
   type BcostModuleStatus,
 } from '@/lib/product/schema-modules';
 
@@ -98,7 +100,49 @@ function isCatalogItemNavigable(item: EnterpriseCatalogItem): boolean {
   return readiness === 'SELLABLE' || readiness === 'ASSISTED_BETA';
 }
 
+function normalizeCatalogArea(value?: string): BcostModuleArea {
+  const allowedAreas: BcostModuleArea[] = [
+    'SaaS',
+    'Fiscal',
+    'Banking',
+    'Financeiro',
+    'Contábil',
+    'Folha',
+    'Patrimônio',
+    'Societário',
+    'Escritório',
+    'Compliance',
+    'Automação',
+    'Integrações',
+    'Consultoria',
+    'Segurança',
+  ];
+
+  return allowedAreas.find((area) => area === value) ?? 'Consultoria';
+}
+
 function CatalogRoadmapCard({ item }: { item: EnterpriseCatalogItem }) {
+  const localLaunchGate = getModuleLaunchGate({
+    slug: item.slug,
+    title: item.label,
+    model: item.model,
+    area: normalizeCatalogArea(item.area),
+    status:
+      resolveReadiness(item) === 'SELLABLE'
+        ? 'ACTIVE'
+        : resolveReadiness(item) === 'ASSISTED_BETA'
+          ? 'INTEGRATING'
+          : 'PLANNED',
+    priority: item.priority ?? 'LOW',
+    description: item.label,
+    commercialValue: item.label,
+    route: `/dashboard/modules/${item.slug}`,
+    apiBase: item.endpoint?.replace(/:companyId$/, '').replace(/\/$/, ''),
+    mainActions: [],
+    kpis: [],
+  });
+  const launchGate = item.launchGate ?? localLaunchGate;
+
   const content = (
     <>
       <div className="flex flex-wrap items-center gap-2">
@@ -140,6 +184,21 @@ function CatalogRoadmapCard({ item }: { item: EnterpriseCatalogItem }) {
           Roadmap bloqueado: sem navegação operacional neste ambiente.
         </p>
       ) : null}
+      <div
+        className={`mt-4 rounded-xl border px-3 py-2 text-xs font-bold ${
+          launchGate.status === 'PASS'
+            ? 'border-emerald-100 bg-emerald-50 text-emerald-700'
+            : launchGate.status === 'WARN'
+              ? 'border-amber-100 bg-amber-50 text-amber-700'
+              : 'border-red-100 bg-red-50 text-red-700'
+        }`}
+      >
+        Gate comercial: {launchGate.status}
+        {launchGate.blockers[0] ? ` · ${launchGate.blockers[0]}` : null}
+        {!launchGate.blockers[0] && launchGate.warnings?.[0]
+          ? ` · ${launchGate.warnings[0]}`
+          : null}
+      </div>
     </>
   );
 

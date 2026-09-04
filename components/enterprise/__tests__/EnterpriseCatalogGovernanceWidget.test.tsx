@@ -24,6 +24,12 @@ describe('EnterpriseCatalogGovernanceWidget', () => {
         canonicalOwner: 'enterprise-modules',
         automationBoundary: 'SOFTWARE_ONLY',
         operationalGuardrails: ['Endpoint persistido exige autenticação JWT.'],
+        launchGate: {
+          status: 'PASS',
+          canSell: true,
+          requiredEvidence: ['endpoint produtivo'],
+          blockers: [],
+        },
       },
       {
         slug: 'banking-products',
@@ -37,6 +43,12 @@ describe('EnterpriseCatalogGovernanceWidget', () => {
         canonicalOwner: 'banking-enterprise',
         automationBoundary: 'ASSISTED_AUTOMATION',
         operationalGuardrails: ['Não ativar Conta PJ sem parceiro BaaS homologado.'],
+        launchGate: {
+          status: 'BLOCK',
+          canSell: false,
+          requiredEvidence: ['integração homologada'],
+          blockers: ['módulo em roadmap não pode ser vendido como automação pronta'],
+        },
       },
     ]);
 
@@ -59,5 +71,9 @@ describe('EnterpriseCatalogGovernanceWidget', () => {
     expect(screen.getByText('Vendáveis')).toBeInTheDocument();
     expect(screen.getByText('Bloqueados')).toBeInTheDocument();
     expect(screen.getByText('Roadmap bloqueado')).toBeInTheDocument();
+    expect(screen.getByText(/Gate comercial: BLOCK/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/módulo em roadmap não pode ser vendido como automação pronta/),
+    ).toBeInTheDocument();
   });
 });

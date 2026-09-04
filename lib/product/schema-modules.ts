@@ -71,6 +71,18 @@ export type BcostCommercialLane = {
   operationalGate: string;
 };
 
+export type BcostLaunchGateStatus = 'PASS' | 'WARN' | 'BLOCK';
+
+export type BcostLaunchGate = {
+  status: BcostLaunchGateStatus;
+  module: string;
+  readiness: BcostMarketReadiness;
+  canSell: boolean;
+  requiredEvidence: string[];
+  blockers: string[];
+  warnings: string[];
+};
+
 export function getModuleMarketReadiness(status: BcostModuleStatus): BcostMarketReadiness {
   if (status === 'ACTIVE') return 'SELLABLE';
   if (status === 'INTEGRATING') return 'ASSISTED_BETA';
@@ -95,6 +107,53 @@ export function getModuleCommercialActionLabel(status: BcostModuleStatus): strin
 
 export function isModuleOperationallyAccessible(status: BcostModuleStatus): boolean {
   return getModuleMarketReadiness(status) !== 'ROADMAP_LOCKED';
+}
+
+export function getModuleLaunchGate(module: BcostSchemaModule): BcostLaunchGate {
+  const readiness = getModuleMarketReadiness(module.status);
+  const blockers: string[] = [];
+  const warnings: string[] = [];
+  const requiredEvidence = [
+    'endpoint produtivo validado',
+    'cliente frontend tipado',
+    'tratamento de loading, vazio e erro',
+    'tenant isolation testado',
+    'entitlement aplicado no backend',
+  ];
+
+  if (!module.route.startsWith('/dashboard')) {
+    blockers.push('rota interna de dashboard ausente');
+  }
+
+  if (!module.apiBase) {
+    blockers.push('apiBase ausente para validar contrato produtivo');
+  }
+
+  if (readiness === 'ROADMAP_LOCKED') {
+    blockers.push('módulo planejado não pode entrar em venda direta');
+  }
+
+  if (readiness === 'ASSISTED_BETA') {
+    warnings.push('venda permitida somente com escopo assistido, aceite explícito e validação humana');
+  }
+
+  if (module.area === 'Fiscal' || module.area === 'Contábil' || module.area === 'Folha') {
+    requiredEvidence.push('memória de cálculo ou evidência operacional auditável');
+    warnings.push('resultado depende de CNAE, regime, competência, documentos reais e revisão responsável');
+  }
+
+  const status: BcostLaunchGateStatus =
+    blockers.length > 0 ? 'BLOCK' : warnings.length > 0 ? 'WARN' : 'PASS';
+
+  return {
+    status,
+    module: module.slug,
+    readiness,
+    canSell: status !== 'BLOCK',
+    requiredEvidence,
+    blockers,
+    warnings,
+  };
 }
 
 export function sortModulesByMarketPriority(
