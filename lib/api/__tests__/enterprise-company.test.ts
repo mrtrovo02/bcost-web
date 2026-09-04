@@ -16,14 +16,6 @@ vi.mock('@/lib/api/enterprise-demo', () => ({
   getDemoEnterpriseCompanyId: () => 'demo-001',
 }));
 
-vi.mock('@/lib/config/demo-policy', () => ({
-  assertOperationalDemoFallbackEnabled: vi.fn((message?: string) => {
-    const error = new Error(message || 'Fallback demonstrativo desabilitado.');
-    Object.assign(error, { code: 'DEMO_FALLBACK_DISABLED' });
-    throw error;
-  }),
-}));
-
 const apiGetMock = vi.mocked(api.get);
 const isDemoSessionMock = vi.mocked(isDemoSession);
 
@@ -90,7 +82,9 @@ describe('enterprise-company resolver', () => {
     apiGetMock.mockRejectedValueOnce({ response: { status: 401 } });
 
     await expect(resolveEnterpriseCompanyIdWithFallback()).rejects.toMatchObject({
-      code: 'DEMO_FALLBACK_DISABLED',
+      code: 'REAL_COMPANY_CONTEXT_REQUIRED',
     });
+    expect(window.localStorage.getItem('bcost_active_company')).toBeNull();
+    expect(window.localStorage.getItem('bcost_company_id')).toBeNull();
   });
 });

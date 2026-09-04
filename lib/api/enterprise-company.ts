@@ -1,7 +1,6 @@
 'use strict';
 
 import { getDemoEnterpriseCompanyId } from '@/lib/api/enterprise-demo';
-import { assertOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
 import { api, isDemoSession } from '@/services/api';
 
 type AuthMeResponse = {
@@ -46,6 +45,16 @@ function persistEnterpriseCompanyId(companyId: string): void {
   localStorage.setItem('bcost_company_id', companyId);
   localStorage.setItem('companyId', companyId);
   localStorage.setItem('activeCompanyId', companyId);
+}
+
+function createRealCompanyContextError(): Error {
+  const error = new Error(
+    'Nenhuma empresa real ativa foi encontrada. Cadastre ou selecione uma empresa antes de abrir modulos de producao.',
+  );
+
+  Object.assign(error, { code: 'REAL_COMPANY_CONTEXT_REQUIRED' });
+
+  return error;
 }
 
 export function readStoredEnterpriseCompanyId(): string | null {
@@ -120,13 +129,5 @@ export async function resolveEnterpriseCompanyIdWithFallback(): Promise<string> 
 
   if (stored && !isDemoCompanyId(stored)) return stored;
 
-  assertOperationalDemoFallbackEnabled(
-    'Nenhuma empresa real ativa foi encontrada. Cadastre ou selecione uma empresa antes de abrir modulos de producao.',
-  );
-
-  const fallbackCompanyId = getDemoEnterpriseCompanyId();
-
-  persistEnterpriseCompanyId(fallbackCompanyId);
-
-  return fallbackCompanyId;
+  throw createRealCompanyContextError();
 }
