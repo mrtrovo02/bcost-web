@@ -85,6 +85,10 @@ describe('EnterpriseCommercialLanesWidget', () => {
     expect(screen.getByText('Trilhas comerciais e operacionais')).toBeInTheDocument();
     expect(screen.getByText('Empresas')).toBeInTheDocument();
     expect(screen.getByText('Balanço Patrimonial')).toBeInTheDocument();
+    expect(
+      screen.getByLabelText('Balanço Patrimonial bloqueado para venda direta'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Balanço Patrimonial' })).not.toBeInTheDocument();
     expect(screen.getByText('3 módulos')).toBeInTheDocument();
     expect(screen.getAllByText('Alta prioridade')).toHaveLength(3);
     expect(screen.getAllByText('Regulados')).toHaveLength(3);

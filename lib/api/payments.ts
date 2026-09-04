@@ -49,7 +49,7 @@ export type PaymentSubscriptionResponse = {
     provider: string;
     providerSubscriptionId: string;
     providerCustomerId?: string | null;
-    planLevel: string;
+    planLevel: PlanLevel;
     status: string;
     currentPeriodStart?: string | null;
     currentPeriodEnd?: string | null;

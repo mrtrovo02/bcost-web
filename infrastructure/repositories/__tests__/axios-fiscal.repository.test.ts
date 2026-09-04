@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { AxiosFiscalRepository } from '../axios-fiscal.repository';
 
 vi.mock('@/services/api', () => ({
@@ -11,6 +12,18 @@ const { apiGet, isDemoSession } = await import('@/services/api');
 
 const apiGetMock = vi.mocked(apiGet);
 const isDemoSessionMock = vi.mocked(isDemoSession);
+
+function createAxiosResponse<T>(data: T): AxiosResponse<T> {
+  return {
+    data,
+    status: 200,
+    statusText: 'OK',
+    headers: {},
+    config: {
+      headers: {},
+    } as InternalAxiosRequestConfig,
+  };
+}
 
 describe('AxiosFiscalRepository', () => {
   beforeEach(() => {
@@ -35,15 +48,15 @@ describe('AxiosFiscalRepository', () => {
 
   it('sends the active company id header for real fiscal data requests', async () => {
     isDemoSessionMock.mockReturnValue(false);
-    apiGetMock.mockResolvedValueOnce({
-      data: {
+    apiGetMock.mockResolvedValueOnce(
+      createAxiosResponse({
         totalRevenue: 100000,
         estimatedTax: 10000,
         netRevenue: 90000,
         fatorR: '28.00%',
         totalInvoices: 12,
-      },
-    });
+      }),
+    );
 
     const repository = new AxiosFiscalRepository();
     await repository.getTaxDataByCompany('company-real');

@@ -5,9 +5,11 @@ import Link from 'next/link';
 import { AlertTriangle, Loader2, RefreshCw, Route } from 'lucide-react';
 import {
   enterpriseUniversalApi,
+  type EnterpriseCatalogItem,
   type EnterpriseCommercialLane,
   type EnterpriseCommercialLaneSummary,
 } from '@/lib/api/enterprise-universal';
+import type { BcostMarketReadiness } from '@/lib/product/schema-modules';
 
 type CommercialLanesState = {
   loading: boolean;
@@ -46,6 +48,22 @@ function resolveLaneSummary(lane: EnterpriseCommercialLane): EnterpriseCommercia
         ),
       ).length,
   };
+}
+
+function isCatalogItemNavigable(item: EnterpriseCatalogItem): boolean {
+  return item.marketReadiness === 'SELLABLE' || item.marketReadiness === 'ASSISTED_BETA';
+}
+
+function moduleChipClass(readiness?: BcostMarketReadiness): string {
+  if (readiness === 'SELLABLE') {
+    return 'bg-emerald-50 text-emerald-700 transition hover:bg-emerald-100';
+  }
+
+  if (readiness === 'ASSISTED_BETA') {
+    return 'bg-indigo-50 text-indigo-700 transition hover:bg-indigo-100';
+  }
+
+  return 'cursor-not-allowed border border-slate-200 bg-slate-50 text-slate-400';
 }
 
 export default function EnterpriseCommercialLanesWidget() {
@@ -184,15 +202,29 @@ export default function EnterpriseCommercialLanesWidget() {
                 </div>
 
                 <div className="mt-5 flex flex-wrap gap-2">
-                  {lane.modules.slice(0, 4).map((laneModule) => (
-                    <Link
-                      href={`/dashboard/modules/${laneModule.slug}`}
-                      key={laneModule.slug}
-                      className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600 transition hover:bg-blue-50 hover:text-blue-700"
-                    >
-                      {laneModule.label}
-                    </Link>
-                  ))}
+                  {lane.modules.slice(0, 4).map((laneModule) => {
+                    const chipClass = `rounded-full px-3 py-1 text-xs font-black ${moduleChipClass(
+                      laneModule.marketReadiness,
+                    )}`;
+
+                    return isCatalogItemNavigable(laneModule) ? (
+                      <Link
+                        href={`/dashboard/modules/${laneModule.slug}`}
+                        key={laneModule.slug}
+                        className={chipClass}
+                      >
+                        {laneModule.label}
+                      </Link>
+                    ) : (
+                      <span
+                        aria-label={`${laneModule.label} bloqueado para venda direta`}
+                        key={laneModule.slug}
+                        className={chipClass}
+                      >
+                        {laneModule.label}
+                      </span>
+                    );
+                  })}
                 </div>
 
                 <div className="mt-5 flex items-center justify-between gap-3 text-sm">

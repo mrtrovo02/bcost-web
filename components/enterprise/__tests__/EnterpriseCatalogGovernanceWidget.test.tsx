@@ -51,6 +51,10 @@ describe('EnterpriseCatalogGovernanceWidget', () => {
     expect(screen.getByText('Governança de catálogo')).toBeInTheDocument();
     expect(screen.getByText('banking-enterprise')).toBeInTheDocument();
     expect(screen.getByText('/banking/enterprise/products')).toBeInTheDocument();
+    expect(
+      screen.getByText('Roadmap bloqueado: sem navegação operacional neste ambiente.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /banking e fintech/i })).not.toBeInTheDocument();
     expect(screen.getByText('P0 Roadmap')).toBeInTheDocument();
     expect(screen.getByText('Vendáveis')).toBeInTheDocument();
     expect(screen.getByText('Bloqueados')).toBeInTheDocument();

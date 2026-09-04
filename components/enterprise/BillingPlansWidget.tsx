@@ -223,14 +223,17 @@ function PlanCard({
   plan,
   active,
   loading,
+  hasBillableSubscription,
   onSelect,
 }: {
   plan: BillingPlan;
   active: boolean;
   loading: boolean;
+  hasBillableSubscription: boolean;
   onSelect: (plan: PlanLevel) => void;
 }) {
   const tone = planTone(plan.level);
+  const shouldRouteToPortal = hasBillableSubscription && plan.level !== 'FREE';
 
   return (
     <article className={`rounded-3xl border p-5 shadow-sm transition ${tone.card}`}>
@@ -293,7 +296,7 @@ function PlanCard({
           </>
         ) : (
           <>
-            Ativar {plan.label}
+            {shouldRouteToPortal ? `Gerenciar ${plan.label}` : `Ativar ${plan.label}`}
             <ArrowUpRight className="h-4 w-4" />
           </>
         )}
@@ -398,6 +401,7 @@ export default function BillingPlansWidget() {
   }, [entitlements]);
 
   const currentLimits = entitlements?.limits;
+  const billableSubscriptionActive = hasBillableSubscription(subscription);
 
   const handlePlanChange = useCallback(
     async (planLevel: PlanLevel) => {
@@ -601,6 +605,7 @@ export default function BillingPlansWidget() {
                 plan={plan}
                 active={plan.level === selectedPlan}
                 loading={actionLoading === plan.level}
+                hasBillableSubscription={billableSubscriptionActive}
                 onSelect={handlePlanChange}
               />
             ))}

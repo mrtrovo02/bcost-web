@@ -92,6 +92,75 @@ function sortCriticalRoadmap(items: EnterpriseCatalogItem[]) {
     .slice(0, 6);
 }
 
+function isCatalogItemNavigable(item: EnterpriseCatalogItem): boolean {
+  const readiness = resolveReadiness(item);
+
+  return readiness === 'SELLABLE' || readiness === 'ASSISTED_BETA';
+}
+
+function CatalogRoadmapCard({ item }: { item: EnterpriseCatalogItem }) {
+  const content = (
+    <>
+      <div className="flex flex-wrap items-center gap-2">
+        <span
+          className={`rounded-full border px-2 py-1 text-[10px] font-black uppercase tracking-widest ${persistenceClass(
+            item.persistence,
+          )}`}
+        >
+          {item.persistence ?? 'CATALOG'}
+        </span>
+        <span
+          className={`rounded-full border px-2 py-1 text-[10px] font-black uppercase tracking-widest ${readinessClass(
+            resolveReadiness(item),
+          )}`}
+        >
+          {readinessLabel(resolveReadiness(item))}
+        </span>
+        <span
+          className={`rounded-full border px-2 py-1 text-[10px] font-black uppercase tracking-widest ${boundaryClass(
+            item.automationBoundary,
+          )}`}
+        >
+          {BOUNDARY_LABEL[item.automationBoundary ?? ''] ?? item.automationBoundary ?? 'Boundary'}
+        </span>
+        <span className="rounded-full border border-red-100 bg-red-50 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-red-700">
+          {item.priority ?? 'P'}
+        </span>
+      </div>
+
+      <h3 className="mt-3 text-base font-black text-slate-950">{item.label}</h3>
+      <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+        {item.canonicalOwner ?? 'owner pendente'}
+      </p>
+      <p className="mt-3 break-all font-mono text-xs font-semibold text-slate-500">
+        {item.endpoint ?? '/enterprise/modules/:slug/:companyId'}
+      </p>
+      {!isCatalogItemNavigable(item) ? (
+        <p className="mt-3 text-xs font-bold text-amber-700">
+          Roadmap bloqueado: sem navegação operacional neste ambiente.
+        </p>
+      ) : null}
+    </>
+  );
+
+  if (isCatalogItemNavigable(item)) {
+    return (
+      <Link
+        href={`/dashboard/modules/${item.slug}`}
+        className="rounded-2xl border border-slate-100 bg-slate-50 p-5 transition hover:border-blue-100 hover:bg-white hover:shadow-sm"
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <article className="rounded-2xl border border-slate-100 bg-slate-50 p-5 opacity-90">
+      {content}
+    </article>
+  );
+}
+
 export default function EnterpriseCatalogGovernanceWidget() {
   const [state, setState] = useState<CatalogState>(INITIAL_STATE);
 
@@ -200,46 +269,7 @@ export default function EnterpriseCatalogGovernanceWidget() {
 
           <div className="grid gap-4 xl:grid-cols-3">
             {criticalRoadmap.map((item) => (
-              <Link
-                href={`/dashboard/modules/${item.slug}`}
-                key={item.slug}
-                className="rounded-2xl border border-slate-100 bg-slate-50 p-5 transition hover:border-blue-100 hover:bg-white hover:shadow-sm"
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <span
-                    className={`rounded-full border px-2 py-1 text-[10px] font-black uppercase tracking-widest ${persistenceClass(
-                      item.persistence,
-                    )}`}
-                  >
-                    {item.persistence ?? 'CATALOG'}
-                  </span>
-                  <span
-                    className={`rounded-full border px-2 py-1 text-[10px] font-black uppercase tracking-widest ${readinessClass(
-                      resolveReadiness(item),
-                    )}`}
-                  >
-                    {readinessLabel(resolveReadiness(item))}
-                  </span>
-                  <span
-                    className={`rounded-full border px-2 py-1 text-[10px] font-black uppercase tracking-widest ${boundaryClass(
-                      item.automationBoundary,
-                    )}`}
-                  >
-                    {BOUNDARY_LABEL[item.automationBoundary ?? ''] ?? item.automationBoundary ?? 'Boundary'}
-                  </span>
-                  <span className="rounded-full border border-red-100 bg-red-50 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-red-700">
-                    {item.priority ?? 'P'}
-                  </span>
-                </div>
-
-                <h3 className="mt-3 text-base font-black text-slate-950">{item.label}</h3>
-                <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
-                  {item.canonicalOwner ?? 'owner pendente'}
-                </p>
-                <p className="mt-3 break-all font-mono text-xs font-semibold text-slate-500">
-                  {item.endpoint ?? '/enterprise/modules/:slug/:companyId'}
-                </p>
-              </Link>
+              <CatalogRoadmapCard item={item} key={item.slug} />
             ))}
           </div>
 
