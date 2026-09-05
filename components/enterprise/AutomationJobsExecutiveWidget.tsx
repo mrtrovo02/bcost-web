@@ -48,10 +48,16 @@ const INITIAL_STATE: WidgetState = {
 
 const AUTOMATION_JOBS_MODULE = getSchemaModuleBySlug('automation-jobs');
 const automationJobsCtaEnabled = AUTOMATION_JOBS_MODULE
-  ? isModuleOperationallyAccessible(AUTOMATION_JOBS_MODULE.status)
+  ? isModuleOperationallyAccessible(
+      AUTOMATION_JOBS_MODULE.status,
+      AUTOMATION_JOBS_MODULE.marketReadinessOverride,
+    )
   : true;
 const automationJobsCtaLabel = AUTOMATION_JOBS_MODULE
-  ? getModuleCommercialActionLabel(AUTOMATION_JOBS_MODULE.status)
+  ? getModuleCommercialActionLabel(
+      AUTOMATION_JOBS_MODULE.status,
+      AUTOMATION_JOBS_MODULE.marketReadinessOverride,
+    )
   : 'Abrir central';
 
 function formatDate(value?: string | null) {

@@ -116,8 +116,11 @@ export function getModuleCommercialActionLabel(
   return 'Ver roadmap';
 }
 
-export function isModuleOperationallyAccessible(status: BcostModuleStatus): boolean {
-  return getModuleMarketReadiness(status) !== 'ROADMAP_LOCKED';
+export function isModuleOperationallyAccessible(
+  status: BcostModuleStatus,
+  override?: BcostMarketReadiness,
+): boolean {
+  return getModuleMarketReadiness(status, override) !== 'ROADMAP_LOCKED';
 }
 
 function getSchemaModuleMarketReadiness(

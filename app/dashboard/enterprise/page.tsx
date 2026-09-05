@@ -336,7 +336,10 @@ export default function EnterpriseModulesPage() {
 
             <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
               {modules.map((module) =>
-                isModuleOperationallyAccessible(module.status) ? (
+                isModuleOperationallyAccessible(
+                  module.status,
+                  module.marketReadinessOverride,
+                ) ? (
                   <Link
                     href={module.route}
                     key={module.slug}

@@ -131,11 +131,20 @@ function moduleNavigation(slug: string): ModuleNavigation {
   const schemaModule: BcostSchemaModule | undefined = getSchemaModuleBySlug(slug);
   const status: BcostModuleStatus | undefined = schemaModule?.status;
 
-  if (status && !isModuleOperationallyAccessible(status)) {
+  if (
+    status &&
+    !isModuleOperationallyAccessible(
+      status,
+      schemaModule?.marketReadinessOverride,
+    )
+  ) {
     return {
       enabled: false,
       href: moduleRoute(slug),
-      label: getModuleCommercialActionLabel(status),
+      label: getModuleCommercialActionLabel(
+        status,
+        schemaModule?.marketReadinessOverride,
+      ),
       reason: 'Roadmap bloqueado: módulo sem navegação operacional neste ambiente.',
     };
   }
@@ -143,7 +152,12 @@ function moduleNavigation(slug: string): ModuleNavigation {
   return {
     enabled: true,
     href: schemaModule?.route ?? moduleRoute(slug),
-    label: status ? getModuleCommercialActionLabel(status) : 'Abrir módulo',
+    label: status
+      ? getModuleCommercialActionLabel(
+          status,
+          schemaModule?.marketReadinessOverride,
+        )
+      : 'Abrir módulo',
   };
 }
 

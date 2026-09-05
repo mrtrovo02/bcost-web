@@ -125,6 +125,8 @@ describe('bcostSchemaModules routes', () => {
     expect(isModuleOperationallyAccessible('ACTIVE')).toBe(true);
     expect(isModuleOperationallyAccessible('INTEGRATING')).toBe(true);
     expect(isModuleOperationallyAccessible('PLANNED')).toBe(false);
+    expect(isModuleOperationallyAccessible('ACTIVE', 'ROADMAP_LOCKED')).toBe(false);
+    expect(getModuleCommercialActionLabel('ACTIVE', 'ROADMAP_LOCKED')).toBe('Ver roadmap');
   });
 
   it('mantem estatisticas de mercado coerentes com o catalogo', () => {
