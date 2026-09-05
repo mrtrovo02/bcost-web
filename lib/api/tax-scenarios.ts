@@ -1238,7 +1238,7 @@ function createDemoSimulation(input: SimulateTaxScenarioDto, companyId?: string)
       bestEstimatedModel === 'PF' && factorRPercentage > 0 && factorRPercentage < FACTOR_R_THRESHOLD
         ? `Fator R estimado em ${factorRPercentage}%, abaixo do limiar de 28%; Simples para serviços tende a exigir Anexo V até revisão da folha/pró-labore.`
         : potentialGain > 0 && input.hasCrcReview === true
-          ? `Ganho anual revisado contra o modelo atual: R$ ${potentialGain.toLocaleString('pt-BR')}.`
+          ? `Diferença econômica revisada contra o modelo atual: R$ ${potentialGain.toLocaleString('pt-BR')}.`
           : potentialGain > 0
             ? `Diferença econômica preliminar identificada: R$ ${potentialGain.toLocaleString('pt-BR')}, condicionada à revisão CRC, RBT12, CNAE, município, retenções e documentação fiscal real.`
           : 'A comparação indica necessidade de detalhamento antes de decisão.',
