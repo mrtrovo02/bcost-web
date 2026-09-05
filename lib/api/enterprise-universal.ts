@@ -229,7 +229,9 @@ function throwFeatureLockedError(error: unknown): void {
   const payload = apiError.response?.data;
 
   const isFeatureBoundary =
-    payload?.status === 'FEATURE_LOCKED' || payload?.status === 'FEATURE_ROADMAP_LOCKED';
+    payload?.status === 'FEATURE_LOCKED' ||
+    payload?.status === 'FEATURE_ROADMAP_LOCKED' ||
+    payload?.status === 'FEATURE_UNKNOWN';
 
   if (apiError.response?.status !== 403 || !isFeatureBoundary) {
     return;
@@ -241,10 +243,14 @@ function throwFeatureLockedError(error: unknown): void {
     payload.status === 'FEATURE_ROADMAP_LOCKED' && payload.marketReadiness
       ? ` Status comercial: ${payload.marketReadiness}.`
       : '';
+  const unknownFeature =
+    payload.status === 'FEATURE_UNKNOWN'
+      ? ' Feature sem contrato comercial mapeado para liberação produtiva.'
+      : '';
   const message =
     payload.message ||
     payload.commercialGuardrail ||
-    `Feature bloqueada para o plano atual${feature}.${requiredPlan}${readiness}`;
+    `Feature bloqueada para o plano atual${feature}.${requiredPlan}${readiness}${unknownFeature}`;
 
   throw new Error(message);
 }

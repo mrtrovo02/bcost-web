@@ -282,6 +282,25 @@ describe('enterpriseUniversalApi', () => {
     );
   });
 
+  it('surfaces unknown feature contract errors without falling back to demo data', async () => {
+    apiGetMock.mockRejectedValueOnce({
+      response: {
+        status: 403,
+        data: {
+          status: 'FEATURE_UNKNOWN',
+          feature: 'enterprise.unmapped',
+          planLevel: 'ENTERPRISE',
+        },
+      },
+    });
+
+    await expect(
+      enterpriseUniversalApi.getModule('digital-certificates', 'company-123'),
+    ).rejects.toThrow(
+      'Feature bloqueada para o plano atual (enterprise.unmapped). Feature sem contrato comercial mapeado para liberação produtiva.',
+    );
+  });
+
   it('does not return summary or health demo data for real companies', async () => {
     apiGetMock.mockRejectedValue({ response: { status: 404 } });
 
