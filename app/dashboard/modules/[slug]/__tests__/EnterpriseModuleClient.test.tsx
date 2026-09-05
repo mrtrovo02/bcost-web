@@ -128,4 +128,23 @@ describe('EnterpriseModuleClient dynamic page', () => {
     ).toHaveLength(2);
     expect(getModuleMock).not.toHaveBeenCalled();
   });
+
+  it('uses the local schema as a safe roadmap gate when the remote catalog fails', async () => {
+    resolveCompanyMock.mockResolvedValueOnce('company-123');
+    catalogMock.mockRejectedValueOnce(new Error('catalog unavailable'));
+
+    render(<EnterpriseModuleClient slug="digital-certificates" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Roadmap técnico controlado')).toBeInTheDocument();
+    });
+
+    expect(screen.getAllByText('architecture-roadmap').length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(
+        'Módulo bloqueado para operação comercial até entrega de endpoint produtivo, persistência, permissões e testes regressivos.',
+      ).length,
+    ).toBeGreaterThan(0);
+    expect(getModuleMock).not.toHaveBeenCalled();
+  });
 });

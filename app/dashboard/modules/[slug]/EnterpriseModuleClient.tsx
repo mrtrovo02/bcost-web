@@ -13,6 +13,10 @@ import {
 } from '@/lib/api/enterprise-universal';
 import { automationJobsApi } from '@/lib/api/automation-jobs';
 import { isDemoEntityId } from '@/lib/config/demo-policy';
+import {
+  getModuleMarketReadiness,
+  getSchemaModuleBySlug,
+} from '@/lib/product/schema-modules';
 import { getToken, isDemoSession } from '@/services/api';
 
 type EnterpriseModuleClientProps = {
@@ -54,6 +58,70 @@ type ModuleGovernanceDetails = {
   automationBoundary?: EnterpriseCatalogItem['automationBoundary'] | string;
   operationalGuardrails: string[];
 };
+
+function createLocalCatalogItem(slug: string): EnterpriseCatalogItem | null {
+  const schemaModule = getSchemaModuleBySlug(slug);
+
+  if (!schemaModule) return null;
+
+  const marketReadiness = getModuleMarketReadiness(
+    schemaModule.status,
+    schemaModule.marketReadinessOverride,
+  );
+
+  return {
+    slug: schemaModule.slug,
+    model: schemaModule.model,
+    label: schemaModule.title,
+    persistence: marketReadiness === 'ROADMAP_LOCKED' ? 'ROADMAP' : 'PRISMA',
+    endpoint: schemaModule.apiBase,
+    area: schemaModule.area,
+    priority: schemaModule.priority,
+    marketReadiness,
+    canonicalOwner:
+      marketReadiness === 'ROADMAP_LOCKED'
+        ? 'architecture-roadmap'
+        : 'enterprise-modules',
+    automationBoundary:
+      schemaModule.area === 'Fiscal' ||
+      schemaModule.area === 'Contábil' ||
+      schemaModule.area === 'Folha'
+        ? 'CRC_VALIDATED'
+        : marketReadiness === 'ROADMAP_LOCKED'
+          ? 'HUMAN_LED'
+          : 'SOFTWARE_ONLY',
+    operationalGuardrails:
+      marketReadiness === 'ROADMAP_LOCKED'
+        ? [
+            'Módulo bloqueado para operação comercial até entrega de endpoint produtivo, persistência, permissões e testes regressivos.',
+          ]
+        : [
+            'Catálogo local usado como fallback seguro; validar endpoint remoto antes de operação comercial.',
+          ],
+    launchGate: {
+      status:
+        marketReadiness === 'ROADMAP_LOCKED'
+          ? 'BLOCK'
+          : marketReadiness === 'ASSISTED_BETA'
+            ? 'WARN'
+            : 'PASS',
+      canSell: marketReadiness !== 'ROADMAP_LOCKED',
+      requiredEvidence: [
+        'endpoint produtivo validado',
+        'cliente frontend tipado',
+        'tenant isolation testado',
+      ],
+      blockers:
+        marketReadiness === 'ROADMAP_LOCKED'
+          ? ['módulo sem liberação operacional no catálogo local']
+          : [],
+      warnings:
+        marketReadiness === 'ASSISTED_BETA'
+          ? ['venda somente com escopo assistido e aceite explícito']
+          : [],
+    },
+  };
+}
 
 function hasRealAuthToken(): boolean {
   const token = getToken();
@@ -1230,7 +1298,7 @@ export default function EnterpriseModuleClient({ slug }: EnterpriseModuleClientP
         const catalogPromise = enterpriseUniversalApi
           .catalog()
           .then((catalog) => catalog.find((item) => item.slug === slug) ?? null)
-          .catch(() => null);
+          .catch(() => createLocalCatalogItem(slug));
         const companyPromise = shouldResolveCompany
           ? resolveEnterpriseCompanyId()
           : Promise.resolve(currentCompanyId);
