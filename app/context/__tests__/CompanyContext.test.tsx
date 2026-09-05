@@ -83,6 +83,24 @@ describe('CompanyProvider', () => {
     expect(clearActiveCompanyIdMock).toHaveBeenCalled();
   });
 
+  it('blocks direct demo company list injection in real sessions', async () => {
+    render(
+      <CompanyProvider>
+        <CompanyContextProbe />
+      </CompanyProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('loading')).toHaveTextContent('false');
+    });
+
+    fireEvent.click(screen.getByText('seed demo list'));
+
+    expect(screen.getByTestId('companies')).toHaveTextContent('');
+    expect(window.localStorage.getItem('bcost_companies')).toBeNull();
+    expect(window.localStorage.getItem('companies')).toBeNull();
+  });
+
   it('sanitizes stale demo companies from storage during real session hydration', async () => {
     getActiveCompanyIdMock.mockReturnValue('real-company-001');
     window.localStorage.setItem(

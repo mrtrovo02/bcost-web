@@ -224,6 +224,18 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
    * 2. Persistência de Contexto:
    * Sempre que a empresa for trocada, atualizamos o LocalStorage e o Header Global.
    */
+  const handleSetCompanies = (nextCompanies: Company[]) => {
+    const isDemo = detectDemoSession();
+    const sanitizedCompanies = persistCompaniesForSession(nextCompanies, isDemo);
+
+    if (!isDemo && sanitizedCompanies.length === 0 && nextCompanies.length > 0) {
+      clearCompanyContextStorage();
+      setSelectedCompany(null);
+    }
+
+    setCompanies(sanitizedCompanies);
+  };
+
   const handleSetSelected = (company: Company) => {
     if (!canUseCompanyInCurrentSession(company, detectDemoSession())) {
       clearCompanyContextStorage();
@@ -249,7 +261,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         selectedCompany,
         setSelectedCompany: handleSetSelected,
         companies,
-        setCompanies,
+        setCompanies: handleSetCompanies,
         isLoading,
         isDemoSession,
       }}
