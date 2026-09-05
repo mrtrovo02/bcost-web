@@ -129,12 +129,17 @@ describe('bcostSchemaModules routes', () => {
 
   it('mantem estatisticas de mercado coerentes com o catalogo', () => {
     const stats = getModuleStats();
-    const sellable = bcostSchemaModules.filter(
-      (schemaModule) => schemaModule.status === 'ACTIVE',
+    const activeAssistedOverrides = bcostSchemaModules.filter(
+      (schemaModule) =>
+        schemaModule.status === 'ACTIVE' &&
+        schemaModule.marketReadinessOverride === 'ASSISTED_BETA',
     ).length;
-    const assistedBeta = bcostSchemaModules.filter(
-      (schemaModule) => schemaModule.status === 'INTEGRATING',
-    ).length;
+    const sellable =
+      bcostSchemaModules.filter((schemaModule) => schemaModule.status === 'ACTIVE')
+        .length - activeAssistedOverrides;
+    const assistedBeta =
+      bcostSchemaModules.filter((schemaModule) => schemaModule.status === 'INTEGRATING')
+        .length + activeAssistedOverrides;
     const roadmapLocked = bcostSchemaModules.filter(
       (schemaModule) => schemaModule.status === 'PLANNED',
     ).length;
@@ -167,7 +172,10 @@ describe('bcostSchemaModules routes', () => {
 
     for (const schemaModule of bcostSchemaModules) {
       expect(readinessBySlug[schemaModule.slug]).toBe(
-        getModuleMarketReadiness(schemaModule.status),
+        getModuleMarketReadiness(
+          schemaModule.status,
+          schemaModule.marketReadinessOverride,
+        ),
       );
     }
   });
@@ -252,9 +260,14 @@ describe('bcostSchemaModules routes', () => {
       const modulesByArea = bcostSchemaModules.filter(
         (schemaModule) => schemaModule.area === summary.area,
       );
-      const sellable = modulesByArea.filter(
-        (schemaModule) => schemaModule.status === 'ACTIVE',
+      const activeAssistedOverrides = modulesByArea.filter(
+        (schemaModule) =>
+          schemaModule.status === 'ACTIVE' &&
+          schemaModule.marketReadinessOverride === 'ASSISTED_BETA',
       ).length;
+      const sellable =
+        modulesByArea.filter((schemaModule) => schemaModule.status === 'ACTIVE')
+          .length - activeAssistedOverrides;
       const assistedBeta = modulesByArea.filter(
         (schemaModule) => schemaModule.status === 'INTEGRATING',
       ).length;
@@ -267,7 +280,7 @@ describe('bcostSchemaModules routes', () => {
 
       expect(summary.total).toBe(modulesByArea.length);
       expect(summary.sellable).toBe(sellable);
-      expect(summary.assistedBeta).toBe(assistedBeta);
+      expect(summary.assistedBeta).toBe(assistedBeta + activeAssistedOverrides);
       expect(summary.roadmapLocked).toBe(roadmapLocked);
       expect(summary.critical).toBe(critical);
       expect(summary.sellable + summary.assistedBeta + summary.roadmapLocked).toBe(
@@ -294,9 +307,25 @@ describe('bcostSchemaModules routes', () => {
       expect(lane.operationalGate.length).toBeGreaterThan(10);
 
       for (const schemaModule of lane.modules) {
-        expect(getModuleMarketReadiness(schemaModule.status)).toBe(lane.readiness);
+        expect(
+          getModuleMarketReadiness(
+            schemaModule.status,
+            schemaModule.marketReadinessOverride,
+          ),
+        ).toBe(lane.readiness);
       }
     }
+
+    const assistedSale = lanes.find((lane) => lane.id === 'assisted-sale');
+    expect(assistedSale?.modules).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          slug: 'tax-scenarios',
+          status: 'ACTIVE',
+          marketReadinessOverride: 'ASSISTED_BETA',
+        }),
+      ]),
+    );
   });
 
   it('aplica gate de lancamento comercial antes de vender modulos ao mercado', () => {

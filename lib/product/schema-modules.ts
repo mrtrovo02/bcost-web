@@ -43,6 +43,7 @@ export type BcostSchemaModule = {
   model: string;
   area: BcostModuleArea;
   status: BcostModuleStatus;
+  marketReadinessOverride?: BcostMarketReadiness;
   priority: BcostModulePriority;
   description: string;
   commercialValue: string;
@@ -83,22 +84,32 @@ export type BcostLaunchGate = {
   warnings: string[];
 };
 
-export function getModuleMarketReadiness(status: BcostModuleStatus): BcostMarketReadiness {
+export function getModuleMarketReadiness(
+  status: BcostModuleStatus,
+  override?: BcostMarketReadiness,
+): BcostMarketReadiness {
+  if (override) return override;
   if (status === 'ACTIVE') return 'SELLABLE';
   if (status === 'INTEGRATING') return 'ASSISTED_BETA';
   return 'ROADMAP_LOCKED';
 }
 
-export function getModuleMarketReadinessLabel(status: BcostModuleStatus): string {
-  const readiness = getModuleMarketReadiness(status);
+export function getModuleMarketReadinessLabel(
+  status: BcostModuleStatus,
+  override?: BcostMarketReadiness,
+): string {
+  const readiness = getModuleMarketReadiness(status, override);
 
   if (readiness === 'SELLABLE') return 'Vendável';
   if (readiness === 'ASSISTED_BETA') return 'Beta assistido';
   return 'Roadmap bloqueado';
 }
 
-export function getModuleCommercialActionLabel(status: BcostModuleStatus): string {
-  const readiness = getModuleMarketReadiness(status);
+export function getModuleCommercialActionLabel(
+  status: BcostModuleStatus,
+  override?: BcostMarketReadiness,
+): string {
+  const readiness = getModuleMarketReadiness(status, override);
 
   if (readiness === 'SELLABLE') return 'Abrir módulo';
   if (readiness === 'ASSISTED_BETA') return 'Ver escopo assistido';
@@ -109,8 +120,17 @@ export function isModuleOperationallyAccessible(status: BcostModuleStatus): bool
   return getModuleMarketReadiness(status) !== 'ROADMAP_LOCKED';
 }
 
+function getSchemaModuleMarketReadiness(
+  module: BcostSchemaModule,
+): BcostMarketReadiness {
+  return getModuleMarketReadiness(
+    module.status,
+    module.marketReadinessOverride,
+  );
+}
+
 export function getModuleLaunchGate(module: BcostSchemaModule): BcostLaunchGate {
-  const readiness = getModuleMarketReadiness(module.status);
+  const readiness = getSchemaModuleMarketReadiness(module);
   const blockers: string[] = [];
   const warnings: string[] = [];
   const requiredEvidence = [
@@ -161,8 +181,8 @@ export function sortModulesByMarketPriority(
 ): BcostSchemaModule[] {
   return modules.slice().sort((left, right) => {
     const readinessDelta =
-      MARKET_READINESS_ORDER[getModuleMarketReadiness(left.status)] -
-      MARKET_READINESS_ORDER[getModuleMarketReadiness(right.status)];
+      MARKET_READINESS_ORDER[getSchemaModuleMarketReadiness(left)] -
+      MARKET_READINESS_ORDER[getSchemaModuleMarketReadiness(right)];
 
     if (readinessDelta !== 0) return readinessDelta;
 
@@ -804,6 +824,7 @@ export const bcostSchemaModules: BcostSchemaModule[] = [
       'Gerar próximos passos',
     ],
     kpis: ['Melhor regime', 'Carga efetiva', 'Fator R', 'CBS/IBS informativo'],
+    marketReadinessOverride: 'ASSISTED_BETA',
   },
   {
     slug: 'indirect-taxes',
@@ -1013,14 +1034,16 @@ export function getModulesByArea(area: BcostModuleArea) {
 
 export function getSellableModules() {
   return sortModulesByMarketPriority(
-    bcostSchemaModules.filter((module) => getModuleMarketReadiness(module.status) === 'SELLABLE'),
+    bcostSchemaModules.filter(
+      (module) => getSchemaModuleMarketReadiness(module) === 'SELLABLE',
+    ),
   );
 }
 
 export function getAssistedBetaModules() {
   return sortModulesByMarketPriority(
     bcostSchemaModules.filter(
-      (module) => getModuleMarketReadiness(module.status) === 'ASSISTED_BETA',
+      (module) => getSchemaModuleMarketReadiness(module) === 'ASSISTED_BETA',
     ),
   );
 }
@@ -1028,7 +1051,7 @@ export function getAssistedBetaModules() {
 export function getRoadmapLockedModules() {
   return sortModulesByMarketPriority(
     bcostSchemaModules.filter(
-      (module) => getModuleMarketReadiness(module.status) === 'ROADMAP_LOCKED',
+      (module) => getSchemaModuleMarketReadiness(module) === 'ROADMAP_LOCKED',
     ),
   );
 }
@@ -1091,13 +1114,13 @@ export function getAreaMarketSummaries(): BcostAreaMarketSummary[] {
         area,
         total: modules.length,
         sellable: modules.filter(
-          (module) => getModuleMarketReadiness(module.status) === 'SELLABLE',
+          (module) => getSchemaModuleMarketReadiness(module) === 'SELLABLE',
         ).length,
         assistedBeta: modules.filter(
-          (module) => getModuleMarketReadiness(module.status) === 'ASSISTED_BETA',
+          (module) => getSchemaModuleMarketReadiness(module) === 'ASSISTED_BETA',
         ).length,
         roadmapLocked: modules.filter(
-          (module) => getModuleMarketReadiness(module.status) === 'ROADMAP_LOCKED',
+          (module) => getSchemaModuleMarketReadiness(module) === 'ROADMAP_LOCKED',
         ).length,
         critical: modules.filter((module) => module.priority === 'CRITICAL').length,
       };

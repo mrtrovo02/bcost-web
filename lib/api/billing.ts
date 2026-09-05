@@ -215,7 +215,9 @@ function enrichBillingFeatureWithReadiness(feature: BillingFeature): BillingFeat
   if (!feature.moduleSlug) return feature;
 
   const module = getSchemaModuleBySlug(feature.moduleSlug);
-  const marketReadiness = module ? getModuleMarketReadiness(module.status) : 'ROADMAP_LOCKED';
+  const marketReadiness = module
+    ? getModuleMarketReadiness(module.status, module.marketReadinessOverride)
+    : 'ROADMAP_LOCKED';
   const commercialGuardrail =
     marketReadiness === 'SELLABLE'
       ? 'Feature pode ser oferecida conforme plano ativo, tenant válido e endpoint produtivo.'

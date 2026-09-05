@@ -42,13 +42,24 @@ function priorityClass(priority: BcostModulePriority) {
   return 'bg-slate-50 text-slate-500';
 }
 
-function operationLabel(status: BcostModuleStatus) {
-  return getModuleMarketReadinessLabel(status);
+function operationLabel(module: BcostSchemaModule) {
+  return getModuleMarketReadinessLabel(
+    module.status,
+    module.marketReadinessOverride,
+  );
 }
 
-function operationClass(status: BcostModuleStatus) {
-  if (status === 'ACTIVE') return 'bg-emerald-50 text-emerald-700 border-emerald-100';
-  if (status === 'INTEGRATING') return 'bg-indigo-50 text-indigo-700 border-indigo-100';
+function operationClass(module: BcostSchemaModule) {
+  const readiness =
+    module.marketReadinessOverride ??
+    (module.status === 'ACTIVE'
+      ? 'SELLABLE'
+      : module.status === 'INTEGRATING'
+        ? 'ASSISTED_BETA'
+        : 'ROADMAP_LOCKED');
+
+  if (readiness === 'SELLABLE') return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+  if (readiness === 'ASSISTED_BETA') return 'bg-indigo-50 text-indigo-700 border-indigo-100';
   return 'bg-slate-50 text-slate-500 border-slate-100';
 }
 
@@ -66,10 +77,10 @@ function ModuleCardContent({ module }: { module: BcostSchemaModule }) {
 
         <span
           className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-widest ${operationClass(
-            module.status,
+            module,
           )}`}
         >
-          {operationLabel(module.status)}
+          {operationLabel(module)}
         </span>
 
         <span
@@ -111,7 +122,10 @@ function ModuleCardContent({ module }: { module: BcostSchemaModule }) {
         ))}
       </div>
       <p className="mt-5 text-sm font-black text-blue-700">
-        {getModuleCommercialActionLabel(module.status)}
+        {getModuleCommercialActionLabel(
+          module.status,
+          module.marketReadinessOverride,
+        )}
       </p>
     </>
   );
@@ -274,7 +288,10 @@ export default function EnterpriseModulesPage() {
             >
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-700">
-                  {getModuleMarketReadinessLabel(module.status)}
+                  {getModuleMarketReadinessLabel(
+                    module.status,
+                    module.marketReadinessOverride,
+                  )}
                 </span>
                 <span
                   className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${priorityClass(module.priority)}`}
@@ -291,7 +308,10 @@ export default function EnterpriseModulesPage() {
                 {module.apiBase ?? module.route}
               </p>
               <p className="mt-4 text-sm font-black text-emerald-700">
-                {getModuleCommercialActionLabel(module.status)}
+                {getModuleCommercialActionLabel(
+                  module.status,
+                  module.marketReadinessOverride,
+                )}
               </p>
             </Link>
           ))}
