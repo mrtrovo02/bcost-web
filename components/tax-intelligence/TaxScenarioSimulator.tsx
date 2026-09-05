@@ -81,6 +81,14 @@ export default function TaxScenarioSimulator() {
   const legalReliabilityTone = resolveLegalReliabilityTone(
     legalRiskAssessment?.legalReliability,
   );
+  const canAdvertiseSavings =
+    !legalRiskAssessment || legalRiskAssessment.canAdvertiseSavings;
+  const annualSavingsValue = canAdvertiseSavings
+    ? new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+      }).format(result?.annualSavings ?? 0)
+    : 'Sob revisão';
   const preProposalValidUntil = preProposal
     ? new Intl.DateTimeFormat('pt-BR').format(new Date(preProposal.validUntil))
     : null;
@@ -209,10 +217,7 @@ export default function TaxScenarioSimulator() {
                 />
                 <MetricTile
                   label="Economia anual"
-                  value={new Intl.NumberFormat('pt-BR', {
-                    style: 'currency',
-                    currency: 'BRL',
-                  }).format(result.annualSavings ?? 0)}
+                  value={annualSavingsValue}
                   tone="emerald"
                 />
                 <MetricTile

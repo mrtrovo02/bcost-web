@@ -231,6 +231,11 @@ describe('taxScenariosApi', () => {
     expect(result.preProposal?.reviewReasons).toContain('FACTOR_R_THRESHOLD');
     expect(new Date(result.preProposal?.validUntil ?? '').getTime()).toBeGreaterThan(Date.now());
     expect(result.preProposal?.refreshTriggers.join(' ')).toContain('Alteração de faturamento');
+    expect(result.legalRiskAssessment).toMatchObject({
+      legalReliability: 'TRIAGE_ONLY',
+      canAdvertiseSavings: false,
+      canUseAsOfficialAssessment: false,
+    });
   });
 
   it('keeps demo simulator operational without calling the protected API', async () => {
