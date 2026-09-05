@@ -57,8 +57,17 @@ describe('billingApi demo mode', () => {
     const digitalCertificates = entitlements.features.find(
       (item) => item.key === 'digital.certificates',
     );
+    const fiscalDiagnostics = entitlements.features.find(
+      (item) => item.key === 'fiscal.diagnostics',
+    );
     const copilot = entitlements.features.find((item) => item.key === 'ai.copilot');
 
+    expect(fiscalDiagnostics).toMatchObject({
+      enabled: true,
+      moduleSlug: 'tax-scenarios',
+      marketReadiness: 'ASSISTED_BETA',
+      commercialGuardrail: expect.stringContaining('venda assistida'),
+    });
     expect(digitalCertificates).toMatchObject({
       enabled: true,
       marketReadiness: 'ROADMAP_LOCKED',
