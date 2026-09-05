@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CompanyProvider, useCompany, type Company } from '../CompanyContext';
-import { clearActiveCompanyId, isDemoSession } from '@/services/api';
+import { clearActiveCompanyId, getActiveCompanyId, isDemoSession } from '@/services/api';
 
 vi.mock('@/services/api', () => ({
   api: {
@@ -30,6 +30,7 @@ vi.mock('@/lib/utils/telemetry', () => ({
 
 const isDemoSessionMock = vi.mocked(isDemoSession);
 const clearActiveCompanyIdMock = vi.mocked(clearActiveCompanyId);
+const getActiveCompanyIdMock = vi.mocked(getActiveCompanyId);
 
 function CompanyContextProbe() {
   const { selectedCompany, companies, setCompanies, setSelectedCompany, isLoading } = useCompany();
@@ -59,6 +60,7 @@ describe('CompanyProvider', () => {
     vi.clearAllMocks();
     window.localStorage.clear();
     isDemoSessionMock.mockReturnValue(false);
+    getActiveCompanyIdMock.mockReturnValue(null);
   });
 
   it('blocks demo company selection in real sessions even when demo fallback is enabled', async () => {
@@ -79,5 +81,45 @@ describe('CompanyProvider', () => {
     expect(screen.getByTestId('companies')).toHaveTextContent('');
     expect(window.localStorage.getItem('bcost_active_company_data')).toBeNull();
     expect(clearActiveCompanyIdMock).toHaveBeenCalled();
+  });
+
+  it('sanitizes stale demo companies from storage during real session hydration', async () => {
+    getActiveCompanyIdMock.mockReturnValue('real-company-001');
+    window.localStorage.setItem(
+      'bcost_companies',
+      JSON.stringify([
+        {
+          id: 'demo-001',
+          name: 'Empresa Demo',
+          cnpj: '00.000.000/0001-91',
+        },
+        {
+          id: 'real-company-001',
+          name: 'Empresa Real',
+          cnpj: '11.222.333/0001-44',
+        },
+      ]),
+    );
+
+    render(
+      <CompanyProvider>
+        <CompanyContextProbe />
+      </CompanyProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('selected')).toHaveTextContent('real-company-001');
+    });
+
+    expect(screen.getByTestId('companies')).toHaveTextContent('real-company-001');
+    expect(window.localStorage.getItem('bcost_companies')).toBe(
+      JSON.stringify([
+        {
+          id: 'real-company-001',
+          name: 'Empresa Real',
+          cnpj: '11.222.333/0001-44',
+        },
+      ]),
+    );
   });
 });

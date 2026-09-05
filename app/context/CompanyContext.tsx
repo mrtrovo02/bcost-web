@@ -63,6 +63,17 @@ function removeDemoCompanies(companies: Company[]): Company[] {
   return companies.filter((company) => !isDemoEntityId(company.id));
 }
 
+function persistCompaniesForSession(companies: Company[], isDemo: boolean): Company[] {
+  const sanitizedCompanies = isDemo ? companies : removeDemoCompanies(companies);
+
+  if (!isDemo && sanitizedCompanies.length !== companies.length) {
+    safeLocalStorageSet('bcost_companies', JSON.stringify(sanitizedCompanies));
+    safeLocalStorageSet('companies', JSON.stringify(sanitizedCompanies));
+  }
+
+  return sanitizedCompanies;
+}
+
 function canUseCompanyInCurrentSession(company: Company, isDemo: boolean): boolean {
   return isDemo || !isDemoEntityId(company.id);
 }
@@ -76,7 +87,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   /**
    * 1. Hidratação de Estado:
    * Sincroniza o contexto com o LocalStorage no boot da aplicação.
-   * Suporta modo demo com fallback automático.
+   * Suporta modo demo apenas quando a sessão é explicitamente demonstrativa.
    */
   useEffect(() => {
     const hydrate = () => {
@@ -88,9 +99,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
           [],
         );
         const isDemo = detectDemoSession();
-        const storedCompanies = isDemo
-          ? rawStoredCompanies
-          : removeDemoCompanies(rawStoredCompanies);
+        const storedCompanies = persistCompaniesForSession(rawStoredCompanies, isDemo);
 
         setIsDemoSession(isDemo);
 
@@ -115,6 +124,10 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
             setSelectedCompany(parsedCompany);
             setCompanies(storedCompanies);
             api.defaults.headers.common['x-company-id'] = parsedCompany.id;
+            if (!isDemo) {
+              safeLocalStorageSet('bcost_companies', JSON.stringify(storedCompanies));
+              safeLocalStorageSet('companies', JSON.stringify(storedCompanies));
+            }
             trackEvent('company_context_restored', { companyId: parsedCompany.id });
           }
           return;
@@ -173,7 +186,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       const storedCompanies = safeJsonParse<Company[]>(safeLocalStorageGet('bcost_companies'), []);
       const isDemo = detectDemoSession();
       const rawNextCompanies = eventCompanies.length > 0 ? eventCompanies : storedCompanies;
-      const nextCompanies = isDemo ? rawNextCompanies : removeDemoCompanies(rawNextCompanies);
+      const nextCompanies = persistCompaniesForSession(rawNextCompanies, isDemo);
       const nextCompany =
         nextCompanies.find((company) => company.id === companyId) ?? nextCompanies[0] ?? null;
 
