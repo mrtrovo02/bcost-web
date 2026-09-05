@@ -2,8 +2,19 @@
  * bCost Engine - Revenue & Growth Service
  */
 import { resolveEnterpriseCompanyIdWithFallback } from '@/lib/api/enterprise-company';
+import { isDemoEntityId } from '@/lib/config/demo-policy';
 import { api } from '@/services/api';
 import { RevenueStats } from '../types/global';
+
+type RevenueContract = {
+  id: string;
+  companyId: string;
+  customerId: string;
+  description: string;
+  amount: number;
+  status: 'ACTIVE' | 'INACTIVE' | 'CANCELLED';
+  source: 'DEMO_LOCAL' | 'API';
+};
 
 async function requireRevenueCompanyId(): Promise<string> {
   const companyId = await resolveEnterpriseCompanyIdWithFallback();
@@ -15,15 +26,66 @@ async function requireRevenueCompanyId(): Promise<string> {
   return companyId;
 }
 
+function createDemoRevenueStats(): RevenueStats {
+  return {
+    totalRevenue: 830000,
+    projectedRevenue: 9960000,
+    growthRate: 18.7,
+    activeContracts: 3,
+  };
+}
+
+function createDemoRevenueContracts(companyId: string): RevenueContract[] {
+  return [
+    {
+      id: 'demo-contract-accounting-pro',
+      companyId,
+      customerId: 'demo-customer-tech',
+      description: 'Contabilidade recorrente assistida',
+      amount: 1490,
+      status: 'ACTIVE',
+      source: 'DEMO_LOCAL',
+    },
+    {
+      id: 'demo-contract-tax-intelligence',
+      companyId,
+      customerId: 'demo-customer-tech',
+      description: 'Inteligência fiscal e Reforma Tributária',
+      amount: 2290,
+      status: 'ACTIVE',
+      source: 'DEMO_LOCAL',
+    },
+    {
+      id: 'demo-contract-payroll',
+      companyId,
+      customerId: 'demo-customer-tech',
+      description: 'Folha, pró-labore e obrigações mensais',
+      amount: 890,
+      status: 'ACTIVE',
+      source: 'DEMO_LOCAL',
+    },
+  ];
+}
+
 export const revenueApi = {
   getStats: async (): Promise<RevenueStats> => {
     const companyId = await requireRevenueCompanyId();
+
+    if (isDemoEntityId(companyId)) {
+      return createDemoRevenueStats();
+    }
+
     const { data } = await api.get(`/revenue/stats/${companyId}`);
     return data;
   },
 
-  getContracts: async () => {
+  getContracts: async (): Promise<RevenueContract[]> => {
     const companyId = await requireRevenueCompanyId();
+
+    if (isDemoEntityId(companyId)) {
+      return createDemoRevenueContracts(companyId);
+    }
+
     const { data } = await api.get(`/revenue/contracts/${companyId}`);
     return data;
   },

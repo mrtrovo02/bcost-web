@@ -40,6 +40,11 @@ describe('tenant company resolution for legacy frontend APIs', () => {
     getActiveCompanyIdMock.mockReturnValue('company-real-001');
   });
 
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    window.localStorage.clear();
+  });
+
   it('uses the canonical active company resolver for revenue URLs', async () => {
     apiGetMock
       .mockResolvedValueOnce({
@@ -67,6 +72,27 @@ describe('tenant company resolution for legacy frontend APIs', () => {
       'Nenhuma empresa real ativa foi encontrada',
     );
     expect(apiGetMock).toHaveBeenCalledWith('/auth/me');
+  });
+
+  it('keeps revenue local for explicit demo sessions', async () => {
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_DEMO', 'true');
+    getTokenMock.mockReturnValue('demo-token-local');
+    getActiveCompanyIdMock.mockReturnValue('demo-001');
+    window.localStorage.setItem('bcost_token', 'demo-token-local');
+    window.localStorage.setItem('bcost_active_company', 'demo-001');
+
+    const [stats, contracts] = await Promise.all([
+      revenueApi.getStats(),
+      revenueApi.getContracts(),
+    ]);
+
+    expect(stats.totalRevenue).toBeGreaterThan(0);
+    expect(contracts).toHaveLength(3);
+    expect(contracts[0]).toMatchObject({
+      companyId: 'demo-001',
+      source: 'DEMO_LOCAL',
+    });
+    expect(apiGetMock).not.toHaveBeenCalled();
   });
 
   it('uses the canonical active company resolver for fiscal URLs', async () => {
