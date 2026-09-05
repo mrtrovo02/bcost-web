@@ -147,4 +147,43 @@ describe('EnterpriseModuleClient dynamic page', () => {
     ).toBeGreaterThan(0);
     expect(getModuleMock).not.toHaveBeenCalled();
   });
+
+  it('renders controlled operational block when a sellable module endpoint fails for a real company', async () => {
+    resolveCompanyMock.mockResolvedValueOnce('company-123');
+    catalogMock.mockResolvedValueOnce([
+      {
+        slug: 'users',
+        model: 'User',
+        label: 'Usuários',
+        persistence: 'PRISMA',
+        endpoint: '/enterprise/modules/users/:companyId',
+        canonicalOwner: 'enterprise-modules',
+        automationBoundary: 'SOFTWARE_ONLY',
+        marketReadiness: 'SELLABLE',
+        launchGate: {
+          status: 'PASS',
+          canSell: true,
+          requiredEvidence: ['endpoint produtivo validado', 'tenant isolation testado'],
+          blockers: [],
+        },
+      },
+    ]);
+    getModuleMock.mockRejectedValueOnce(
+      new Error('Modulo enterprise indisponivel e fallback demonstrativo desabilitado neste ambiente.'),
+    );
+
+    render(<EnterpriseModuleClient slug="users" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Bloqueio operacional controlado')).toBeInTheDocument();
+    });
+
+    expect(
+      screen.getByText('Este módulo está mapeado, mas não está liberado para operação real nesta sessão'),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText('/enterprise/modules/users/:companyId').length).toBeGreaterThan(0);
+    expect(screen.getByText('• endpoint produtivo validado')).toBeInTheDocument();
+    expect(screen.getByText('• tenant isolation testado')).toBeInTheDocument();
+    expect(screen.getByText('• não exibir dados demonstrativos para empresa real')).toBeInTheDocument();
+  });
 });

@@ -442,6 +442,105 @@ function FallbackNotice({ data }: { data: EnterpriseModuleResponse | null }) {
   );
 }
 
+function OperationalUnavailableView({
+  error,
+  isFeatureLocked,
+  catalogItem,
+  universalEndpoint,
+  onRefresh,
+}: {
+  error: string;
+  isFeatureLocked: boolean;
+  catalogItem: EnterpriseCatalogItem | null;
+  universalEndpoint: string;
+  onRefresh: () => void;
+}) {
+  if (isFeatureLocked) {
+    return (
+      <section className="rounded-3xl border border-blue-200 bg-blue-50 p-8 shadow-sm">
+        <h2 className="text-lg font-black text-blue-950">Módulo disponível mediante upgrade</h2>
+        <p className="mt-2 text-sm leading-6 text-blue-800">{error}</p>
+        <Link
+          href="/dashboard/settings?section=billing"
+          className="mt-5 inline-flex rounded-2xl bg-blue-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-600"
+        >
+          Ver planos e ativar módulo
+        </Link>
+      </section>
+    );
+  }
+
+  const launchGate = catalogItem?.launchGate;
+  const requiredEvidence =
+    launchGate?.requiredEvidence && launchGate.requiredEvidence.length > 0
+      ? launchGate.requiredEvidence
+      : [
+          'endpoint produtivo respondendo com contrato tipado',
+          'tenant isolation validado para a empresa ativa',
+          'teste regressivo do módulo aprovado no pipeline',
+        ];
+  const blockers = launchGate?.blockers ?? [];
+
+  return (
+    <section className="rounded-3xl border border-amber-200 bg-amber-50 p-8 shadow-sm">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-600">
+            Bloqueio operacional controlado
+          </p>
+          <h2 className="mt-2 text-xl font-black text-amber-950">
+            Este módulo está mapeado, mas não está liberado para operação real nesta sessão
+          </h2>
+          <p className="mt-2 max-w-4xl text-sm leading-6 text-amber-900">{error}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onRefresh}
+          className="rounded-2xl bg-amber-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-amber-800"
+        >
+          Revalidar endpoint
+        </button>
+      </div>
+
+      <div className="mt-6 rounded-2xl border border-amber-200 bg-white/70 p-4">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-700">
+          Endpoint esperado
+        </p>
+        <p className="mt-2 break-all font-mono text-sm font-semibold text-amber-950">
+          {catalogItem?.endpoint ?? universalEndpoint}
+        </p>
+      </div>
+
+      <div className="mt-5 grid gap-4 lg:grid-cols-2">
+        <div className="rounded-2xl border border-amber-200 bg-white/70 p-4">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-700">
+            Evidências exigidas para liberação
+          </p>
+          <ul className="mt-3 space-y-2 text-sm font-semibold leading-6 text-amber-950">
+            {requiredEvidence.map((item) => (
+              <li key={item}>• {item}</li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="rounded-2xl border border-amber-200 bg-white/70 p-4">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-700">
+            Guardrails comerciais
+          </p>
+          <ul className="mt-3 space-y-2 text-sm font-semibold leading-6 text-amber-950">
+            <li>• não exibir dados demonstrativos para empresa real</li>
+            <li>• não vender como automação pronta sem endpoint produtivo</li>
+            <li>• não prometer resultado fiscal sem validação documental</li>
+            {blockers.slice(0, 2).map((blocker) => (
+              <li key={blocker}>• {blocker}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function RoadmapModuleView({
   data,
   onRefresh,
@@ -1174,37 +1273,13 @@ function UniversalModuleView({
             <p className="text-sm font-semibold text-slate-500">Carregando dados enterprise...</p>
           </section>
         ) : error ? (
-          <section
-            className={`rounded-3xl border p-8 shadow-sm ${
-              isFeatureLocked ? 'border-blue-200 bg-blue-50' : 'border-red-200 bg-red-50'
-            }`}
-          >
-            <h2
-              className={`text-lg font-black ${isFeatureLocked ? 'text-blue-950' : 'text-red-900'}`}
-            >
-              {isFeatureLocked
-                ? 'Módulo disponível mediante upgrade'
-                : 'Não foi possível carregar este módulo'}
-            </h2>
-            <p className={`mt-2 text-sm ${isFeatureLocked ? 'text-blue-800' : 'text-red-700'}`}>
-              {error}
-            </p>
-            {isFeatureLocked ? (
-              <Link
-                href="/dashboard/settings?section=billing"
-                className="mt-5 inline-flex rounded-2xl bg-blue-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-600"
-              >
-                Ver planos e ativar módulo
-              </Link>
-            ) : (
-              <button
-                onClick={onRefresh}
-                className="mt-5 rounded-2xl bg-red-700 px-5 py-3 text-sm font-bold text-white"
-              >
-                Tentar novamente
-              </button>
-            )}
-          </section>
+          <OperationalUnavailableView
+            error={error}
+            isFeatureLocked={isFeatureLocked}
+            catalogItem={catalogItem}
+            universalEndpoint={universalEndpoint}
+            onRefresh={onRefresh}
+          />
         ) : data && isRoadmapData(data) ? (
           <RoadmapModuleView data={data} onRefresh={onRefresh} />
         ) : !data?.items?.length ? (
