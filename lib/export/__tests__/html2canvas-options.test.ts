@@ -14,6 +14,7 @@ describe('buildDashboardPdfCanvasOptions', () => {
         <section
           id="card"
           style="
+            --tw-ring-color: lab(70% 0 0);
             color: lab(90% 0 0);
             background: linear-gradient(90deg, oklch(60% 0.1 240), #020408);
             box-shadow: 0 0 12px color(display-p3 1 1 1);
@@ -39,6 +40,7 @@ describe('buildDashboardPdfCanvasOptions', () => {
       /\b(?:lab|lch|oklab|oklch|color)\(/i,
     );
     expect(card?.getAttribute('style')).not.toMatch(/\b(?:lab|lch|oklab|oklch|color)\(/i);
+    expect(card?.style.getPropertyValue('--tw-ring-color')).toBe('#e5edf7');
     expect(path?.getAttribute('style')).not.toMatch(/\b(?:lab|lch|oklab|oklch|color)\(/i);
   });
 });

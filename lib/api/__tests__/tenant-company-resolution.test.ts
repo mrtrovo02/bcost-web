@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fiscalApi } from '../fiscal';
 import { hrApi } from '../hr';
 import { revenueApi } from '../revenue';

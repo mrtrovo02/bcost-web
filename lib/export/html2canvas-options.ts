@@ -72,6 +72,16 @@ function sanitizeElementColors(element: HTMLElement, view: Window): void {
 
   element.style.boxShadow = normalizeShadow(computed.boxShadow);
   element.style.textShadow = normalizeShadow(computed.textShadow);
+
+  for (const propertyName of Array.from(computed)) {
+    if (!propertyName.startsWith('--')) continue;
+
+    const propertyValue = computed.getPropertyValue(propertyName);
+
+    if (UNSUPPORTED_COLOR_FUNCTION.test(propertyValue)) {
+      element.style.setProperty(propertyName, '#e5edf7');
+    }
+  }
 }
 
 function sanitizeSvgColors(element: SVGElement, view: Window): void {
