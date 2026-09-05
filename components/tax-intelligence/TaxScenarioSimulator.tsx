@@ -75,8 +75,12 @@ export default function TaxScenarioSimulator() {
   const commercialDecision = result?.complianceTrail?.commercialDecision;
   const serviceQualification = result?.serviceQualification;
   const preProposal = result?.preProposal;
+  const legalRiskAssessment = result?.legalRiskAssessment;
   const auditLines = result?.calculationAudit?.lines ?? [];
   const preProposalRiskTone = resolvePreProposalRiskTone(preProposal?.riskLevel);
+  const legalReliabilityTone = resolveLegalReliabilityTone(
+    legalRiskAssessment?.legalReliability,
+  );
   const preProposalValidUntil = preProposal
     ? new Intl.DateTimeFormat('pt-BR').format(new Date(preProposal.validUntil))
     : null;
@@ -228,6 +232,77 @@ export default function TaxScenarioSimulator() {
                       Regras críticas: {result.regressionSuite.blockingCriticalities.join(', ')} • Cobertura {result.regressionSuite.coveredRules.length}
                     </p>
                   </div>
+                </div>
+              )}
+
+              {legalRiskAssessment && (
+                <div className="rounded-[2rem] border border-white/5 bg-[#0d1320] p-5">
+                  <div className="flex flex-col gap-4 border-b border-white/5 pb-4 xl:flex-row xl:items-start xl:justify-between">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                        Parecer jurídico-fiscal sistêmico
+                      </p>
+                      <h4 className="mt-2 text-lg font-black text-white">
+                        {legalRiskAssessment.legalReliability.replaceAll('_', ' ')}
+                      </h4>
+                      <p className="mt-2 max-w-3xl text-xs leading-relaxed text-slate-300">
+                        Análise baseada na memória de cálculo do motor, trilha de compliance e gate
+                        comercial. O resultado continua classificado como triagem assistida, não
+                        como apuração oficial.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <span className={`rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] ${legalReliabilityTone}`}>
+                        {legalRiskAssessment.evidenceGate.status.replaceAll('_', ' ')}
+                      </span>
+                      <span className={`rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] ${resolvePreProposalRiskTone(legalRiskAssessment.riskLevel)}`}>
+                        Risco {legalRiskAssessment.riskLevel}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+                    <div className="rounded-2xl border border-white/5 bg-[#090d16] p-4">
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                        Uso comercial permitido
+                      </p>
+                      <p className="mt-3 text-sm font-bold text-white">
+                        {legalRiskAssessment.canAdvertiseSavings
+                          ? 'Pode comunicar economia estimada com revisão assistida e termos explícitos.'
+                          : 'Não comunicar promessa de economia nem enquadramento definitivo.'}
+                      </p>
+                      <p className="mt-3 text-xs leading-relaxed text-slate-400">
+                        Apuração oficial: {legalRiskAssessment.canUseAsOfficialAssessment ? 'habilitada' : 'bloqueada'}.
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border border-white/5 bg-[#090d16] p-4">
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                        Divulgações obrigatórias
+                      </p>
+                      <ul className="mt-3 space-y-2 text-xs leading-relaxed text-slate-300">
+                        {legalRiskAssessment.requiredDisclosures.slice(0, 3).map((disclosure) => (
+                          <li key={disclosure}>{disclosure}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  {legalRiskAssessment.findings.length > 0 && (
+                    <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                      {legalRiskAssessment.findings.slice(0, 4).map((finding) => (
+                        <div key={finding.code} className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <p className="text-sm font-black text-white">{finding.title}</p>
+                            <span className="rounded-full border border-amber-400/20 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-amber-100">
+                              {finding.severity}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-xs leading-relaxed text-amber-50/90">{finding.impact}</p>
+                          <p className="mt-2 text-[11px] leading-relaxed text-slate-400">{finding.correctiveAction}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -577,6 +652,20 @@ function resolvePreProposalRiskTone(
   if (riskLevel === 'HIGH') return 'border-amber-400/30 bg-amber-500/10 text-amber-100';
   if (riskLevel === 'MEDIUM') return 'border-yellow-400/30 bg-yellow-500/10 text-yellow-100';
   return 'border-emerald-400/30 bg-emerald-500/10 text-emerald-100';
+}
+
+function resolveLegalReliabilityTone(
+  legalReliability?: NonNullable<SimulationResponse['legalRiskAssessment']>['legalReliability'],
+) {
+  if (legalReliability === 'BLOCKED_FOR_AUTOMATED_SALE') {
+    return 'border-rose-400/30 bg-rose-500/10 text-rose-100';
+  }
+
+  if (legalReliability === 'ASSISTED_REVIEW_REQUIRED') {
+    return 'border-cyan-400/30 bg-cyan-500/10 text-cyan-100';
+  }
+
+  return 'border-amber-400/30 bg-amber-500/10 text-amber-100';
 }
 
 function MetricTile({

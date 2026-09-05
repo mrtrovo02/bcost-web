@@ -177,6 +177,32 @@ export interface TaxScenarioPreProposal {
   legalTerms: string[];
 }
 
+export interface TaxScenarioLegalRiskAssessment {
+  version: 'tax-scenarios-legal-risk-2026.1';
+  assessmentMode: 'CODE_BASED_SYSTEMIC_REVIEW';
+  legalReliability:
+    | 'TRIAGE_ONLY'
+    | 'ASSISTED_REVIEW_REQUIRED'
+    | 'BLOCKED_FOR_AUTOMATED_SALE';
+  riskLevel: TaxScenarioPreProposal['riskLevel'];
+  canAdvertiseSavings: boolean;
+  canUseAsOfficialAssessment: false;
+  requiredDisclosures: string[];
+  evidenceGate: {
+    status: 'OPEN' | 'READY_FOR_CRC_REVIEW' | 'BLOCKED';
+    requiredEvidence: string[];
+    missingEvidence: string[];
+  };
+  findings: Array<{
+    code: string;
+    severity: TaxComplianceRuleSeverity;
+    title: string;
+    impact: string;
+    correctiveAction: string;
+    sourceBasis: string[];
+  }>;
+}
+
 export interface SimulationResponse {
   status: 'OK';
   regressionSuite?: {
@@ -211,6 +237,7 @@ export interface SimulationResponse {
   calculationAudit?: TaxScenarioCalculationAudit;
   serviceQualification?: TaxScenarioServiceQualification;
   preProposal?: TaxScenarioPreProposal;
+  legalRiskAssessment?: TaxScenarioLegalRiskAssessment;
   guardrails: string[];
   generatedAt: string;
   scenarioId?: string;
@@ -712,6 +739,75 @@ function buildDemoPreProposal(
   };
 }
 
+function buildDemoLegalRiskAssessment(
+  complianceTrail: TaxScenarioComplianceTrail,
+  serviceQualification: TaxScenarioServiceQualification,
+  preProposal: TaxScenarioPreProposal,
+): TaxScenarioLegalRiskAssessment {
+  const reviewedRules = complianceTrail.rules.filter(
+    (rule) => rule.status === 'BLOCKED' || rule.status === 'REQUIRES_REVIEW',
+  );
+  const missingEvidence = Array.from(
+    new Set([
+      ...serviceQualification.missingEvidence,
+      ...preProposal.documentChecklist
+        .filter((document) => document.required)
+        .map((document) => document.label),
+    ]),
+  );
+  const legalReliability: TaxScenarioLegalRiskAssessment['legalReliability'] =
+    preProposal.status === 'BLOCKED_BY_COMPLIANCE'
+      ? 'BLOCKED_FOR_AUTOMATED_SALE'
+      : preProposal.checkoutAllowed
+        ? 'ASSISTED_REVIEW_REQUIRED'
+        : 'TRIAGE_ONLY';
+  const evidenceStatus: TaxScenarioLegalRiskAssessment['evidenceGate']['status'] =
+    preProposal.status === 'BLOCKED_BY_COMPLIANCE'
+      ? 'BLOCKED'
+      : missingEvidence.length > 0
+        ? 'OPEN'
+        : 'READY_FOR_CRC_REVIEW';
+
+  return {
+    version: 'tax-scenarios-legal-risk-2026.1',
+    assessmentMode: 'CODE_BASED_SYSTEMIC_REVIEW',
+    legalReliability,
+    riskLevel: preProposal.riskLevel,
+    canAdvertiseSavings:
+      preProposal.checkoutAllowed &&
+      preProposal.riskLevel !== 'HIGH' &&
+      preProposal.riskLevel !== 'CRITICAL',
+    canUseAsOfficialAssessment: false,
+    requiredDisclosures: [
+      'Resultado gerencial para triagem e planejamento assistido, sem substituir apuração oficial ou parecer tributário.',
+      'Economia, enquadramento e migração dependem de RBT12, CNAE, município, retenções, folha/pró-labore e documentos fiscais reais.',
+      'CBS/IBS 2026 deve ser tratado como destaque informativo de calibração operacional, não como recolhimento definitivo automático.',
+      'Proposta comercial tributária exige dossiê de evidências e revisão de contador responsável antes da contratação.',
+    ],
+    evidenceGate: {
+      status: evidenceStatus,
+      requiredEvidence: preProposal.documentChecklist
+        .filter((document) => document.required)
+        .map((document) => document.label),
+      missingEvidence,
+    },
+    findings: reviewedRules.map((rule) => ({
+      code: rule.code,
+      severity: rule.severity,
+      title: rule.title,
+      impact:
+        rule.status === 'BLOCKED'
+          ? 'Bloqueia venda automática, promessa de economia ou recomendação de enquadramento.'
+          : 'Exige revisão assistida antes de orientar contratação, abertura, migração ou alteração de regime.',
+      correctiveAction:
+        rule.status === 'BLOCKED'
+          ? 'Abrir revisão de compliance, coletar evidências oficiais e reprocessar o cenário antes de qualquer proposta.'
+          : 'Coletar evidências exigidas, registrar memória de cálculo e submeter validação CRC.',
+      sourceBasis: rule.legalBasis,
+    })),
+  };
+}
+
 function resolveDemoPreProposalValidityDate(): string {
   const validUntil = new Date();
   validUntil.setUTCDate(validUntil.getUTCDate() + 7);
@@ -1166,6 +1262,11 @@ function createDemoSimulation(input: SimulateTaxScenarioDto, companyId?: string)
     bestEstimatedModel,
   );
   const preProposal = buildDemoPreProposal(input, serviceQualification, complianceTrail);
+  const legalRiskAssessment = buildDemoLegalRiskAssessment(
+    complianceTrail,
+    serviceQualification,
+    preProposal,
+  );
 
   return {
     status: 'OK',
@@ -1205,6 +1306,7 @@ function createDemoSimulation(input: SimulateTaxScenarioDto, companyId?: string)
     calculationAudit,
     serviceQualification,
     preProposal,
+    legalRiskAssessment,
     guardrails: [
       'Fallback demonstrativo restrito a sessão demo; empresas reais continuam exigindo API autenticada e dados oficiais.',
       ...(annualRevenue > SIMPLES_ANNUAL_LIMIT
@@ -1256,11 +1358,21 @@ function normalizeSimulationResponse(
           ],
       }
     : undefined;
+  const legalRiskAssessment =
+    data.legalRiskAssessment ??
+    (data.complianceTrail && data.serviceQualification && compatiblePreProposal
+      ? buildDemoLegalRiskAssessment(
+          data.complianceTrail,
+          data.serviceQualification,
+          compatiblePreProposal,
+        )
+      : undefined);
 
   return {
     ...data,
     regressionSuite: data.regressionSuite ?? TAX_SCENARIO_REGRESSION_SUITE,
     preProposal: compatiblePreProposal,
+    legalRiskAssessment,
     companyId,
     recommendedRegime: bestModel,
     annualSavings,
