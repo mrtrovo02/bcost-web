@@ -437,6 +437,10 @@ describe('taxScenariosApi', () => {
         expect(result.preProposal?.checkoutAllowed).toBe(
           regressionCase.expected.checkoutAllowed,
         );
+        if (regressionCase.expected.checkoutAllowed) {
+          expect(result.legalRiskAssessment?.evidenceGate.status).toBe('OPEN');
+          expect(result.legalRiskAssessment?.canAdvertiseSavings).toBe(false);
+        }
         expect(result.complianceTrail?.officialAssessment).toBe(false);
       },
     );

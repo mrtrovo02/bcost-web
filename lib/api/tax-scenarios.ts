@@ -775,6 +775,8 @@ function buildDemoLegalRiskAssessment(
     riskLevel: preProposal.riskLevel,
     canAdvertiseSavings:
       preProposal.checkoutAllowed &&
+      evidenceStatus === 'READY_FOR_CRC_REVIEW' &&
+      reviewedRules.length === 0 &&
       preProposal.riskLevel !== 'HIGH' &&
       preProposal.riskLevel !== 'CRITICAL',
     canUseAsOfficialAssessment: false,
