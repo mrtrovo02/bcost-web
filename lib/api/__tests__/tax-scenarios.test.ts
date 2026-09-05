@@ -260,6 +260,7 @@ describe('taxScenariosApi', () => {
     expect(result.comparisons).toHaveLength(4);
     expect(result.scenarios?.some((scenario) => scenario.isRecommended)).toBe(true);
     expect(result.guardrails.join(' ')).toContain('empresas reais continuam exigindo API autenticada');
+    expect(result.recommendation.rationale.join(' ')).not.toContain('Ganho anual estimado');
   });
 
   it('blocks Simples Nacional in demo fallback when annualized revenue exceeds the legal limit', async () => {
