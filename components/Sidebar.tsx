@@ -25,9 +25,11 @@ import {
 import { useCompany, type Company } from '@/app/context/CompanyContext';
 import {
   api,
+  clearSession,
   clearActiveCompanyId,
   deleteCookie,
   getActiveCompanyId,
+  getToken,
   setActiveCompanyId,
 } from '@/services/api';
 import { DEMO_COMPANIES, type DemoCompany } from '@/services/demo-data';
@@ -189,14 +191,18 @@ export default function Sidebar() {
     'refresh_token',
   ];
 
-  /**
-   * Logout local para autenticação JWT stateless.
-   * Limpa cookies/storage e força hard reload para remover qualquer estado
-   * em memória do React/Query cache.
-   */
   const handleLogout = async () => {
     setIsLoggingOut(true);
 
+    const token = getToken();
+
+    if (token && token !== 'demo-token-local') {
+      await api.post('/auth/logout', { token }).catch((error: unknown) => {
+        console.warn('[bCost Sidebar]: logout remoto não confirmado.', error);
+      });
+    }
+
+    clearSession();
     SESSION_COOKIE_NAMES.forEach((name) => deleteCookie(name));
     localStorage.clear();
     sessionStorage.clear();

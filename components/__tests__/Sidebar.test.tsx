@@ -14,6 +14,9 @@ const testState = vi.hoisted(() => ({
   setCompanies: vi.fn(),
   setSelectedCompany: vi.fn(),
   apiGet: vi.fn(),
+  apiPost: vi.fn(),
+  clearSession: vi.fn(),
+  getToken: vi.fn(() => 'real-jwt-token'),
   isDemoSession: false,
   companies: [{ id: '1', name: 'Empresa Demo', cnpj: '12.345.678/0001-99' }] as TestCompany[],
   selectedCompany: {
@@ -42,10 +45,13 @@ vi.mock('@/services/api', () => ({
   api: {
     defaults: { headers: { common: {} } },
     get: testState.apiGet,
+    post: testState.apiPost,
   },
+  clearSession: testState.clearSession,
   clearActiveCompanyId: vi.fn(),
   deleteCookie: vi.fn(),
   getActiveCompanyId: vi.fn(() => '1'),
+  getToken: testState.getToken,
   setActiveCompanyId: vi.fn(),
 }));
 
@@ -60,6 +66,14 @@ describe('Sidebar', () => {
       cnpj: '12.345.678/0001-99',
     };
     testState.apiGet.mockResolvedValue({ data: testState.companies });
+    testState.apiPost.mockResolvedValue({ data: { message: 'Logged out successfully' } });
+    testState.getToken.mockReturnValue('real-jwt-token');
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: {
+        replace: vi.fn(),
+      },
+    });
   });
 
   it('renders the main navigation and company name', () => {
@@ -119,5 +133,19 @@ describe('Sidebar', () => {
     });
 
     expect(testState.apiGet).not.toHaveBeenCalled();
+  });
+
+  it('revokes the current token on logout before clearing the browser session', async () => {
+    render(<Sidebar />);
+
+    fireEvent.click(screen.getByText('Sair do Terminal'));
+
+    await waitFor(() => {
+      expect(testState.apiPost).toHaveBeenCalledWith('/auth/logout', {
+        token: 'real-jwt-token',
+      });
+    });
+    expect(testState.clearSession).toHaveBeenCalled();
+    expect(window.location.replace).toHaveBeenCalledWith('/login');
   });
 });
