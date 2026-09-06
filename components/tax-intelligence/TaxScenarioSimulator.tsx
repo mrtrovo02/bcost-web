@@ -239,6 +239,28 @@ export default function TaxScenarioSimulator() {
                 </div>
               )}
 
+              {!legalRiskAssessment && (
+                <div className="rounded-[2rem] border border-rose-500/20 bg-rose-500/5 p-5">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="mt-0.5 text-rose-300" size={20} />
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-rose-200">
+                        Gate jurídico-fiscal indisponível
+                      </p>
+                      <p className="mt-2 text-sm font-bold text-white">
+                        Economia e contratação automática bloqueadas até a API retornar
+                        `legalRiskAssessment`.
+                      </p>
+                      <p className="mt-2 text-xs leading-relaxed text-rose-100/80">
+                        Reprocesse a simulação após atualizar backend/frontend e não use este
+                        resultado como proposta comercial, enquadramento definitivo ou apuração
+                        oficial.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {result.legalSourceManifest && (
                 <div className="rounded-[2rem] border border-indigo-500/20 bg-indigo-500/5 p-5">
                   <div className="flex flex-col gap-3 border-b border-white/5 pb-4 lg:flex-row lg:items-start lg:justify-between">
