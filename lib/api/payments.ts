@@ -1,5 +1,6 @@
 'use strict';
 
+import { isDemoEntityId } from '@/lib/config/demo-policy';
 import { api } from '@/services/api';
 import type { BillingEntitlementsResponse, PlanLevel } from './billing';
 
@@ -149,11 +150,25 @@ function throwCommercialCheckoutError(error: unknown): never {
   throw error;
 }
 
+function assertRealPaymentCompany(companyId: string): void {
+  if (!companyId || companyId === 'ID_DA_EMPRESA') {
+    throw new Error('Empresa ativa não encontrada para iniciar cobrança.');
+  }
+
+  if (isDemoEntityId(companyId)) {
+    throw new Error(
+      'Checkout real bloqueado em sessão demo. Use uma empresa real autenticada para contratar o plano.',
+    );
+  }
+}
+
 export const paymentsApi = {
   createCheckoutSession: async (
     companyId: string,
     input: CreateCheckoutSessionInput,
   ): Promise<CheckoutSessionResponse> => {
+    assertRealPaymentCompany(companyId);
+
     try {
       const response = await api.post<CheckoutSessionResponse>(
         `/payments/checkout/${companyId}`,
@@ -170,6 +185,8 @@ export const paymentsApi = {
     companyId: string,
     input: CreateBillingPortalSessionInput,
   ): Promise<BillingPortalSessionResponse> => {
+    assertRealPaymentCompany(companyId);
+
     const response = await api.post<BillingPortalSessionResponse>(
       `/payments/portal/${companyId}`,
       input,
@@ -179,6 +196,8 @@ export const paymentsApi = {
   },
 
   subscription: async (companyId: string): Promise<PaymentSubscriptionResponse> => {
+    assertRealPaymentCompany(companyId);
+
     const response = await api.get<PaymentSubscriptionResponse>(
       `/payments/subscription/${companyId}`,
     );
@@ -190,6 +209,8 @@ export const paymentsApi = {
     companyId: string,
     query: PaymentWebhookEventsQuery = {},
   ): Promise<PaymentWebhookEventsResponse> => {
+    assertRealPaymentCompany(companyId);
+
     const response = await api.get<PaymentWebhookEventsResponse>(
       `/payments/webhook-events/${companyId}`,
       { params: query },

@@ -74,6 +74,26 @@ describe('paymentsApi', () => {
     );
   });
 
+  it('blocks real checkout for demo companies before calling the API', async () => {
+    await expect(
+      paymentsApi.createCheckoutSession('demo-001', {
+        planLevel: 'PRO',
+      }),
+    ).rejects.toThrow(
+      'Checkout real bloqueado em sessão demo. Use uma empresa real autenticada para contratar o plano.',
+    );
+
+    expect(apiPostMock).not.toHaveBeenCalled();
+  });
+
+  it('blocks payment reads when company context is missing', async () => {
+    await expect(paymentsApi.subscription('ID_DA_EMPRESA')).rejects.toThrow(
+      'Empresa ativa não encontrada para iniciar cobrança.',
+    );
+
+    expect(apiGetMock).not.toHaveBeenCalled();
+  });
+
   it('loads subscription status with entitlements for the active company', async () => {
     apiGetMock.mockResolvedValueOnce({
       data: {
