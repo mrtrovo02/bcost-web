@@ -370,24 +370,14 @@ export const clearStoredToken = clearToken;
 
 // Refresh token
 export function getRefreshToken(): string | null {
-  if (!isBrowser()) return null;
-  for (const key of REFRESH_KEYS) {
-    const v = readCookie(key);
-    if (isValidValue(v)) return v!;
-  }
-  const legacy = lsGet(REFRESH_KEYS);
-  if (legacy) {
-    writeCookie('bcost_refresh_token', legacy);
-    lsRemove(REFRESH_KEYS);
-    return legacy;
-  }
+  // O refresh token agora é HttpOnly e não pode ser lido pelo JavaScript.
   return null;
 }
 
 export function setRefreshToken(token?: string | null): void {
   if (!isBrowser() || typeof token !== 'string' || !isValidValue(token)) return;
   lsRemove(REFRESH_KEYS);
-  writeCookie('bcost_refresh_token', token);
+  deleteCookie('bcost_refresh_token');
 }
 
 export function clearRefreshToken(): void {
@@ -611,13 +601,36 @@ api.interceptors.request.use(
 
 // Interceptor de Resposta (Tratamento Anti-Loop de Erro 401)
 let isHandling401 = false;
+let refreshRequest: Promise<string | null> | null = null;
 
 api.interceptors.response.use(
   (response: AxiosResponse) => response,
-  (error: unknown) => {
+  async (error: unknown) => {
     if (axios.isAxiosError(error) && error.response?.status === 401) {
       const requestUrl = error.config?.url ?? 'unknown';
       console.warn('[API Interceptor] Requisicao nao autorizada (401) capturada em:', requestUrl);
+
+      const requestConfig = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
+      const isRefreshRequest = requestUrl.includes('/auth/refresh');
+
+      if (!isRefreshRequest && requestConfig && !requestConfig._retry && !isDemoSession()) {
+        requestConfig._retry = true;
+        refreshRequest ??= api
+          .post<AuthResponse>('/auth/refresh')
+          .then(({ data }) => {
+            persistAuthResponse(data);
+            return data.access_token ?? data.accessToken ?? data.token ?? null;
+          })
+          .catch(() => null)
+          .finally(() => {
+            refreshRequest = null;
+          });
+
+        const refreshedToken = await refreshRequest;
+        if (refreshedToken) {
+          return api(requestConfig);
+        }
+      }
 
       if (!isHandling401) {
         isHandling401 = true;
