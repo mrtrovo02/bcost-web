@@ -100,7 +100,7 @@ export default function XMLUploadPage() {
             Ingestão <span className="text-blue-600 italic">bCost</span> XML
           </h2>
           <p className="text-slate-400 font-bold text-sm uppercase tracking-widest mt-1">
-            Motor de Cálculo Real-Time 2026
+            Motor de cálculo em tempo real 2026
           </p>
         </div>
 
@@ -110,7 +110,7 @@ export default function XMLUploadPage() {
             disabled={isProcessing}
             className="px-6 py-3 rounded-2xl font-bold text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all flex items-center gap-2 disabled:opacity-30"
           >
-            <Trash2 size={18} /> Limpar Lista
+            <Trash2 size={18} /> Limpar lista
           </button>
           <button
             disabled={isProcessing || !uploads.some((u) => u.status === 'pending')}
@@ -118,7 +118,7 @@ export default function XMLUploadPage() {
             className="bg-slate-900 text-white px-8 py-3 rounded-2xl font-black shadow-xl shadow-slate-900/20 hover:bg-blue-600 transition-all disabled:opacity-30 flex items-center gap-2"
           >
             {isProcessing ? <Loader2 className="animate-spin" size={20} /> : <Database size={20} />}
-            {isProcessing ? 'Sincronizando Prisma...' : 'Iniciar Processamento'}
+            {isProcessing ? 'Sincronizando Prisma...' : 'Iniciar processamento'}
           </button>
         </div>
       </div>
@@ -145,7 +145,7 @@ export default function XMLUploadPage() {
                 Ação Bloqueada
               </p>
               <p className="text-slate-500 font-medium">
-                Selecione uma empresa na Sidebar para habilitar o upload.
+                Selecione uma empresa na barra lateral para habilitar o upload.
               </p>
             </div>
           </div>
@@ -156,10 +156,10 @@ export default function XMLUploadPage() {
             </div>
             <div className="space-y-2">
               <p className="text-2xl font-black text-slate-900 tracking-tight">
-                Deposite seus arquivos XML aqui
+                Envie seus arquivos XML aqui
               </p>
               <p className="text-slate-400 font-medium italic">
-                NFe, NFSe e CTe suportados pelo motor bCost
+                NF-e, NFS-e e CT-e compatíveis com o motor bCost
               </p>
             </div>
           </>

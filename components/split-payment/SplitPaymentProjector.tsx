@@ -52,7 +52,7 @@ const FASES_SPLIT: Record<
     pix: 0.25,
     cartao: 0.25,
     boleto: 0.1,
-    descricao: 'Premissa bCost 2027 -- expansao gradual',
+    descricao: 'Premissa bCost 2027 -- expansão gradual',
   },
   2028: {
     pix: 0.5,
@@ -215,7 +215,7 @@ export default function SplitPaymentProjector({
         </div>
       </div>
 
-      {/* Configuracoes */}
+      {/* Configurações */}
       <div className="border-b border-slate-100">
         <button
           onClick={() => setExpanded((v) => !v)}
@@ -393,7 +393,7 @@ export default function SplitPaymentProjector({
         <AlertTriangle size={18} className="text-amber-500 flex-shrink-0 mt-0.5" />
         <div>
           <p className="text-xs font-black text-amber-800 uppercase tracking-wider mb-1">
-            Acao recomendada pelo bCost
+            Ação recomendada pelo bCost
           </p>
           <p className="text-xs text-amber-700 leading-relaxed">
             Em um cenario com Split Payment, parte do imposto pode deixar de entrar no caixa no

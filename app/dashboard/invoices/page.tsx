@@ -273,7 +273,7 @@ export default function InvoicesPage() {
                         </div>
                         <div>
                           <p className="text-[12px] font-black text-slate-900 tracking-tighter uppercase">
-                            {nf?.type ?? 'NFe'} #{nf?.number ?? 'S/N'}
+                            {nf?.type ?? 'NF-e'} #{nf?.number ?? 'S/N'}
                           </p>
                           <p className="text-[9px] font-bold text-slate-400 uppercase">
                             Auditado em{' '}

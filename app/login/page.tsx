@@ -43,7 +43,7 @@ export default function LoginPage() {
         const authData = await verifyMfa(mfaSession, otpCode);
         const token = authData?.access_token ?? authData?.accessToken ?? authData?.token;
 
-        if (!token) throw new Error('Token de acesso nao encontrado na resposta MFA.');
+        if (!token) throw new Error('Token de acesso não encontrado na resposta MFA.');
 
         router.replace('/dashboard/intelligence');
         return;
@@ -59,12 +59,12 @@ export default function LoginPage() {
 
       const token = authData?.access_token ?? authData?.accessToken ?? authData?.token;
 
-      if (!token) throw new Error('Token de acesso nao encontrado na resposta.');
+      if (!token) throw new Error('Token de acesso não encontrado na resposta.');
 
       router.replace('/dashboard/intelligence');
     } catch (error: unknown) {
       const err = error as { message?: string; status?: number; response?: { status: number } };
-      const message = err?.message ?? 'Falha na comunicacao com o servidor.';
+      const message = err?.message ?? 'Falha na comunicação com o servidor.';
       const status = err?.status ?? err?.response?.status ?? 'N/A';
 
       setErrorMessage(message);
@@ -137,7 +137,7 @@ export default function LoginPage() {
 
           <div className="group space-y-2">
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1 group-focus-within:text-blue-400 transition-colors">
-              Chave Criptografica
+              Chave criptográfica
             </label>
             <input
               required

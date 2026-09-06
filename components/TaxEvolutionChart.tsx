@@ -101,7 +101,7 @@ export default function TaxEvolutionChart({
       labels,
       datasets: [
         {
-          label: 'EFICIÊNCIA bCOST (ANEXO III)',
+          label: 'EFICIÊNCIA bCost (ANEXO III)',
           data: optimized,
           borderColor: '#3b82f6',
           borderWidth: 3.5,

@@ -136,7 +136,7 @@ export default function DashboardPage() {
           },
           insights: {
             taxEfficiency: `Anexo ${demoData.metadata.anexoUtilizado} • Demo Ativo`,
-            suggestion: 'Exibição de demonstração localizada para o painel de vendas.',
+            suggestion: 'Exibindo dados de demonstração no painel de vendas.',
           },
           history: demoData.evolucao,
         });
@@ -147,7 +147,7 @@ export default function DashboardPage() {
       if (!isUuid(selectedCompany.id)) {
         setData(null);
         setDashboardError(
-          'Contexto da empresa inválido para rotas produtivas. Selecione novamente a empresa ou refaça o login antes de usar o painel fiscal.',
+          'A empresa selecionada não é válida para produção. Selecione outra empresa ou faça login novamente para usar o painel fiscal.',
         );
         lastLoadedId.current = null;
         return;
@@ -235,7 +235,7 @@ export default function DashboardPage() {
           },
           insights: {
             taxEfficiency: `Anexo ${demoData.metadata.anexoUtilizado} • Demo Ativo`,
-            suggestion: 'Exibição de demonstração localizada para o painel de vendas.',
+            suggestion: 'Exibindo dados de demonstração no painel de vendas.',
           },
           history: demoData.evolucao,
         });

@@ -5,7 +5,7 @@ interface LoadingShellProps {
 
 export function LoadingShell({
   title = 'Carregando visão executiva',
-  description = 'Estamos preparando os dados e a experiência mais relevante para você.',
+  description = 'Estamos preparando os dados mais relevantes para você.',
 }: LoadingShellProps) {
   return (
     <div className="rounded-[2rem] border border-slate-200 bg-white/80 p-8 shadow-[0_20px_60px_-25px_rgba(15,23,42,0.2)] backdrop-blur-xl">
