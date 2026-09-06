@@ -40,6 +40,7 @@ Não habilite demo pública em ambiente com clientes reais sem segregação oper
 cd ~/bcost.web/bcost-web
 git pull origin main
 npm ci
+npm run release:check
 npm run build
 pm2 restart bcost-web --update-env
 pm2 logs bcost-web --lines 80
