@@ -114,4 +114,56 @@ describe('TaxScenarioSimulator', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('Economia anual')).toBeInTheDocument();
   });
+
+  it('exibe manifesto legal quando a API retorna rastreabilidade normativa', async () => {
+    simulateMock.mockResolvedValueOnce({
+      ...legacySimulationResponse,
+      legalRiskAssessment: {
+        version: 'tax-scenarios-legal-risk-2026.1',
+        assessmentMode: 'CODE_BASED_SYSTEMIC_REVIEW',
+        legalReliability: 'TRIAGE_ONLY',
+        riskLevel: 'HIGH',
+        canAdvertiseSavings: false,
+        canUseAsOfficialAssessment: false,
+        requiredDisclosures: [
+          'Resultado gerencial para triagem e planejamento assistido.',
+        ],
+        evidenceGate: {
+          status: 'OPEN',
+          requiredEvidence: ['RBT12 oficial'],
+          missingEvidence: ['RBT12 oficial'],
+        },
+        findings: [],
+      },
+      legalSourceManifest: {
+        version: 'tax-scenarios-legal-sources-2026.1',
+        jurisdiction: 'BR',
+        calculationMode: 'ESTIMATIVE_TRIAGE',
+        officialAssessment: false,
+        sources: [
+          {
+            code: 'LC_123_2006',
+            title: 'Simples Nacional, ME e EPP',
+            sourceType: 'COMPLEMENTARY_LAW',
+            citation: 'Lei Complementar 123/2006',
+            calculationRole: 'Limites de receita, anexos e Fator R.',
+          },
+        ],
+        revalidationTriggers: ['Alteração de CNAE, município ou RBT12.'],
+        releaseGuardrails: ['Toda resposta deve manter officialAssessment=false.'],
+      },
+    });
+
+    render(<TaxScenarioSimulator />);
+
+    fireEvent.click(screen.getByRole('button', { name: /simular cenário/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Manifesto legal do cálculo')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('tax-scenarios-legal-sources-2026.1')).toBeInTheDocument();
+    expect(screen.getByText('Lei Complementar 123/2006')).toBeInTheDocument();
+    expect(screen.queryByText('Gate jurídico-fiscal indisponível')).not.toBeInTheDocument();
+  });
 });
