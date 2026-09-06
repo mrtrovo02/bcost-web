@@ -130,6 +130,39 @@ describe('isDemoSession', () => {
     });
   });
 
+  it('overwrites stale per-call auth and tenant headers through the axios interceptor', async () => {
+    localStorage.setItem('bcost_token', 'real-jwt-token');
+    localStorage.setItem('bcost_company_id', 'company-real-001');
+
+    let capturedHeaders: Record<string, string | undefined> = {};
+
+    await api.get('/secure-route', {
+      headers: {
+        Authorization: 'Bearer stale-token',
+        'x-company-id': 'demo-001',
+        'x-demo-session': 'true',
+      },
+      adapter: async (config) => {
+        capturedHeaders = JSON.parse(JSON.stringify(config.headers)) as Record<
+          string,
+          string | undefined
+        >;
+
+        return {
+          data: {},
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config,
+        };
+      },
+    });
+
+    expect(capturedHeaders.Authorization).toBe('Bearer real-jwt-token');
+    expect(capturedHeaders['x-company-id']).toBe('company-real-001');
+    expect(capturedHeaders['x-demo-session']).toBeUndefined();
+  });
+
   it('does not persist an MFA challenge as an authenticated session', async () => {
     vi.spyOn(api, 'post').mockResolvedValueOnce({
       data: {
