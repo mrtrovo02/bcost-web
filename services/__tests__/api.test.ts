@@ -7,6 +7,7 @@ import {
   login,
   resolveRequestAuthMetadata,
   resolveRequestCompanyId,
+  resolveRequestHeaders,
   verifyMfa,
 } from '../api';
 
@@ -56,6 +57,20 @@ describe('isDemoSession', () => {
 
   it('keeps demo company id when request has no real token', () => {
     expect(resolveRequestCompanyId(null, 'demo-001')).toBe('demo-001');
+  });
+
+  it('adds the controlled demo session header for explicit demo requests', () => {
+    expect(resolveRequestHeaders('demo-token-local', 'demo-001')).toEqual({
+      Authorization: 'Bearer demo-token-local',
+      'x-company-id': 'demo-001',
+      'x-demo-session': 'true',
+    });
+  });
+
+  it('does not send demo session headers when a real token has stale demo context', () => {
+    expect(resolveRequestHeaders('real-jwt-token', 'demo-001')).toEqual({
+      Authorization: 'Bearer real-jwt-token',
+    });
   });
 
   it('does not persist an MFA challenge as an authenticated session', async () => {

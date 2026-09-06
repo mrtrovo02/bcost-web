@@ -252,6 +252,29 @@ export function resolveRequestCompanyId(
   return companyId;
 }
 
+export function resolveRequestHeaders(
+  token: string | null,
+  companyId: string | null,
+): Record<string, string> {
+  const authMetadata = resolveRequestAuthMetadata(token, companyId);
+  const requestCompanyId = resolveRequestCompanyId(token, companyId);
+  const headers: Record<string, string> = {};
+
+  if (authMetadata.token) {
+    headers.Authorization = `Bearer ${authMetadata.token}`;
+  }
+
+  if (requestCompanyId) {
+    headers['x-company-id'] = requestCompanyId;
+  }
+
+  if (authMetadata.isDemoRequest) {
+    headers['x-demo-session'] = 'true';
+  }
+
+  return headers;
+}
+
 function clearStoredCompanyData(): void {
   lsRemove([...COMPANY_KEYS, ...COMPANY_DATA_KEYS]);
   deleteCookie('bcost_company_id');
@@ -542,15 +565,18 @@ api.interceptors.request.use(
 
     const token = getToken();
     const companyId = getActiveCompanyId();
-    const authMetadata = resolveRequestAuthMetadata(token, companyId);
-    const requestCompanyId = resolveRequestCompanyId(token, companyId);
+    const requestHeaders = resolveRequestHeaders(token, companyId);
 
-    if (authMetadata.token && !config.headers.Authorization) {
-      config.headers.Authorization = `Bearer ${authMetadata.token}`;
+    if (requestHeaders.Authorization && !config.headers.Authorization) {
+      config.headers.Authorization = requestHeaders.Authorization;
     }
 
-    if (requestCompanyId) {
-      config.headers['x-company-id'] = requestCompanyId;
+    if (requestHeaders['x-company-id']) {
+      config.headers['x-company-id'] = requestHeaders['x-company-id'];
+    }
+
+    if (requestHeaders['x-demo-session']) {
+      config.headers['x-demo-session'] = requestHeaders['x-demo-session'];
     }
     return config;
   },
