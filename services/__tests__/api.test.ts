@@ -25,6 +25,58 @@ describe('isDemoSession', () => {
     expect(isDemoSession()).toBe(false);
   });
 
+  it('does not enable demo implicitly on official bCost domains', () => {
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: {
+        hostname: 'app.bcost.com.br',
+        pathname: '/login',
+        search: '',
+        replace: vi.fn(),
+      },
+    });
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_DEMO', 'false');
+    localStorage.setItem('bcost_token', 'demo-token-local');
+
+    expect(isDemoSession()).toBe(false);
+  });
+
+  it('drops stale demo tokens on official bCost domains when demo is disabled', () => {
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: {
+        hostname: 'app.bcost.com.br',
+        pathname: '/dashboard',
+        search: '',
+        replace: vi.fn(),
+      },
+    });
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_DEMO', 'false');
+    localStorage.setItem('bcost_token', 'demo-token-local');
+
+    expect(getToken()).toBeNull();
+    expect(resolveRequestHeaders(getToken(), 'demo-001')).toEqual({});
+  });
+
+  it('keeps local demo support on localhost during development', () => {
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: {
+        hostname: 'localhost',
+        pathname: '/login',
+        search: '',
+        replace: vi.fn(),
+      },
+    });
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_DEMO', 'false');
+    localStorage.setItem('bcost_token', 'demo-token-local');
+
+    expect(isDemoSession()).toBe(true);
+  });
+
   it('detects an explicit demo token as a demo session', () => {
     localStorage.setItem('bcost_token', 'demo-token-local');
 

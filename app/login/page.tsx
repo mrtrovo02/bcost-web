@@ -20,7 +20,11 @@ export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const router = useRouter();
   const demoModeEnabled =
-    process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true' || process.env.NODE_ENV === 'development';
+    process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true' ||
+    (process.env.NODE_ENV === 'development' &&
+      (typeof window === 'undefined' ||
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1'));
 
   // Guard: redireciona se ja tem sessao ativa
   useEffect(() => {

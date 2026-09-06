@@ -17,6 +17,10 @@ const isProductionHost = (): boolean =>
   isBrowser() &&
   !window.location.hostname.includes('localhost') &&
   !window.location.hostname.includes('127.0.0.1');
+const isOfficialBcostHost = (): boolean =>
+  isBrowser() &&
+  (window.location.hostname === 'bcost.com.br' ||
+    window.location.hostname.endsWith('.bcost.com.br'));
 const isLocalBrowserHost = (): boolean =>
   isBrowser() &&
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
@@ -62,7 +66,12 @@ export type RequestAuthMetadata = {
 };
 
 export function isDemoModeEnabled(): boolean {
+  if (isOfficialBcostHost()) return process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true';
   return process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true' || process.env.NODE_ENV === 'development';
+}
+
+function isDemoTokenAllowed(): boolean {
+  return isDemoModeEnabled();
 }
 
 function isDemoCompanyContext(): boolean {
@@ -246,6 +255,8 @@ export function resolveRequestCompanyId(
 ): string | null {
   if (!companyId) return null;
 
+  if (isDemoId(companyId) && !isDemoModeEnabled()) return null;
+
   const hasRealToken = Boolean(token && token !== DEMO_TOKEN);
   if (hasRealToken && isDemoId(companyId)) return null;
 
@@ -317,12 +328,20 @@ export function getToken(): string | null {
   for (const key of TOKEN_KEYS) {
     const v = readCookie(key);
     if (isValidValue(v)) {
+      if (v === DEMO_TOKEN && !isDemoTokenAllowed()) {
+        clearToken();
+        return null;
+      }
       lsSet(TOKEN_KEYS, v!);
       return v!;
     }
   }
   const legacy = lsGet(TOKEN_KEYS);
   if (legacy) {
+    if (legacy === DEMO_TOKEN && !isDemoTokenAllowed()) {
+      clearToken();
+      return null;
+    }
     for (const key of TOKEN_KEYS) writeCookie(key, legacy);
     return legacy;
   }

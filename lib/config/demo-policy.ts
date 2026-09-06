@@ -30,6 +30,13 @@ function hasExplicitDemoSession(): boolean {
   return readBrowserToken() === DEMO_TOKEN;
 }
 
+function isOfficialBcostHost(): boolean {
+  if (typeof window === 'undefined') return false;
+
+  const hostname = window.location.hostname.toLowerCase();
+  return hostname === 'bcost.com.br' || hostname.endsWith('.bcost.com.br');
+}
+
 export class DemoFallbackDisabledError extends Error {
   readonly code = 'DEMO_FALLBACK_DISABLED';
 
@@ -40,6 +47,10 @@ export class DemoFallbackDisabledError extends Error {
 }
 
 export function isOperationalDemoFallbackEnabled(): boolean {
+  if (isOfficialBcostHost()) {
+    return process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK === 'true';
+  }
+
   if (hasExplicitDemoSession()) return true;
 
   const explicit = process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK;

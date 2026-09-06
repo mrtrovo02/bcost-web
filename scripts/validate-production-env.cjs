@@ -124,10 +124,7 @@ function validateProductionEnvironment() {
     'fallback demonstrativo deve ficar desligado em produção.',
   );
 
-  const publicAppUrl = valueOf('NEXT_PUBLIC_APP_URL');
-  if (publicAppUrl) {
-    requireHttpsUrl('NEXT_PUBLIC_APP_URL', REQUIRED_APP_ORIGIN);
-  }
+  requireHttpsUrl('NEXT_PUBLIC_APP_URL', REQUIRED_APP_ORIGIN);
 }
 
 loadEnvironmentFiles();

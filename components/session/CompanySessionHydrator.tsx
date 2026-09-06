@@ -47,9 +47,13 @@ function shouldUseLocalDemo() {
   const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
   const isBcostProductionHost = hostname === 'bcost.com.br' || hostname.endsWith('.bcost.com.br');
 
+  if (isBcostProductionHost) {
+    return process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true';
+  }
+
   if (process.env.NODE_ENV === 'development' || isLocalHost) return true;
 
-  return process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true' && !isBcostProductionHost;
+  return process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true';
 }
 
 function resolveApiBase() {
