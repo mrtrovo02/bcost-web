@@ -107,6 +107,11 @@ describe('isDemoSession', () => {
     );
   });
 
+  it('does not send stale real company id without an authenticated token', () => {
+    expect(resolveRequestCompanyId(null, 'company-real-001')).toBeNull();
+    expect(resolveRequestHeaders(null, 'company-real-001')).toEqual({});
+  });
+
   it('keeps demo company id when request has no real token', () => {
     expect(resolveRequestCompanyId(null, 'demo-001')).toBe('demo-001');
   });

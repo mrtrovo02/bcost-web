@@ -258,7 +258,10 @@ export function resolveRequestCompanyId(
   if (isDemoId(companyId) && !isDemoModeEnabled()) return null;
 
   const hasRealToken = Boolean(token && token !== DEMO_TOKEN);
+  const hasDemoToken = token === DEMO_TOKEN;
+
   if (hasRealToken && isDemoId(companyId)) return null;
+  if (!hasRealToken && !hasDemoToken && !isDemoId(companyId)) return null;
 
   return companyId;
 }

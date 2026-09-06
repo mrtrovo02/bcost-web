@@ -5,6 +5,17 @@ import DashboardPage from '../page';
 import { api, isDemoSession } from '@/services/api';
 
 const routerPushMock = vi.fn();
+type TestCompany = {
+  readonly id: string;
+  readonly name: string;
+  readonly cnpj: string;
+};
+
+let selectedCompanyMock: TestCompany = {
+  id: 'company-real-001',
+  name: 'Empresa Real Ltda',
+  cnpj: '12.345.678/0001-90',
+};
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: routerPushMock }),
@@ -12,11 +23,7 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@/app/context/CompanyContext', () => ({
   useCompany: () => ({
-    selectedCompany: {
-      id: 'company-real-001',
-      name: 'Empresa Real Ltda',
-      cnpj: '12.345.678/0001-90',
-    },
+    selectedCompany: selectedCompanyMock,
   }),
 }));
 
@@ -52,6 +59,11 @@ describe('DashboardPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     isDemoSessionMock.mockReturnValue(false);
+    selectedCompanyMock = {
+      id: 'company-real-001',
+      name: 'Empresa Real Ltda',
+      cnpj: '12.345.678/0001-90',
+    };
   });
 
   it('does not call productive revenue APIs with a non UUID real company context', async () => {
@@ -65,5 +77,26 @@ describe('DashboardPage', () => {
     expect(screen.getByText('Dados reais não carregados')).toBeInTheDocument();
     expect(screen.queryByText('Faturamento Bruto')).not.toBeInTheDocument();
     expect(routerPushMock).not.toHaveBeenCalled();
+  });
+
+  it('delegates dashboard overview tenant headers to the centralized api interceptor', async () => {
+    selectedCompanyMock = {
+      id: '6befc33e-95cd-4ef4-b111-111111111111',
+      name: 'Empresa Real Ltda',
+      cnpj: '12.345.678/0001-90',
+    };
+
+    apiGetMock.mockResolvedValue({ data: {} });
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(apiGetMock).toHaveBeenCalledWith(
+        '/dashboard/overview',
+        expect.not.objectContaining({
+          headers: expect.objectContaining({ 'x-company-id': selectedCompanyMock.id }),
+        }),
+      );
+    });
   });
 });

@@ -162,7 +162,6 @@ export default function DashboardPage() {
           signal: abortControllerRef.current.signal,
         }),
         api.get('/dashboard/overview', {
-          headers: { 'x-company-id': selectedCompany.id },
           signal: abortControllerRef.current.signal,
         }),
       ]);
