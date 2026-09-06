@@ -107,11 +107,25 @@ function deleteCookie(name: string): void {
 function resolveToken(): string | null {
   // Prioriza a leitura de cookies conforme a nova arquitetura do api.ts
   const cookieToken = readCookie('bcost_token') || readCookie('bcost_access_token');
-  if (cookieToken) return cookieToken;
+  if (cookieToken) {
+    if (cookieToken === DEMO_TOKEN && !shouldUseLocalDemo()) {
+      clearAuthContext();
+      clearCompanyContext();
+      return null;
+    }
+
+    return cookieToken;
+  }
 
   // Fallback e migração de tokens legados encontrados no localStorage
   const legacyToken = readLocalStorage(TOKEN_KEYS);
   if (legacyToken && typeof window !== 'undefined') {
+    if (legacyToken === DEMO_TOKEN && !shouldUseLocalDemo()) {
+      clearAuthContext();
+      clearCompanyContext();
+      return null;
+    }
+
     document.cookie = `bcost_token=${encodeURIComponent(legacyToken)}; path=/; SameSite=Lax`;
     return legacyToken;
   }
@@ -196,7 +210,7 @@ function persistCompanyContext(companyId: string, companies: CompanyLike[]) {
   window.localStorage.setItem('companies', JSON.stringify(cleanCompanies));
   window.localStorage.setItem('bcost_active_company_data', JSON.stringify(cleanCompanies[0]));
 
-  if (companyId.startsWith('demo-')) {
+  if (companyId.startsWith('demo-') && shouldUseLocalDemo()) {
     window.localStorage.setItem('bcost_token', DEMO_TOKEN);
   }
 
@@ -321,6 +335,12 @@ export function CompanySessionHydrator() {
       }
 
       if (token === DEMO_TOKEN) {
+        if (!shouldUseLocalDemo()) {
+          clearAuthContext();
+          clearCompanyContext();
+          return;
+        }
+
         const activeCompanyId = readActiveCompanyId();
         const companies = readCompaniesFromStorage();
         const hasValidDemoContext =
