@@ -123,7 +123,6 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
 
             setSelectedCompany(parsedCompany);
             setCompanies(storedCompanies);
-            api.defaults.headers.common['x-company-id'] = parsedCompany.id;
             if (!isDemo) {
               safeLocalStorageSet('bcost_companies', JSON.stringify(storedCompanies));
               safeLocalStorageSet('companies', JSON.stringify(storedCompanies));
@@ -149,9 +148,6 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
           setSelectedCompany(restored);
           setCompanies(storedCompanies);
           safeLocalStorageSet('bcost_active_company_data', JSON.stringify(restored));
-          if (restored.id) {
-            api.defaults.headers.common['x-company-id'] = restored.id;
-          }
           setIsLoading(false);
           return;
         }
@@ -164,7 +160,6 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
             setActiveCompanyId(demoCompany.id);
             setSelectedCompany(demoCompany);
             if (demoCompany.id) {
-              api.defaults.headers.common['x-company-id'] = demoCompany.id;
               trackEvent('company_context_demo_fallback', { companyId: demoCompany.id });
             }
             setIsLoading(false);
@@ -208,7 +203,6 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       if (nextCompany?.id) {
         setActiveCompanyId(nextCompany.id);
         safeLocalStorageSet('bcost_active_company_data', JSON.stringify(nextCompany));
-        api.defaults.headers.common['x-company-id'] = nextCompany.id;
         trackEvent('company_context_updated', { companyId: nextCompany.id });
       }
     };
@@ -222,7 +216,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
 
   /**
    * 2. Persistência de Contexto:
-   * Sempre que a empresa for trocada, atualizamos o LocalStorage e o Header Global.
+   * Sempre que a empresa for trocada, atualizamos o LocalStorage.
    */
   const handleSetCompanies = (nextCompanies: Company[]) => {
     const isDemo = detectDemoSession();
@@ -246,13 +240,10 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
 
     setSelectedCompany(company);
 
-    // Persistimos o objeto completo para a UI e o ID para o Interceptor
+    // Persistimos o objeto completo para a UI e o ID para o Interceptor.
     safeLocalStorageSet('bcost_active_company_data', JSON.stringify(company));
     setActiveCompanyId(company.id);
     trackEvent('company_selected', { companyId: company.id });
-
-    // Injeção em tempo real na instância do Axios
-    api.defaults.headers.common['x-company-id'] = company.id;
   };
 
   return (

@@ -589,7 +589,11 @@ api.interceptors.request.use(
     const companyId = getActiveCompanyId();
     const requestHeaders = resolveRequestHeaders(token, companyId);
 
-    if (requestHeaders.Authorization && !config.headers.Authorization) {
+    delete config.headers.Authorization;
+    delete config.headers['x-company-id'];
+    delete config.headers['x-demo-session'];
+
+    if (requestHeaders.Authorization) {
       config.headers.Authorization = requestHeaders.Authorization;
     }
 

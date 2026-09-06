@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CompanyProvider, useCompany, type Company } from '../CompanyContext';
-import { clearActiveCompanyId, getActiveCompanyId, isDemoSession } from '@/services/api';
+import { api, clearActiveCompanyId, getActiveCompanyId, isDemoSession } from '@/services/api';
 
 vi.mock('@/services/api', () => ({
   api: {
@@ -31,6 +31,7 @@ vi.mock('@/lib/utils/telemetry', () => ({
 const isDemoSessionMock = vi.mocked(isDemoSession);
 const clearActiveCompanyIdMock = vi.mocked(clearActiveCompanyId);
 const getActiveCompanyIdMock = vi.mocked(getActiveCompanyId);
+const apiDefaultsHeaders = api.defaults.headers.common as Record<string, string | undefined>;
 
 function CompanyContextProbe() {
   const { selectedCompany, companies, setCompanies, setSelectedCompany, isLoading } = useCompany();
@@ -59,6 +60,8 @@ describe('CompanyProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.clear();
+    delete apiDefaultsHeaders['x-company-id'];
+    delete apiDefaultsHeaders.CompanyId;
     isDemoSessionMock.mockReturnValue(false);
     getActiveCompanyIdMock.mockReturnValue(null);
   });
@@ -130,6 +133,7 @@ describe('CompanyProvider', () => {
     });
 
     expect(screen.getByTestId('companies')).toHaveTextContent('real-company-001');
+    expect(apiDefaultsHeaders['x-company-id']).toBeUndefined();
     expect(window.localStorage.getItem('bcost_companies')).toBe(
       JSON.stringify([
         {
@@ -139,5 +143,44 @@ describe('CompanyProvider', () => {
         },
       ]),
     );
+  });
+
+  it('persists selected real company only in storage and leaves axios tenant defaults empty', async () => {
+    const realCompany: Company = {
+      id: 'real-company-002',
+      name: 'Empresa Real 2',
+      cnpj: '22.333.444/0001-55',
+    };
+
+    function RealCompanyProbe() {
+      const { selectedCompany, setSelectedCompany } = useCompany();
+
+      return (
+        <div>
+          <span data-testid="selected-real">{selectedCompany?.id ?? 'none'}</span>
+          <button type="button" onClick={() => setSelectedCompany(realCompany)}>
+            select real
+          </button>
+        </div>
+      );
+    }
+
+    render(
+      <CompanyProvider>
+        <RealCompanyProbe />
+      </CompanyProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('selected-real')).toHaveTextContent('none');
+    });
+
+    fireEvent.click(screen.getByText('select real'));
+
+    expect(screen.getByTestId('selected-real')).toHaveTextContent('real-company-002');
+    expect(window.localStorage.getItem('bcost_active_company_data')).toBe(
+      JSON.stringify(realCompany),
+    );
+    expect(apiDefaultsHeaders['x-company-id']).toBeUndefined();
   });
 });
