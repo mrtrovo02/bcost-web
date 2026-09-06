@@ -81,8 +81,7 @@ export default function TaxScenarioSimulator() {
   const legalReliabilityTone = resolveLegalReliabilityTone(
     legalRiskAssessment?.legalReliability,
   );
-  const canAdvertiseSavings =
-    !legalRiskAssessment || legalRiskAssessment.canAdvertiseSavings;
+  const canAdvertiseSavings = legalRiskAssessment?.canAdvertiseSavings === true;
   const annualSavingsValue = canAdvertiseSavings
     ? new Intl.NumberFormat('pt-BR', {
         style: 'currency',
@@ -234,8 +233,55 @@ export default function TaxScenarioSimulator() {
                       QA fiscal: {result.regressionSuite.version}
                     </p>
                     <p className="text-[11px] font-bold text-slate-300">
-                      Regras críticas: {result.regressionSuite.blockingCriticalities.join(', ')} • Cobertura {result.regressionSuite.coveredRules.length}
+                      Cenário {result.scenarioId ?? 'sem-id'} • Regras críticas: {result.regressionSuite.blockingCriticalities.join(', ')} • Cobertura {result.regressionSuite.coveredRules.length}
                     </p>
+                  </div>
+                </div>
+              )}
+
+              {result.legalSourceManifest && (
+                <div className="rounded-[2rem] border border-indigo-500/20 bg-indigo-500/5 p-5">
+                  <div className="flex flex-col gap-3 border-b border-white/5 pb-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200">
+                        Manifesto legal do cálculo
+                      </p>
+                      <h4 className="mt-2 text-lg font-black text-white">
+                        {result.legalSourceManifest.version}
+                      </h4>
+                      <p className="mt-2 max-w-3xl text-xs leading-relaxed text-slate-300">
+                        Fontes normativas e políticas internas usadas para limitar a simulação a
+                        triagem estimativa, sem apuração oficial automática.
+                      </p>
+                    </div>
+                    <span className="rounded-full border border-indigo-400/20 bg-indigo-500/10 px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-indigo-100">
+                      {result.legalSourceManifest.jurisdiction} • {result.legalSourceManifest.calculationMode.replaceAll('_', ' ')}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    {result.legalSourceManifest.sources.slice(0, 6).map((source) => (
+                      <div key={source.code} className="rounded-2xl border border-white/5 bg-[#090d16] p-4">
+                        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-indigo-200">
+                          {source.sourceType.replaceAll('_', ' ')}
+                        </p>
+                        <p className="mt-2 text-sm font-black text-white">{source.title}</p>
+                        <p className="mt-2 text-xs leading-relaxed text-slate-300">
+                          {source.citation}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-200">
+                      Revalidar antes de proposta se houver
+                    </p>
+                    <ul className="mt-3 space-y-2 text-xs leading-relaxed text-amber-50/90">
+                      {result.legalSourceManifest.revalidationTriggers.slice(0, 3).map((trigger) => (
+                        <li key={trigger}>{trigger}</li>
+                      ))}
+                    </ul>
                   </div>
                 </div>
               )}
