@@ -150,4 +150,24 @@ describe('billingApi demo mode', () => {
       'Entitlements comerciais indisponiveis e fallback demonstrativo desabilitado neste ambiente.',
     );
   });
+
+  it('surfaces active subscription blocks during manual plan updates', async () => {
+    apiPatchMock.mockRejectedValueOnce({
+      response: {
+        data: {
+          status: 'ACTIVE_SUBSCRIPTION_EXISTS',
+          message:
+            'Alteração manual de plano bloqueada para empresa com assinatura ativa.',
+          currentPlanLevel: 'PRO',
+          subscriptionStatus: 'ACTIVE',
+        },
+      },
+    });
+
+    await expect(
+      billingApi.updatePlan('real-company', 'ENTERPRISE', 'Upgrade comercial'),
+    ).rejects.toThrow(
+      'Alteração manual de plano bloqueada para empresa com assinatura ativa. Plano atual: PRO. Status da assinatura: ACTIVE.',
+    );
+  });
 });

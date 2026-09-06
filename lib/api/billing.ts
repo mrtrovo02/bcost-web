@@ -93,9 +93,62 @@ export type BillingUpdatePlanResponse = BillingEntitlementsResponse & {
   };
 };
 
+type BillingErrorPayload = {
+  status?: string;
+  message?: string;
+  currentPlanLevel?: string;
+  subscriptionStatus?: string;
+};
+
+type HttpErrorWithResponse = {
+  response?: {
+    data?: unknown;
+  };
+};
+
 function hasRealAuthToken(): boolean {
   const token = getToken();
   return Boolean(token && token !== 'demo-token-local');
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function extractBillingErrorPayload(error: unknown): BillingErrorPayload | null {
+  if (!isRecord(error)) return null;
+
+  const httpError = error as HttpErrorWithResponse;
+  const payload = httpError.response?.data;
+  if (!isRecord(payload)) return null;
+
+  return {
+    status: typeof payload.status === 'string' ? payload.status : undefined,
+    message: typeof payload.message === 'string' ? payload.message : undefined,
+    currentPlanLevel:
+      typeof payload.currentPlanLevel === 'string' ? payload.currentPlanLevel : undefined,
+    subscriptionStatus:
+      typeof payload.subscriptionStatus === 'string' ? payload.subscriptionStatus : undefined,
+  };
+}
+
+function throwBillingOperationError(error: unknown, fallbackMessage: string): never {
+  const payload = extractBillingErrorPayload(error);
+
+  if (payload?.status === 'ACTIVE_SUBSCRIPTION_EXISTS') {
+    const currentPlan = payload.currentPlanLevel
+      ? ` Plano atual: ${payload.currentPlanLevel}.`
+      : '';
+    const subscriptionStatus = payload.subscriptionStatus
+      ? ` Status da assinatura: ${payload.subscriptionStatus}.`
+      : '';
+
+    throw new Error(
+      `${payload.message ?? 'Empresa já possui assinatura ativa no gateway.'}${currentPlan}${subscriptionStatus}`,
+    );
+  }
+
+  throw new Error(fallbackMessage);
 }
 
 function assertBillingDemoFallbackAllowed(message: string): void {
@@ -394,11 +447,14 @@ export const billingApi = {
       });
 
       return response.data;
-    } catch {
-      assertBillingCompanyDemoFallbackAllowed(
-        companyId,
-        'Alteracao de plano indisponivel e fallback demonstrativo desabilitado neste ambiente.',
-      );
+    } catch (error) {
+      const fallbackMessage =
+        'Alteracao de plano indisponivel e fallback demonstrativo desabilitado neste ambiente.';
+      try {
+        assertBillingCompanyDemoFallbackAllowed(companyId, fallbackMessage);
+      } catch {
+        throwBillingOperationError(error, fallbackMessage);
+      }
 
       return {
         ...getDemoBillingEntitlements({ id: companyId }, planLevel),
