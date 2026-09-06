@@ -236,6 +236,11 @@ describe('taxScenariosApi', () => {
       canAdvertiseSavings: false,
       canUseAsOfficialAssessment: false,
     });
+    expect(result.legalSourceManifest).toMatchObject({
+      version: 'tax-scenarios-legal-sources-2026.1',
+      calculationMode: 'ESTIMATIVE_TRIAGE',
+      officialAssessment: false,
+    });
   });
 
   it('keeps demo simulator operational without calling the protected API', async () => {
@@ -255,8 +260,12 @@ describe('taxScenariosApi', () => {
     expect(apiPostMock).not.toHaveBeenCalled();
     expect(result.status).toBe('OK');
     expect(result.companyId).toBe('demo-001');
-    expect(result.scenarioId).toBe('demo-local-tax-scenario');
+    expect(result.scenarioId).toMatch(/^demo-[a-f0-9]{8}$/i);
     expect(result.regressionSuite?.coveredRules).toContain('CBS_IBS_2026_INFORMATIVE_RATES');
+    expect(result.legalSourceManifest).toMatchObject({
+      version: 'tax-scenarios-legal-sources-2026.1',
+      officialAssessment: false,
+    });
     expect(result.comparisons).toHaveLength(4);
     expect(result.scenarios?.some((scenario) => scenario.isRecommended)).toBe(true);
     expect(result.guardrails.join(' ')).toContain('empresas reais continuam exigindo API autenticada');
