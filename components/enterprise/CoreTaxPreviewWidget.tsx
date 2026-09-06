@@ -5,6 +5,7 @@ import { AlertTriangle, Calculator, CheckCircle2, Loader2 } from 'lucide-react';
 import { useCompany } from '@/app/context/CompanyContext';
 import {
   MonthlyTaxGateParams,
+  MonthlyTaxCloseResponse,
   MonthlyTaxClosurePreview,
   MonthlyTaxEvidenceStatus,
   MonthlyTaxPreviewGateStatus,
@@ -42,7 +43,7 @@ export default function CoreTaxPreviewWidget() {
   const [loading, setLoading] = useState(false);
   const [closing, setClosing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [closeResult, setCloseResult] = useState<string | null>(null);
+  const [closeResult, setCloseResult] = useState<MonthlyTaxCloseResponse | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -60,7 +61,10 @@ export default function CoreTaxPreviewWidget() {
           selectedCompany.id,
           gateParams,
         );
-        if (mounted) setPreview(response);
+        if (mounted) {
+          setPreview(response);
+          setCloseResult(null);
+        }
       } catch (err) {
         if (mounted) {
           setError(
@@ -96,7 +100,7 @@ export default function CoreTaxPreviewWidget() {
       setClosing(true);
       setError(null);
       const result = await coreTaxPreviewApi.closeMonth(selectedCompany.id, gateParams);
-      setCloseResult(`Competência fechada. Snapshot ${result.snapshotId}.`);
+      setCloseResult(result);
     } catch (err) {
       setError(
         err instanceof Error
@@ -221,7 +225,7 @@ export default function CoreTaxPreviewWidget() {
             </button>
             {closeResult && (
               <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-700">
-                {closeResult}
+                Fechamento registrado com protocolo auditável.
               </div>
             )}
           </div>
@@ -242,10 +246,13 @@ export default function CoreTaxPreviewWidget() {
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
                 <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                  Pacote de evidências
+                  Protocolo auditável
                 </div>
-                <div className="mt-1 text-xs font-bold text-slate-600">
-                  {preview.evidencePacket.id}
+                <div className="mt-1 font-mono text-xs font-bold text-slate-700">
+                  {preview.evidencePacket.closureProtocol}
+                </div>
+                <div className="mt-1 text-[11px] font-semibold text-slate-500">
+                  Pacote {preview.evidencePacket.id}
                 </div>
               </div>
               <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-[11px] font-bold text-slate-600">
@@ -267,6 +274,40 @@ export default function CoreTaxPreviewWidget() {
               ))}
             </div>
           </div>
+
+          {closeResult && (
+            <div className="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-emerald-800">
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <div className="font-black">Competência fechada com trilha auditável</div>
+                  <div className="mt-1 text-xs font-semibold">
+                    Obrigação {closeResult.obligation.name} criada com snapshot {closeResult.snapshotId}.
+                  </div>
+                  <div className="mt-2 font-mono text-[11px] font-bold">
+                    {closeResult.auditTrail.closureProtocol}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-emerald-200 bg-white px-3 py-2 font-mono text-[11px] font-bold text-emerald-700">
+                  {closeResult.auditTrail.integrityHash.slice(0, 16)}
+                </div>
+              </div>
+              <p className="mt-3 text-xs font-semibold leading-5">
+                {closeResult.officialEvidence.message}
+              </p>
+              {closeResult.officialEvidence.pendingArtifacts.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {closeResult.officialEvidence.pendingArtifacts.map((artifact) => (
+                    <span
+                      className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 font-mono text-[10px] font-black text-amber-700"
+                      key={artifact}
+                    >
+                      {artifact}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {preview.nextActions.length > 0 && (
             <div className="mt-5 rounded-2xl border border-slate-100 bg-slate-50 p-4">

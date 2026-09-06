@@ -31,6 +31,7 @@ export type MonthlyTaxClosurePreview = {
   evidenceRequired: string[];
   evidencePacket: {
     id: string;
+    closureProtocol: string;
     integrityHash: string;
     requiredArtifacts: {
       code: string;
@@ -41,6 +42,18 @@ export type MonthlyTaxClosurePreview = {
   };
   nextActions: string[];
   generatedAt: string;
+};
+
+export type TaxObligationSummary = {
+  id: string;
+  companyId: string;
+  name: string;
+  dueDate: string;
+  amount: string | number;
+  status: string;
+  fileUrl?: string | null;
+  createdAt?: string;
+  version?: number;
 };
 
 export type MonthlyTaxGateParams = {
@@ -54,7 +67,18 @@ export type MonthlyTaxGateParams = {
 
 export type MonthlyTaxCloseResponse = {
   status: 'closed';
-  obligation: unknown;
+  obligation: TaxObligationSummary;
+  auditTrail: {
+    closureProtocol: string;
+    evidencePacketId: string;
+    integrityHash: string;
+    period: string;
+    generatedAt: string;
+  };
+  officialEvidence: {
+    pendingArtifacts: string[];
+    message: string;
+  };
   snapshotId: string;
   integrityHash: string;
 };
