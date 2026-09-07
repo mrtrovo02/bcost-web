@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback, FormEvent, MouseEvent } from 'react';
+import { useState, useEffect, FormEvent, MouseEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { Pencil, Save, Trash2, X } from 'lucide-react';
 import { companyService } from '../../../services/company.service';
 import { useCompany } from '@/app/context/CompanyContext';
+import { useCompaniesQuery } from '@/app/hooks/useCompaniesQuery';
 import { formatCnpj, normalizeCnpj } from '@/lib/utils/cnpj';
 import { getErrorMessage, isRecord } from '@/lib/utils/runtime-guards';
 
@@ -66,35 +67,41 @@ export default function CompaniesPage() {
   });
   const [busyCompanyId, setBusyCompanyId] = useState<string | null>(null);
   const router = useRouter();
+  const companiesQuery = useCompaniesQuery();
 
   /**
-   * Fetch de Dados Otimizado
-   * Memoizamos a função para evitar recriações desnecessárias no ciclo do React
+   * Sincroniza o cache de servidor com o contexto global usado pelo Sidebar.
    */
-  const loadInitialData = useCallback(async () => {
-    try {
-      setIsLoading(true);
-
-      setActiveId(companyService.getActiveCompanyId());
-
-      if (isCompanyContextLoading) {
-        return;
-      }
-
-      const data = await companyService.getAll();
-      setCompanies(data);
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.error('🔴 [Companies Engine Error]:', message);
-      // Aqui poderíamos disparar um Toast de erro global
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isCompanyContextLoading, setCompanies]);
+  useEffect(() => {
+    setActiveId(companyService.getActiveCompanyId());
+  }, []);
 
   useEffect(() => {
-    loadInitialData();
-  }, [loadInitialData]);
+    if (isCompanyContextLoading || companiesQuery.isLoading) {
+      setIsLoading(true);
+      return;
+    }
+
+    setIsLoading(false);
+
+    if (companiesQuery.data) {
+      setCompanies(companiesQuery.data);
+    }
+
+    if (companiesQuery.error) {
+      const message =
+        companiesQuery.error instanceof Error
+          ? companiesQuery.error.message
+          : 'Falha ao carregar empresas vinculadas.';
+      console.error('🔴 [Companies Engine Error]:', message);
+    }
+  }, [
+    companiesQuery.data,
+    companiesQuery.error,
+    companiesQuery.isLoading,
+    isCompanyContextLoading,
+    setCompanies,
+  ]);
 
   /**
    * Persistência de Contexto e Redirecionamento
