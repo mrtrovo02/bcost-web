@@ -10,12 +10,22 @@ const SESSION_COOKIE_NAMES = [
 const AUTH_REQUIRED_PATHS = ['/dashboard', '/upload-xml'];
 const PUBLIC_PATHS = ['/login'];
 const DEFAULT_AUTH_REDIRECT = '/dashboard/intelligence';
+const DEMO_TOKEN = 'demo-token-local';
 
 function hasSession(request: NextRequest): boolean {
   return SESSION_COOKIE_NAMES.some((name) => {
     const value = request.cookies.get(name)?.value;
     return Boolean(value && value !== 'null' && value !== 'undefined');
   });
+}
+
+function hasDemoSession(request: NextRequest): boolean {
+  return SESSION_COOKIE_NAMES.some((name) => request.cookies.get(name)?.value === DEMO_TOKEN);
+}
+
+function isOfficialHost(request: NextRequest): boolean {
+  const hostname = request.nextUrl.hostname.toLowerCase();
+  return hostname === 'bcost.com.br' || hostname.endsWith('.bcost.com.br');
 }
 
 function isAuthRequiredPath(pathname: string): boolean {
@@ -29,13 +39,22 @@ function isPublicPath(pathname: string): boolean {
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const sessionExists = hasSession(request);
+  const demoSessionOnOfficialHost = isOfficialHost(request) && hasDemoSession(request);
 
-  if (isAuthRequiredPath(pathname) && !sessionExists) {
+  if (isAuthRequiredPath(pathname) && (!sessionExists || demoSessionOnOfficialHost)) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = '/login';
-    loginUrl.searchParams.set('session', 'required');
+    loginUrl.searchParams.set('session', demoSessionOnOfficialHost ? 'demo-disabled' : 'required');
     loginUrl.searchParams.set('redirect', `${pathname}${search}`);
-    return NextResponse.redirect(loginUrl);
+    const response = NextResponse.redirect(loginUrl);
+
+    if (demoSessionOnOfficialHost) {
+      for (const cookieName of SESSION_COOKIE_NAMES) {
+        response.cookies.delete(cookieName);
+      }
+    }
+
+    return response;
   }
 
   if (isPublicPath(pathname) && sessionExists) {
