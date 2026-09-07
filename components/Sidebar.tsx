@@ -23,6 +23,7 @@ import {
   WalletCards,
 } from 'lucide-react';
 import { useCompany, type Company } from '@/app/context/CompanyContext';
+import { isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
 import {
   api,
   clearSession,
@@ -67,6 +68,20 @@ function getRequestFailureStatus(error: unknown): RequestFailureStatus | null {
 
   const status = (error as HttpErrorLike).response?.status;
   return status === 401 || status === 429 ? status : null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function normalizeCompaniesPayload(payload: unknown): SidebarCompany[] {
+  const candidate = isRecord(payload) && Array.isArray(payload.data) ? payload.data : payload;
+
+  if (!Array.isArray(candidate)) return [];
+
+  return candidate.filter((company): company is SidebarCompany => {
+    return isRecord(company) && typeof company.id === 'string' && typeof company.name === 'string';
+  });
 }
 
 export default function Sidebar() {
@@ -141,15 +156,15 @@ export default function Sidebar() {
     // Sessão demo nunca deve bater na API real — evita o 401 previsível
     // (sempre ignorado pelo interceptor) que polui o console em loop.
     if (isDemoSession) {
-      applyCompanies(DEMO_COMPANIES);
+      applyCompanies(isOperationalDemoFallbackEnabled() ? DEMO_COMPANIES : []);
       return;
     }
 
     isLoadingCompaniesRef.current = true;
 
     try {
-      const { data } = await api.get<DemoCompany[]>('/company');
-      const companiesList = Array.isArray(data) ? data : [];
+      const { data } = await api.get<DemoCompany[] | { data?: DemoCompany[] }>('/company');
+      const companiesList = normalizeCompaniesPayload(data);
       lastCompanyLoadFailureRef.current = null;
       applyCompanies(companiesList);
     } catch (error) {

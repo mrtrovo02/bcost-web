@@ -24,6 +24,7 @@ const testState = vi.hoisted(() => ({
     name: 'Empresa Demo',
     cnpj: '12.345.678/0001-99',
   } as TestCompany | null,
+  demoFallbackEnabled: true,
 }));
 
 vi.mock('next/navigation', () => ({
@@ -55,6 +56,10 @@ vi.mock('@/services/api', () => ({
   setActiveCompanyId: vi.fn(),
 }));
 
+vi.mock('@/lib/config/demo-policy', () => ({
+  isOperationalDemoFallbackEnabled: () => testState.demoFallbackEnabled,
+}));
+
 describe('Sidebar', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -68,6 +73,7 @@ describe('Sidebar', () => {
     testState.apiGet.mockResolvedValue({ data: testState.companies });
     testState.apiPost.mockResolvedValue({ data: { message: 'Logged out successfully' } });
     testState.getToken.mockReturnValue('real-jwt-token');
+    testState.demoFallbackEnabled = true;
     Object.defineProperty(window, 'location', {
       configurable: true,
       value: {
@@ -115,6 +121,34 @@ describe('Sidebar', () => {
     );
   });
 
+  it('normalizes enveloped company API responses so real companies appear in the sidebar', async () => {
+    testState.isDemoSession = false;
+    testState.companies = [];
+    testState.selectedCompany = null;
+    testState.apiGet.mockResolvedValueOnce({
+      data: {
+        data: [
+          {
+            id: 'amel-company-id',
+            name: 'Amel Contabilidade Digital LTDA',
+            cnpj: '12.345.678/0001-10',
+          },
+        ],
+      },
+    });
+
+    render(<Sidebar />);
+
+    await waitFor(() => {
+      expect(testState.setCompanies).toHaveBeenCalledWith([
+        expect.objectContaining({
+          id: 'amel-company-id',
+          name: 'Amel Contabilidade Digital LTDA',
+        }),
+      ]);
+    });
+  });
+
   it('keeps demo companies local when the session is explicitly demonstrative', async () => {
     testState.isDemoSession = true;
     testState.companies = [];
@@ -130,6 +164,21 @@ describe('Sidebar', () => {
           }),
         ]),
       );
+    });
+
+    expect(testState.apiGet).not.toHaveBeenCalled();
+  });
+
+  it('does not show demo companies when demo fallback is disabled', async () => {
+    testState.isDemoSession = true;
+    testState.demoFallbackEnabled = false;
+    testState.companies = [];
+    testState.selectedCompany = null;
+
+    render(<Sidebar />);
+
+    await waitFor(() => {
+      expect(testState.setCompanies).toHaveBeenCalledWith([]);
     });
 
     expect(testState.apiGet).not.toHaveBeenCalled();
