@@ -2,6 +2,7 @@
 
 import { api, getActiveCompanyId, setActiveCompanyId, isDemoSession } from './api';
 import { DEMO_COMPANIES } from './demo-data';
+import { assertOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -35,6 +36,12 @@ export interface UpdateCompanyInput {
   anexo?: number;
 }
 
+function assertDemoCompanySessionEnabled(): void {
+  assertOperationalDemoFallbackEnabled(
+    'Empresas demonstrativas indisponíveis neste ambiente. Entre com uma conta real para acessar CNPJs de produção.',
+  );
+}
+
 /**
  * CompanyService: O coração da multi-tenancy no bCost Web.
  * Gerencia a troca de contexto entre diferentes CNPJs.
@@ -46,6 +53,7 @@ export const companyService = {
    */
   async getAll(): Promise<Company[]> {
     if (isDemoSession()) {
+      assertDemoCompanySessionEnabled();
       return DEMO_COMPANIES as Company[];
     }
 
@@ -70,6 +78,7 @@ export const companyService = {
    */
   async getById(id: string): Promise<Company> {
     if (isDemoSession()) {
+      assertDemoCompanySessionEnabled();
       const company = DEMO_COMPANIES.find((item) => item.id === id) ?? DEMO_COMPANIES[0];
       return company as Company;
     }
@@ -83,6 +92,7 @@ export const companyService = {
    */
   async create(companyData: CreateCompanyInput): Promise<Company> {
     if (isDemoSession()) {
+      assertDemoCompanySessionEnabled();
       return {
         id: `demo-company-${Date.now()}`,
         cnpj: companyData.cnpj,
@@ -101,6 +111,7 @@ export const companyService = {
 
   async update(companyId: string, companyData: UpdateCompanyInput): Promise<Company> {
     if (isDemoSession()) {
+      assertDemoCompanySessionEnabled();
       const company = DEMO_COMPANIES.find((item) => item.id === companyId) ?? DEMO_COMPANIES[0];
       return { ...(company as Company), ...companyData };
     }
@@ -110,7 +121,10 @@ export const companyService = {
   },
 
   async remove(companyId: string): Promise<void> {
-    if (isDemoSession()) return;
+    if (isDemoSession()) {
+      assertDemoCompanySessionEnabled();
+      return;
+    }
 
     await api.delete(`/company/${companyId}`);
   },

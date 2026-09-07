@@ -6,6 +6,7 @@ import {
   login as apiLogin,
   verifyMfa,
   getToken,
+  clearSession,
   isMfaRequiredResponse,
   type LoginResponse,
 } from '@/services/api';
@@ -28,6 +29,15 @@ export default function LoginPage() {
 
   // Guard: redireciona se ja tem sessao ativa
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('session') === 'demo-disabled') {
+      clearSession();
+      setErrorMessage(
+        'Sessão demonstrativa removida no ambiente oficial. Entre com uma conta real para acessar dados de produção.',
+      );
+      return;
+    }
+
     if (getToken()) router.replace('/dashboard/intelligence');
   }, [router]);
 

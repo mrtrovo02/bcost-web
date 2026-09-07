@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -12,6 +12,15 @@ type ReleaseCheckResult = {
 
 const scriptPath = resolve(process.cwd(), 'scripts', 'validate-production-env.cjs');
 const tempDirectories: string[] = [];
+const protectedProxySource = `
+export const config = {
+  matcher: ['/dashboard/:path*', '/upload-xml/:path*', '/login'],
+};
+const demoToken = 'demo-token-local';
+const demoDisabledReason = 'demo-disabled';
+void demoToken;
+void demoDisabledReason;
+`;
 
 const baseEnv: NodeJS.ProcessEnv = {
   PATH: process.env.PATH,
@@ -28,9 +37,16 @@ const baseEnv: NodeJS.ProcessEnv = {
   NEXT_PUBLIC_APP_URL: 'https://app.bcost.com.br',
 };
 
-function runReleaseCheck(overrides: Partial<NodeJS.ProcessEnv> = {}): ReleaseCheckResult {
+function runReleaseCheck(
+  overrides: Partial<NodeJS.ProcessEnv> = {},
+  options: { readonly writeProxy?: boolean } = {},
+): ReleaseCheckResult {
   const tempDirectory = mkdtempSync(join(tmpdir(), 'bcost-web-release-check-'));
   tempDirectories.push(tempDirectory);
+
+  if (options.writeProxy !== false) {
+    writeFileSync(join(tempDirectory, 'proxy.ts'), protectedProxySource, 'utf8');
+  }
 
   const result = spawnSync(process.execPath, [scriptPath], {
     cwd: tempDirectory,
@@ -104,5 +120,13 @@ describe('frontend production release gate', () => {
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('NEXT_PUBLIC_APP_URL');
     expect(result.stderr).toContain('https://app.bcost.com.br');
+  });
+
+  it('bloqueia release oficial sem proteção server-side das rotas privadas', () => {
+    const result = runReleaseCheck({}, { writeProxy: false });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('proxy.ts');
+    expect(result.stderr).toContain('/dashboard/*');
   });
 });

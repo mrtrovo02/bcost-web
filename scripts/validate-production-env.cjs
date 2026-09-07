@@ -106,6 +106,28 @@ function validateInternalApiUrl() {
   }
 }
 
+function validateServerSideRouteProtection() {
+  const proxyPath = path.resolve(process.cwd(), 'proxy.ts');
+  if (!fs.existsSync(proxyPath)) {
+    errors.push('proxy.ts: obrigatório para proteger rotas /dashboard/* antes da hidratação do cliente.');
+    return;
+  }
+
+  const proxySource = fs.readFileSync(proxyPath, 'utf8');
+  const requiredFragments = [
+    "'/dashboard/:path*'",
+    "'/upload-xml/:path*'",
+    'demo-token-local',
+    'demo-disabled',
+  ];
+
+  for (const fragment of requiredFragments) {
+    if (!proxySource.includes(fragment)) {
+      errors.push(`proxy.ts: proteção server-side incompleta; fragmento ausente ${fragment}.`);
+    }
+  }
+}
+
 function validateProductionEnvironment() {
   requireEquals('NODE_ENV', 'production', 'deve ser production no build oficial.');
   validateApiBasePath('NEXT_PUBLIC_API_URL');
@@ -131,6 +153,7 @@ function validateProductionEnvironment() {
   );
 
   requireHttpsUrl('NEXT_PUBLIC_APP_URL', REQUIRED_APP_ORIGIN);
+  validateServerSideRouteProtection();
 }
 
 loadEnvironmentFiles();
