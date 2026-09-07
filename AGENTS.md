@@ -30,7 +30,7 @@ Nada pode prometer automacao oficial sem lastro. Onde nao ha automacao oficial, 
 
 P0 — Bloqueadores de vendabilidade:
 - Sessao enterprise robusta, sem loop de login e sem mistura demo/real.
-- Observabilidade frontend: Sentry, traces, mensagens de erro uteis e estado de falha claro.
+- Observabilidade antes de Stripe: traces, mensagens de erro uteis, estado de falha claro, correlacao com `x-bcost-trace-id` e alertas de jornadas criticas. Avaliar Sentry/OpenTelemetry somente depois de verificar dependencias e variaveis.
 - Limpeza de repositorio: `.env` real, dumps e certificados fora do git.
 - Testes de isolamento tenant na UI/API client quando houver selecao de empresa.
 
@@ -45,6 +45,7 @@ P2 — Entregas fiscais reais:
 P3 — Monetizacao:
 - Criar e endurecer `/signup`, `/onboarding`, `/billing`.
 - Completar checkout/portal Stripe, planos, entitlements, paywall, trial com expiracao e bloqueio real de usuarios nao pagantes.
+- Nao alterar Stripe enquanto P0/P1 de sessao, observabilidade, tenant e fechamento nao estiverem estabilizados. Stripe Live fica por ultimo.
 
 P4 — Escalabilidade e UX:
 - Paginar listagens, evitar telas travadas, eliminar rotas perdidas e deduplicar modulos basico/enterprise.
@@ -58,6 +59,7 @@ P4 — Escalabilidade e UX:
 - Toda resposta consumida de API deve ter contrato tipado. Mudanca de contrato exige atualizacao do client e da UI na mesma rodada.
 - Componentes devem ter estados de loading, erro, vazio e sucesso quando consomem dados externos.
 - Commits convencionais e com um contexto por commit.
+- Nao fazer commit ou push sem solicitacao explicita do usuario na conversa atual.
 
 ## Definition Of Done
 
