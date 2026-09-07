@@ -107,10 +107,16 @@ function validateInternalApiUrl() {
 }
 
 function validateProductionEnvironment() {
+  requireEquals('NODE_ENV', 'production', 'deve ser production no build oficial.');
   validateApiBasePath('NEXT_PUBLIC_API_URL');
 
   if (valueOf('NEXT_PUBLIC_API_BASE_URL')) {
     validateApiBasePath('NEXT_PUBLIC_API_BASE_URL');
+    requireEquals(
+      'NEXT_PUBLIC_API_BASE_URL',
+      valueOf('NEXT_PUBLIC_API_URL'),
+      'mantenha igual ao NEXT_PUBLIC_API_URL para evitar drift entre clientes HTTP.',
+    );
   } else {
     warnings.push('NEXT_PUBLIC_API_BASE_URL: recomendado manter igual ao NEXT_PUBLIC_API_URL.');
   }

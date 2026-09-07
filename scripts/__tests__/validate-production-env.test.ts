@@ -73,6 +73,24 @@ describe('frontend production release gate', () => {
     expect(result.stderr).toContain('/api/v1');
   });
 
+  it('bloqueia drift entre NEXT_PUBLIC_API_URL e NEXT_PUBLIC_API_BASE_URL', () => {
+    const result = runReleaseCheck({
+      NEXT_PUBLIC_API_URL: 'https://api.bcost.com.br/api/v1',
+      NEXT_PUBLIC_API_BASE_URL: 'https://api.bcost.com.br/api/v1/',
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('NEXT_PUBLIC_API_BASE_URL');
+    expect(result.stderr).toContain('evitar drift');
+  });
+
+  it('bloqueia build oficial fora de NODE_ENV production', () => {
+    const result = runReleaseCheck({ NODE_ENV: 'development' });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('NODE_ENV');
+  });
+
   it('bloqueia demo pública habilitada no host oficial', () => {
     const result = runReleaseCheck({ NEXT_PUBLIC_ENABLE_DEMO: 'true' });
 
