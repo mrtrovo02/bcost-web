@@ -149,6 +149,39 @@ describe('Sidebar', () => {
     });
   });
 
+  it('normalizes membership company API responses so linked companies appear in the sidebar', async () => {
+    testState.isDemoSession = false;
+    testState.companies = [];
+    testState.selectedCompany = null;
+    testState.apiGet.mockResolvedValueOnce({
+      data: {
+        companies: [
+          {
+            companyId: 'amel-company-id',
+            role: 'ACCOUNTANT',
+            company: {
+              id: 'amel-company-id',
+              name: 'Amel Contabilidade Digital LTDA',
+              cnpj: '12.345.678/0001-10',
+            },
+          },
+        ],
+      },
+    });
+
+    render(<Sidebar />);
+
+    await waitFor(() => {
+      expect(testState.setCompanies).toHaveBeenCalledWith([
+        expect.objectContaining({
+          id: 'amel-company-id',
+          name: 'Amel Contabilidade Digital LTDA',
+          role: 'ACCOUNTANT',
+        }),
+      ]);
+    });
+  });
+
   it('keeps demo companies local when the session is explicitly demonstrative', async () => {
     testState.isDemoSession = true;
     testState.companies = [];

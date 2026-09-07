@@ -2,25 +2,19 @@
 
 import { api, getActiveCompanyId, setActiveCompanyId, isDemoSession } from './api';
 import { DEMO_COMPANIES } from './demo-data';
+import { normalizeCompanyPayload, type NormalizedCompany } from './company-normalizer';
 import { assertOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
-}
 
 /**
  * Interface Enterprise: Reflete o Schema do bCost Engine.
  * Essencial para o TypeScript não "reclamar" no Sidebar.
  */
-export interface Company {
-  id: string;
-  name: string;
-  cnpj: string;
+export interface Company extends NormalizedCompany {
   taxRegime?: 'SIMPLES_NACIONAL' | 'LUCRO_PRESUMIDO' | 'LUCRO_REAL';
-  role: 'OWNER' | 'ACCOUNTANT' | 'VIEWER';
-  status: 'ACTIVE' | 'SUSPENDED' | 'PENDING';
-  plan: 'BASIC' | 'PRO' | 'ENTERPRISE';
-  createdAt: string;
+  role?: 'OWNER' | 'ACCOUNTANT' | 'VIEWER' | string;
+  status?: 'ACTIVE' | 'SUSPENDED' | 'PENDING' | string;
+  plan?: 'BASIC' | 'PRO' | 'ENTERPRISE' | string;
+  createdAt?: string;
 }
 
 export interface CreateCompanyInput {
@@ -59,14 +53,8 @@ export const companyService = {
 
     try {
       // Como o BASE_URL no api.ts já termina em /v1, chamamos apenas /company
-      const { data } = await api.get<Company[]>('/company');
-
-      const payload = data as unknown;
-      if (Array.isArray(payload)) return payload;
-      if (isRecord(payload) && Array.isArray(payload.data)) {
-        return payload.data as Company[];
-      }
-      return [];
+      const { data } = await api.get<unknown>('/company');
+      return normalizeCompanyPayload(data) as Company[];
     } catch (error) {
       console.error('🔴 [bCost Service]: Falha na sincronização de unidades.', error);
       throw error; // Repassa para o Sidebar tratar o erro no UI
@@ -83,8 +71,14 @@ export const companyService = {
       return company as Company;
     }
 
-    const { data } = await api.get<Company>(`/company/${id}`);
-    return data;
+    const { data } = await api.get<unknown>(`/company/${id}`);
+    const company = normalizeCompanyPayload(data)[0];
+
+    if (!company) {
+      throw new Error('COMPANY_NOT_FOUND');
+    }
+
+    return company as Company;
   },
 
   /**

@@ -38,6 +38,37 @@ describe('companyService demo policy', () => {
     expect(demoPolicyMock).not.toHaveBeenCalled();
   });
 
+  it('normaliza vinculos multiempresa retornados pelo backend', async () => {
+    const { companyService } = await import('../company.service');
+    apiGetMock.mockResolvedValueOnce({
+      data: {
+        data: [
+          {
+            companyId: 'amel-company-id',
+            role: 'OWNER',
+            company: {
+              id: 'amel-company-id',
+              name: 'Amel Contabilidade Digital LTDA',
+              cnpj: '12.345.678/0001-10',
+              taxRegime: 'SIMPLES_NACIONAL',
+            },
+          },
+        ],
+      },
+    });
+
+    const companies = await companyService.getAll();
+
+    expect(companies).toEqual([
+      expect.objectContaining({
+        id: 'amel-company-id',
+        name: 'Amel Contabilidade Digital LTDA',
+        cnpj: '12.345.678/0001-10',
+        role: 'OWNER',
+      }),
+    ]);
+  });
+
   it('exige fallback operacional habilitado antes de retornar empresas demo', async () => {
     const { companyService } = await import('../company.service');
     isDemoSessionMock.mockReturnValue(true);

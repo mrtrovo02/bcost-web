@@ -81,11 +81,6 @@ export default function CompaniesPage() {
         return;
       }
 
-      // Interrompe requisição à API se estiver em sessão de demonstração
-      if (isDemoSession) {
-        return;
-      }
-
       const data = await companyService.getAll();
       setCompanies(data);
     } catch (error: unknown) {
@@ -95,7 +90,7 @@ export default function CompaniesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [isCompanyContextLoading, isDemoSession, setCompanies]);
+  }, [isCompanyContextLoading, setCompanies]);
 
   useEffect(() => {
     loadInitialData();

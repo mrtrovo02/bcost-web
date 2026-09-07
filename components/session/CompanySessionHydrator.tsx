@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { normalizeCompanyPayload } from '@/services/company-normalizer';
 
 type CompanyLike = {
   id: string;
@@ -171,11 +172,7 @@ function removeDemoCompanies(companies: CompanyLike[]): CompanyLike[] {
 }
 
 function normalizeCompanies(value: unknown): CompanyLike[] {
-  if (!Array.isArray(value)) return [];
-
-  return value.filter((company): company is CompanyLike => {
-    return Boolean(company && typeof company === 'object' && 'id' in company);
-  });
+  return normalizeCompanyPayload(value);
 }
 
 function firstString(...values: unknown[]): string | null {
@@ -314,13 +311,7 @@ async function fetchCompanies(token: string): Promise<CompanyLike[]> {
 
   const payload: unknown = await response.json();
 
-  if (Array.isArray(payload)) return normalizeCompanies(payload);
-
-  if (payload && typeof payload === 'object' && 'data' in payload) {
-    return normalizeCompanies((payload as { data?: unknown }).data);
-  }
-
-  return [];
+  return normalizeCompanies(payload);
 }
 
 export function CompanySessionHydrator() {

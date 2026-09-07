@@ -33,6 +33,7 @@ import {
   getToken,
   setActiveCompanyId,
 } from '@/services/api';
+import { normalizeCompanyPayload } from '@/services/company-normalizer';
 import { DEMO_COMPANIES, type DemoCompany } from '@/services/demo-data';
 
 type SidebarCompany = Company & Partial<Pick<DemoCompany, 'role' | 'status' | 'plan'>>;
@@ -68,20 +69,6 @@ function getRequestFailureStatus(error: unknown): RequestFailureStatus | null {
 
   const status = (error as HttpErrorLike).response?.status;
   return status === 401 || status === 429 ? status : null;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
-}
-
-function normalizeCompaniesPayload(payload: unknown): SidebarCompany[] {
-  const candidate = isRecord(payload) && Array.isArray(payload.data) ? payload.data : payload;
-
-  if (!Array.isArray(candidate)) return [];
-
-  return candidate.filter((company): company is SidebarCompany => {
-    return isRecord(company) && typeof company.id === 'string' && typeof company.name === 'string';
-  });
 }
 
 export default function Sidebar() {
@@ -164,7 +151,7 @@ export default function Sidebar() {
 
     try {
       const { data } = await api.get<DemoCompany[] | { data?: DemoCompany[] }>('/company');
-      const companiesList = normalizeCompaniesPayload(data);
+      const companiesList = normalizeCompanyPayload(data) as SidebarCompany[];
       lastCompanyLoadFailureRef.current = null;
       applyCompanies(companiesList);
     } catch (error) {
