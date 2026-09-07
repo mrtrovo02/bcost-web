@@ -201,6 +201,7 @@ function persistCompanyContext(companyId: string, companies: CompanyLike[]) {
             role: 'OWNER',
           },
         ];
+  const activeCompany = cleanCompanies.find((company) => company.id === companyId) ?? cleanCompanies[0];
 
   window.localStorage.setItem('bcost_active_company', companyId);
   window.localStorage.setItem('bcost_company_id', companyId);
@@ -208,7 +209,7 @@ function persistCompanyContext(companyId: string, companies: CompanyLike[]) {
   window.localStorage.setItem('activeCompanyId', companyId);
   window.localStorage.setItem('bcost_companies', JSON.stringify(cleanCompanies));
   window.localStorage.setItem('companies', JSON.stringify(cleanCompanies));
-  window.localStorage.setItem('bcost_active_company_data', JSON.stringify(cleanCompanies[0]));
+  window.localStorage.setItem('bcost_active_company_data', JSON.stringify(activeCompany));
 
   if (companyId.startsWith('demo-') && shouldUseLocalDemo()) {
     window.localStorage.setItem('bcost_token', DEMO_TOKEN);
