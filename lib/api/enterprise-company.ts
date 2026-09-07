@@ -2,6 +2,7 @@
 
 import { getDemoEnterpriseCompanyId } from '@/lib/api/enterprise-demo';
 import { api, isDemoSession } from '@/services/api';
+import { normalizeCompanyPayload } from '@/services/company-normalizer';
 
 type AuthMeResponse = {
   id: string;
@@ -9,9 +10,10 @@ type AuthMeResponse = {
   companyId?: string;
   activeCompanyId?: string;
   company_id?: string;
-  company?: { id?: string };
-  companies?: Array<{ id?: string }>;
+  company?: { id?: string } | Record<string, unknown>;
+  companies?: Array<{ id?: string } | Record<string, unknown>>;
   role?: string;
+  user?: AuthMeResponse;
 };
 
 function isBrowser() {
@@ -20,6 +22,16 @@ function isBrowser() {
 
 function isDemoCompanyId(value: string | null): boolean {
   return Boolean(value && value.toLowerCase().startsWith('demo-'));
+}
+
+function firstString(...values: unknown[]): string | null {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+
+  return null;
 }
 
 function clearStoredEnterpriseCompanyContext(): void {
@@ -108,14 +120,20 @@ export async function resolveEnterpriseCompanyIdWithFallback(): Promise<string> 
 
   try {
     const response = await api.get<AuthMeResponse>('/auth/me');
-    const companies = Array.isArray(response.data.companies) ? response.data.companies : [];
-    const companyId =
-      response.data.companyId ||
-      response.data.activeCompanyId ||
-      response.data.company_id ||
-      response.data.company?.id ||
-      companies.find((company) => company.id === stored)?.id ||
-      companies[0]?.id;
+    const user = response.data.user ?? response.data;
+    const companies = normalizeCompanyPayload(user.companies ?? response.data.companies ?? user);
+    const companyId = firstString(
+      user.companyId,
+      user.activeCompanyId,
+      user.company_id,
+      user.company?.id,
+      response.data.companyId,
+      response.data.activeCompanyId,
+      response.data.company_id,
+      response.data.company?.id,
+      companies.find((company) => company.id === stored)?.id,
+      companies[0]?.id,
+    );
 
     if (companyId) {
       clearStoredEnterpriseCompanyContext();

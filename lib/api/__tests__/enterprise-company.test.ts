@@ -78,6 +78,61 @@ describe('enterprise-company resolver', () => {
     expect(window.localStorage.getItem('bcost_company_id')).toBe('company-new-001');
   });
 
+  it('resolves linked membership company from authenticated user payload', async () => {
+    apiGetMock.mockResolvedValueOnce({
+      data: {
+        user: {
+          id: 'user-amanda',
+          email: 'amandacontabil@bcost.com.br',
+          companies: [
+            {
+              companyId: 'company-amel',
+              role: 'ACCOUNTANT',
+              company: {
+                id: 'company-amel',
+                name: 'Amel Contabilidade Digital LTDA',
+                cnpj: '12.345.678/0001-10',
+              },
+            },
+          ],
+        },
+      },
+    });
+
+    await expect(resolveEnterpriseCompanyIdWithFallback()).resolves.toBe('company-amel');
+    expect(window.localStorage.getItem('bcost_active_company')).toBe('company-amel');
+    expect(window.localStorage.getItem('bcost_company_id')).toBe('company-amel');
+  });
+
+  it('uses stored real company when it belongs to authenticated membership list', async () => {
+    window.localStorage.setItem('bcost_company_id', 'company-amel-secondary');
+    apiGetMock.mockResolvedValueOnce({
+      data: {
+        id: 'user-amanda',
+        email: 'amandacontabil@bcost.com.br',
+        companies: [
+          {
+            companyId: 'company-amel-main',
+            company: {
+              id: 'company-amel-main',
+              name: 'Amel Matriz',
+            },
+          },
+          {
+            companyId: 'company-amel-secondary',
+            company: {
+              id: 'company-amel-secondary',
+              name: 'Amel Filial',
+            },
+          },
+        ],
+      },
+    });
+
+    await expect(resolveEnterpriseCompanyIdWithFallback()).resolves.toBe('company-amel-secondary');
+    expect(window.localStorage.getItem('bcost_active_company')).toBe('company-amel-secondary');
+  });
+
   it('does not silently create demo company for real sessions without company context', async () => {
     apiGetMock.mockRejectedValueOnce({ response: { status: 401 } });
 
