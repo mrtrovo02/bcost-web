@@ -133,6 +133,41 @@ describe('enterprise-company resolver', () => {
     expect(window.localStorage.getItem('bcost_active_company')).toBe('company-amel-secondary');
   });
 
+  it('recovers stored company id from legacy user membership payloads', () => {
+    window.localStorage.setItem(
+      'bcost_user',
+      JSON.stringify({
+        id: 'user-amanda',
+        email: 'amandacontabil@bcost.com.br',
+        companies: [
+          {
+            companyId: 'company-legacy-amel',
+            company: {
+              id: 'company-legacy-amel',
+              name: 'Amel Legado',
+            },
+          },
+        ],
+      }),
+    );
+
+    expect(readStoredEnterpriseCompanyId()).toBe('company-legacy-amel');
+  });
+
+  it('recovers stored company id from normalized companies storage', () => {
+    window.localStorage.setItem(
+      'bcost_companies',
+      JSON.stringify([
+        {
+          id: 'company-storage-amel',
+          name: 'Amel Storage',
+        },
+      ]),
+    );
+
+    expect(readStoredEnterpriseCompanyId()).toBe('company-storage-amel');
+  });
+
   it('does not silently create demo company for real sessions without company context', async () => {
     apiGetMock.mockRejectedValueOnce({ response: { status: 401 } });
 

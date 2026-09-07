@@ -90,11 +90,27 @@ export function readStoredEnterpriseCompanyId(): string | null {
 
     if (rawUser) {
       const parsed = JSON.parse(rawUser) as Record<string, unknown>;
-      const companyId = parsed.companyId || parsed.activeCompanyId || parsed.company_id;
+      const companies = normalizeCompanyPayload(parsed);
+      const companyId = firstString(
+        parsed.companyId,
+        parsed.activeCompanyId,
+        parsed.company_id,
+        companies[0]?.id,
+      );
 
-      if (typeof companyId === 'string' && companyId) {
+      if (companyId) {
         return companyId;
       }
+    }
+  } catch {
+    // segue para a lista de empresas persistida abaixo
+  }
+
+  try {
+    const rawCompanies = localStorage.getItem('bcost_companies') || localStorage.getItem('companies');
+    if (rawCompanies) {
+      const companies = normalizeCompanyPayload(JSON.parse(rawCompanies));
+      return companies[0]?.id ?? null;
     }
   } catch {
     return null;
