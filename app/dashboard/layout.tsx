@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Building2 } from 'lucide-react';
 import { useCompany } from '@/app/context/CompanyContext';
 import CompanySessionHydrator from '@/components/session/CompanySessionHydrator';
@@ -29,7 +29,21 @@ function getStoredUser(): StoredUser | null {
  */
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { selectedCompany } = useCompany();
-  const [user] = useState<StoredUser | null>(() => getStoredUser());
+  const [user, setUser] = useState<StoredUser | null>(() => getStoredUser());
+
+  useEffect(() => {
+    const syncStoredUser = () => setUser(getStoredUser());
+
+    window.addEventListener('storage', syncStoredUser);
+    window.addEventListener('bcost:company-context-updated', syncStoredUser);
+    window.addEventListener('bcost:user-session-updated', syncStoredUser);
+
+    return () => {
+      window.removeEventListener('storage', syncStoredUser);
+      window.removeEventListener('bcost:company-context-updated', syncStoredUser);
+      window.removeEventListener('bcost:user-session-updated', syncStoredUser);
+    };
+  }, []);
 
   const displayName = user?.name || user?.email || 'Usuário';
   const initials = displayName

@@ -220,4 +220,45 @@ describe('isDemoSession', () => {
     expect(getToken()).toBe('jwt-after-mfa');
     expect(localStorage.getItem('bcost_company_id')).toBe('company-amel');
   });
+
+  it('persists normalized linked companies from real login responses', async () => {
+    vi.spyOn(api, 'post').mockResolvedValueOnce({
+      data: {
+        access_token: 'real-jwt-token',
+        user: {
+          id: 'user-001',
+          email: 'amandacontabil@bcost.com.br',
+          name: 'Amanda Narvaes',
+          companies: [
+            {
+              companyId: 'company-amel',
+              role: 'ACCOUNTANT',
+              company: {
+                id: 'company-amel',
+                name: 'Amel Contabilidade Digital LTDA',
+                cnpj: '12.345.678/0001-10',
+              },
+            },
+          ],
+        },
+      },
+    });
+
+    await login('amandacontabil@bcost.com.br', 'secure-password');
+
+    const storedCompanies = JSON.parse(localStorage.getItem('bcost_companies') ?? '[]') as Array<{
+      id: string;
+      name: string;
+      role?: string;
+    }>;
+
+    expect(localStorage.getItem('bcost_company_id')).toBe('company-amel');
+    expect(storedCompanies).toEqual([
+      expect.objectContaining({
+        id: 'company-amel',
+        name: 'Amel Contabilidade Digital LTDA',
+        role: 'ACCOUNTANT',
+      }),
+    ]);
+  });
 });

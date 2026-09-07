@@ -10,6 +10,7 @@ import axios, {
   InternalAxiosRequestConfig,
   AxiosResponse,
 } from 'axios';
+import { normalizeCompanyPayload } from './company-normalizer';
 
 // Helpers de ambiente
 const isBrowser = (): boolean => typeof window !== 'undefined';
@@ -54,6 +55,8 @@ const USER_ALLOWED_KEYS = new Set<string>([
   'email',
   'name',
   'companyId',
+  'activeCompanyId',
+  'company_id',
   'role',
   'active',
   'twoFactor',
@@ -115,7 +118,7 @@ export interface BcostUser {
   active?: boolean;
   twoFactor?: boolean;
   company?: BcostCompany;
-  companies?: BcostCompany[];
+  companies?: Array<BcostCompany | Record<string, unknown>>;
   [key: string]: unknown;
 }
 
@@ -129,7 +132,7 @@ export interface AuthResponse {
   user?: BcostUser;
   companyId?: string;
   activeCompanyId?: string;
-  companies?: BcostCompany[];
+  companies?: Array<BcostCompany | Record<string, unknown>>;
 }
 
 export interface MfaRequiredResponse {
@@ -320,6 +323,11 @@ function dispatchCompanyContextUpdated(companyId?: string, companies?: BcostComp
   );
 }
 
+function dispatchUserSessionUpdated(): void {
+  if (!isBrowser()) return;
+  window.dispatchEvent(new CustomEvent('bcost:user-session-updated'));
+}
+
 // User sanitization
 function sanitizeUser(user: BcostUser): BcostUser {
   const out: BcostUser = { id: user.id, email: user.email };
@@ -439,6 +447,13 @@ export function getStoredUser(): BcostUser | null {
 export function setStoredUser(user?: BcostUser | null): void {
   if (!isBrowser() || !user) return;
   const safe = sanitizeUser(user);
+  const normalizedCompanies = normalizeCompanyPayload(safe.companies ?? safe);
+
+  if (normalizedCompanies.length > 0) {
+    safe.companies = normalizedCompanies;
+    safe.company = normalizedCompanies[0];
+  }
+
   const json = JSON.stringify(safe);
   for (const key of USER_KEYS) {
     try {
@@ -449,22 +464,27 @@ export function setStoredUser(user?: BcostUser | null): void {
   }
   const companyId =
     safe.companyId ??
+    safe.activeCompanyId ??
+    safe.company_id ??
     safe.company?.id ??
-    (Array.isArray(safe.companies) && safe.companies.length > 0 ? safe.companies[0].id : undefined);
+    normalizedCompanies[0]?.id;
   if (typeof companyId === 'string') setActiveCompanyId(companyId);
 
-  if (Array.isArray(safe.companies) && safe.companies.length > 0) {
+  if (normalizedCompanies.length > 0) {
     try {
-      window.localStorage.setItem('bcost_companies', JSON.stringify(safe.companies));
-      window.localStorage.setItem('companies', JSON.stringify(safe.companies));
+      window.localStorage.setItem('bcost_companies', JSON.stringify(normalizedCompanies));
+      window.localStorage.setItem('companies', JSON.stringify(normalizedCompanies));
     } catch {
       /* empty */
     }
   }
+
+  dispatchUserSessionUpdated();
 }
 
 export function clearStoredUser(): void {
   lsRemove(USER_KEYS);
+  dispatchUserSessionUpdated();
 }
 
 // Session Validation
@@ -494,21 +514,18 @@ export function persistAuthResponse(data: AuthResponse): void {
   if (refreshToken) setRefreshToken(refreshToken);
   if (data.user) setStoredUser(data.user);
 
+  const companies = normalizeCompanyPayload(data.companies ?? data.user?.companies ?? data.user);
   const companyId =
     data.companyId ??
     data.activeCompanyId ??
     data.user?.companyId ??
+    data.user?.activeCompanyId ??
+    data.user?.company_id ??
     data.user?.company?.id ??
-    (Array.isArray(data.companies) && data.companies.length > 0
-      ? data.companies[0].id
-      : undefined) ??
-    (Array.isArray(data.user?.companies) && data.user!.companies!.length > 0
-      ? data.user!.companies![0].id
-      : undefined);
+    companies[0]?.id;
   if (typeof companyId === 'string') setActiveCompanyId(companyId);
 
-  const companies = data.companies ?? data.user?.companies;
-  if (Array.isArray(companies) && companies.length > 0) {
+  if (companies.length > 0) {
     const activeCompany =
       companies.find((company) => company.id === companyId) ?? companies[0];
 
@@ -521,7 +538,7 @@ export function persistAuthResponse(data: AuthResponse): void {
     }
   }
 
-  const hasDemoCompanyAfterLogin = isDemoId(companyId);
+  const hasDemoCompanyAfterLogin = typeof companyId === 'string' && isDemoId(companyId);
   if (!hasDemoCompanyAfterLogin) {
     dispatchCompanyContextUpdated(
       typeof companyId === 'string' ? companyId : undefined,

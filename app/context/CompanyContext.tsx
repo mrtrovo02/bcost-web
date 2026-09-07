@@ -16,6 +16,7 @@ import {
 } from '@/lib/utils/runtime-guards';
 import { trackEvent } from '@/lib/utils/telemetry';
 import { isDemoEntityId, isOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
+import { normalizeCompanyPayload } from '@/services/company-normalizer';
 
 export interface Company {
   id: string;
@@ -64,7 +65,8 @@ function removeDemoCompanies(companies: Company[]): Company[] {
 }
 
 function persistCompaniesForSession(companies: Company[], isDemo: boolean): Company[] {
-  const sanitizedCompanies = isDemo ? companies : removeDemoCompanies(companies);
+  const normalizedCompanies = normalizeCompanyPayload(companies) as Company[];
+  const sanitizedCompanies = isDemo ? normalizedCompanies : removeDemoCompanies(normalizedCompanies);
 
   if (!isDemo && sanitizedCompanies.length !== companies.length) {
     safeLocalStorageSet('bcost_companies', JSON.stringify(sanitizedCompanies));
@@ -94,17 +96,21 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       try {
         const saved = safeLocalStorageGet('bcost_active_company_data');
         const savedId = getActiveCompanyId();
-        const rawStoredCompanies = safeJsonParse<Company[]>(
-          safeLocalStorageGet('bcost_companies'),
-          [],
-        );
+        const rawStoredCompanies = normalizeCompanyPayload(
+          safeJsonParse<unknown>(
+            safeLocalStorageGet('bcost_companies'),
+            [],
+          ),
+        ) as Company[];
         const isDemo = detectDemoSession();
         const storedCompanies = persistCompaniesForSession(rawStoredCompanies, isDemo);
 
         setIsDemoSession(isDemo);
 
         if (saved) {
-          const parsedCompany = safeJsonParse<Company | null>(saved, null);
+          const parsedCompany = normalizeCompanyPayload(safeJsonParse<unknown>(saved, null))[0] as
+            | Company
+            | undefined;
           if (parsedCompany?.id) {
             if (!canUseCompanyInCurrentSession(parsedCompany, isDemo)) {
               clearCompanyContextStorage();
