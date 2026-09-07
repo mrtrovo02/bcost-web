@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   api,
+  createBcostTraceId,
   getToken,
   isDemoSession,
   isMfaRequiredResponse,
@@ -130,6 +131,10 @@ describe('isDemoSession', () => {
     });
   });
 
+  it('creates frontend trace IDs with the bCost web prefix', () => {
+    expect(createBcostTraceId()).toMatch(/^web-/);
+  });
+
   it('overwrites stale per-call auth and tenant headers through the axios interceptor', async () => {
     localStorage.setItem('bcost_token', 'real-jwt-token');
     localStorage.setItem('bcost_company_id', 'company-real-001');
@@ -141,6 +146,7 @@ describe('isDemoSession', () => {
         Authorization: 'Bearer stale-token',
         'x-company-id': 'demo-001',
         'x-demo-session': 'true',
+        'x-bcost-trace-id': 'stale-trace-id',
       },
       adapter: async (config) => {
         capturedHeaders = JSON.parse(JSON.stringify(config.headers)) as Record<
@@ -161,6 +167,8 @@ describe('isDemoSession', () => {
     expect(capturedHeaders.Authorization).toBe('Bearer real-jwt-token');
     expect(capturedHeaders['x-company-id']).toBe('company-real-001');
     expect(capturedHeaders['x-demo-session']).toBeUndefined();
+    expect(capturedHeaders['x-bcost-trace-id']).toMatch(/^web-/);
+    expect(capturedHeaders['x-bcost-trace-id']).not.toBe('stale-trace-id');
   });
 
   it('does not persist an MFA challenge as an authenticated session', async () => {

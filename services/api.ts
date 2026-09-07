@@ -32,6 +32,7 @@ const isValidValue = (v: unknown): v is string =>
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 const COOKIE_DOMAIN = '.bcost.com.br';
 const DEMO_TOKEN = 'demo-token-local';
+const TRACE_HEADER = 'x-bcost-trace-id';
 
 const TOKEN_KEYS = ['bcost_token', 'bcost_access_token'] as const;
 const REFRESH_KEYS = ['bcost_refresh_token'] as const;
@@ -287,6 +288,18 @@ export function resolveRequestHeaders(
   }
 
   return headers;
+}
+
+export function createBcostTraceId(): string {
+  const randomUuid = globalThis.crypto?.randomUUID;
+
+  if (typeof randomUuid === 'function') {
+    return `web-${randomUuid.call(globalThis.crypto)}`;
+  }
+
+  const timestamp = Date.now().toString(36);
+  const entropy = Math.random().toString(16).slice(2, 10);
+  return `web-${timestamp}-${entropy}`;
 }
 
 function clearStoredCompanyData(): void {
@@ -582,6 +595,7 @@ api.interceptors.request.use(
     delete config.headers.Authorization;
     delete config.headers['x-company-id'];
     delete config.headers['x-demo-session'];
+    delete config.headers[TRACE_HEADER];
 
     if (requestHeaders.Authorization) {
       config.headers.Authorization = requestHeaders.Authorization;
@@ -594,6 +608,8 @@ api.interceptors.request.use(
     if (requestHeaders['x-demo-session']) {
       config.headers['x-demo-session'] = requestHeaders['x-demo-session'];
     }
+
+    config.headers[TRACE_HEADER] = createBcostTraceId();
     return config;
   },
   (error: unknown) => Promise.reject(error),
