@@ -9,6 +9,20 @@ import { XmlDocumentType } from '@/lib/types/fiscal';
 
 const DEMO_TOKEN = 'demo-token-local';
 
+function isOfficialBcostHost(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'bcost.com.br' ||
+      window.location.hostname.endsWith('.bcost.com.br'))
+  );
+}
+
+function canSeedDemoData(): boolean {
+  if (typeof window === 'undefined') return false;
+  if (isOfficialBcostHost()) return process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true';
+  return process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true' || process.env.NODE_ENV !== 'production';
+}
+
 export interface DemoCompany {
   id: string;
   name: string;
@@ -307,8 +321,7 @@ export function getDemoBankTransactions() {
 }
 
 export function seedDemoData(): boolean {
-  if (typeof window === 'undefined') return false;
-  if (process.env.NEXT_PUBLIC_ENABLE_DEMO !== 'true' && process.env.NODE_ENV === 'production') {
+  if (!canSeedDemoData()) {
     return false;
   }
 

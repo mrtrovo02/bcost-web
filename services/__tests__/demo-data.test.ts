@@ -14,6 +14,13 @@ describe('seedDemoData', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv('NEXT_PUBLIC_ENABLE_DEMO', 'true');
+    vi.stubEnv('NODE_ENV', 'development');
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: {
+        hostname: 'localhost',
+      },
+    });
     window.localStorage.clear();
     window.sessionStorage.clear();
     vi.spyOn(console, 'log').mockImplementation(() => undefined);
@@ -56,5 +63,20 @@ describe('seedDemoData', () => {
     expect(writeCookieMock).toHaveBeenCalledWith('bcost_token', 'demo-token-local');
     expect(writeCookieMock).toHaveBeenCalledWith('bcost_access_token', 'demo-token-local');
     expect(writeCookieMock).toHaveBeenCalledWith('bcost_company_id', DEMO_COMPANIES[0]?.id);
+  });
+
+  it('blocks demo seeding on official domains when the public demo flag is disabled', () => {
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_DEMO', 'false');
+    vi.stubEnv('NODE_ENV', 'development');
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: {
+        hostname: 'app.bcost.com.br',
+      },
+    });
+
+    expect(seedDemoData()).toBe(false);
+    expect(window.localStorage.getItem('bcost_token')).toBeNull();
+    expect(writeCookieMock).not.toHaveBeenCalled();
   });
 });
