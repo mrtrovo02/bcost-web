@@ -18,8 +18,10 @@ export const config = {
 };
 const demoToken = 'demo-token-local';
 const demoDisabledReason = 'demo-disabled';
+const companyCookie = 'bcost_company_id';
 void demoToken;
 void demoDisabledReason;
+void companyCookie;
 `;
 
 const baseEnv: NodeJS.ProcessEnv = {

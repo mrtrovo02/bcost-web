@@ -16,4 +16,16 @@ describe('CompanySessionHydrator persistence contract', () => {
       "window.localStorage.setItem('bcost_active_company_data', JSON.stringify(activeCompany))",
     );
   });
+
+  it('limpa contexto antigo de empresa quando nao existe token em ambiente oficial', () => {
+    expect(hydratorSource).toContain('if (companyContextAlreadyExists())');
+    expect(hydratorSource).toContain('if (shouldUseLocalDemo()) return;');
+    expect(hydratorSource).toContain('clearCompanyContext();');
+  });
+
+  it('remove empresas demo antes de persistir contexto de token real', () => {
+    expect(hydratorSource).toContain('function persistRealCompanyContext');
+    expect(hydratorSource).toContain('persistCompanyContext(companyId, removeDemoCompanies(companies))');
+    expect(hydratorSource).toContain('persistRealCompanyContext(String(resolvedCompanyId), authCompanies)');
+  });
 });

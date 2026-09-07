@@ -35,6 +35,7 @@ export default function LoginPage() {
       setErrorMessage(
         'Sessão demonstrativa removida no ambiente oficial. Entre com uma conta real para acessar dados de produção.',
       );
+      window.history.replaceState(null, '', '/login');
       return;
     }
 

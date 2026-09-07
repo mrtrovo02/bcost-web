@@ -3,9 +3,12 @@ import { NextRequest, NextResponse } from 'next/server';
 const SESSION_COOKIE_NAMES = [
   'bcost_token',
   'bcost_access_token',
+  'bcost_company_id',
   'token',
   'access_token',
   'accessToken',
+  'companyId',
+  'activeCompanyId',
 ] as const;
 const AUTH_REQUIRED_PATHS = ['/dashboard', '/upload-xml'];
 const PUBLIC_PATHS = ['/login'];

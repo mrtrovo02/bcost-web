@@ -27,13 +27,17 @@ describe('proxy', () => {
   });
 
   it('blocks stale demo cookies on official hosts before serving protected pages', () => {
-    const response = proxy(makeRequest('/dashboard/intelligence', 'bcost_token=demo-token-local'));
+    const response = proxy(
+      makeRequest('/dashboard/intelligence', 'bcost_token=demo-token-local; bcost_company_id=demo-001'),
+    );
     const location = response.headers.get('location');
+    const expiredCookies = response.headers.getSetCookie().join(';');
 
     expect(response.status).toBe(307);
     expect(location).toContain('/login');
     expect(location).toContain('session=demo-disabled');
-    expect(response.headers.getSetCookie().join(';')).toContain('bcost_token=');
+    expect(expiredCookies).toContain('bcost_token=');
+    expect(expiredCookies).toContain('bcost_company_id=');
   });
 
   it('keeps demo cookies usable outside official hosts for controlled local demos', () => {

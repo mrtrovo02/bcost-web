@@ -225,6 +225,10 @@ function persistCompanyContext(companyId: string, companies: CompanyLike[]) {
   );
 }
 
+function persistRealCompanyContext(companyId: string, companies: CompanyLike[]) {
+  persistCompanyContext(companyId, removeDemoCompanies(companies));
+}
+
 function clearCompanyContext() {
   if (typeof window === 'undefined') return;
 
@@ -328,7 +332,11 @@ export function CompanySessionHydrator() {
 
       const token = resolveToken();
       if (!token) {
-        if (companyContextAlreadyExists()) return;
+        if (companyContextAlreadyExists()) {
+          if (shouldUseLocalDemo()) return;
+          clearCompanyContext();
+          return;
+        }
         if (shouldUseLocalDemo()) {
           persistCompanyContext('demo-001', readCompaniesFromStorage());
         }
@@ -368,7 +376,7 @@ export function CompanySessionHydrator() {
         storedCompanies.some((company) => company.id === String(jwtCompanyId)) &&
         !isDemoCompanyId(String(jwtCompanyId))
       ) {
-        persistCompanyContext(String(jwtCompanyId), storedCompanies);
+        persistRealCompanyContext(String(jwtCompanyId), storedCompanies);
         return;
       }
 
@@ -408,7 +416,7 @@ export function CompanySessionHydrator() {
         clearCompanyContext();
       }
 
-      persistCompanyContext(String(resolvedCompanyId), authCompanies);
+      persistRealCompanyContext(String(resolvedCompanyId), authCompanies);
 
       const reloadFlag = 'bcost_company_context_reloaded_once';
       if (!window.sessionStorage.getItem(reloadFlag)) {

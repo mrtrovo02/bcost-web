@@ -119,6 +119,7 @@ function validateServerSideRouteProtection() {
     "'/upload-xml/:path*'",
     'demo-token-local',
     'demo-disabled',
+    'bcost_company_id',
   ];
 
   for (const fragment of requiredFragments) {

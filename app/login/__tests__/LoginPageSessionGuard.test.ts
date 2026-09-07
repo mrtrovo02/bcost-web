@@ -8,6 +8,7 @@ describe('LoginPage session guard', () => {
   it('limpa sessão demonstrativa bloqueada pelo proxy em host oficial', () => {
     expect(loginPageSource).toContain("params.get('session') === 'demo-disabled'");
     expect(loginPageSource).toContain('clearSession()');
+    expect(loginPageSource).toContain("window.history.replaceState(null, '', '/login')");
     expect(loginPageSource).toContain('conta real');
   });
 });
