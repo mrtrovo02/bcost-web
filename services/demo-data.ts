@@ -17,9 +17,17 @@ function isOfficialBcostHost(): boolean {
   );
 }
 
+function isControlledDemoAccessEnabled(): boolean {
+  return (
+    process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true' &&
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK === 'true' &&
+    process.env.NEXT_PUBLIC_DEMO_ACCESS_MODE === 'controlled'
+  );
+}
+
 function canSeedDemoData(): boolean {
   if (typeof window === 'undefined') return false;
-  if (isOfficialBcostHost()) return process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true';
+  if (isOfficialBcostHost()) return isControlledDemoAccessEnabled();
   return process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true' || process.env.NODE_ENV !== 'production';
 }
 

@@ -116,6 +116,27 @@ describe('frontend production release gate', () => {
     expect(result.stderr).toContain('NEXT_PUBLIC_ENABLE_DEMO');
   });
 
+  it('aprova demo controlada quando demo e fallback estao explicitamente alinhados', () => {
+    const result = runReleaseCheck({
+      NEXT_PUBLIC_ENABLE_DEMO: 'true',
+      NEXT_PUBLIC_ENABLE_DEMO_FALLBACK: 'true',
+      NEXT_PUBLIC_DEMO_ACCESS_MODE: 'controlled',
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toContain('Demo controlada habilitada');
+  });
+
+  it('bloqueia demo parcial sem modo controlled', () => {
+    const result = runReleaseCheck({
+      NEXT_PUBLIC_ENABLE_DEMO: 'true',
+      NEXT_PUBLIC_ENABLE_DEMO_FALLBACK: 'true',
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('NEXT_PUBLIC_DEMO_ACCESS_MODE');
+  });
+
   it('bloqueia app público apontando para origem não oficial', () => {
     const result = runReleaseCheck({ NEXT_PUBLIC_APP_URL: 'https://preview.bcost.com.br' });
 

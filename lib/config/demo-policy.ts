@@ -37,6 +37,14 @@ function isOfficialBcostHost(): boolean {
   return hostname === 'bcost.com.br' || hostname.endsWith('.bcost.com.br');
 }
 
+function isControlledDemoAccessEnabled(): boolean {
+  return (
+    process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true' &&
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK === 'true' &&
+    process.env.NEXT_PUBLIC_DEMO_ACCESS_MODE === 'controlled'
+  );
+}
+
 export class DemoFallbackDisabledError extends Error {
   readonly code = 'DEMO_FALLBACK_DISABLED';
 
@@ -48,7 +56,7 @@ export class DemoFallbackDisabledError extends Error {
 
 export function isOperationalDemoFallbackEnabled(): boolean {
   if (isOfficialBcostHost()) {
-    return process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK === 'true';
+    return isControlledDemoAccessEnabled();
   }
 
   if (hasExplicitDemoSession()) return true;

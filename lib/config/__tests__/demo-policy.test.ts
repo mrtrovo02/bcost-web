@@ -38,9 +38,19 @@ describe('demo-policy', () => {
 
   it('allows operational demo fallback on official domains only when explicitly enabled', () => {
     setLocation('app.bcost.com.br');
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_DEMO', 'true');
     vi.stubEnv('NEXT_PUBLIC_ENABLE_DEMO_FALLBACK', 'true');
+    vi.stubEnv('NEXT_PUBLIC_DEMO_ACCESS_MODE', 'controlled');
 
     expect(isOperationalDemoFallbackEnabled()).toBe(true);
+  });
+
+  it('blocks official demo fallback when access mode is not controlled', () => {
+    setLocation('app.bcost.com.br');
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_DEMO', 'true');
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_DEMO_FALLBACK', 'true');
+
+    expect(isOperationalDemoFallbackEnabled()).toBe(false);
   });
 
   it('keeps local development fallback available outside official domains', () => {

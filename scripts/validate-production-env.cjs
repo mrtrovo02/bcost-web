@@ -129,6 +129,34 @@ function validateServerSideRouteProtection() {
   }
 }
 
+function validateDemoPolicy() {
+  const demoEnabled = valueOf('NEXT_PUBLIC_ENABLE_DEMO');
+  const demoFallbackEnabled = valueOf('NEXT_PUBLIC_ENABLE_DEMO_FALLBACK');
+  const demoAccessMode = valueOf('NEXT_PUBLIC_DEMO_ACCESS_MODE');
+  const hasControlledDemo =
+    demoEnabled === 'true' && demoFallbackEnabled === 'true' && demoAccessMode === 'controlled';
+
+  if (hasControlledDemo) {
+    warnings.push(
+      'Demo controlada habilitada no app oficial; valide que dados reais e demonstrativos permanecem segregados.',
+    );
+    return;
+  }
+
+  requireEquals('NEXT_PUBLIC_ENABLE_DEMO', 'false', 'demo pública deve ficar desligada no app oficial.');
+  requireEquals(
+    'NEXT_PUBLIC_ENABLE_DEMO_FALLBACK',
+    'false',
+    'fallback demonstrativo deve ficar desligado em produção.',
+  );
+
+  if (demoEnabled === 'true' || demoFallbackEnabled === 'true') {
+    errors.push(
+      'NEXT_PUBLIC_DEMO_ACCESS_MODE: use controlled quando habilitar demo e fallback no app oficial.',
+    );
+  }
+}
+
 function validateProductionEnvironment() {
   requireEquals('NODE_ENV', 'production', 'deve ser production no build oficial.');
   validateApiBasePath('NEXT_PUBLIC_API_URL');
@@ -146,12 +174,7 @@ function validateProductionEnvironment() {
 
   validateInternalApiUrl();
   validateSocketUrl();
-  requireEquals('NEXT_PUBLIC_ENABLE_DEMO', 'false', 'demo pública deve ficar desligada no app oficial.');
-  requireEquals(
-    'NEXT_PUBLIC_ENABLE_DEMO_FALLBACK',
-    'false',
-    'fallback demonstrativo deve ficar desligado em produção.',
-  );
+  validateDemoPolicy();
 
   requireHttpsUrl('NEXT_PUBLIC_APP_URL', REQUIRED_APP_ORIGIN);
   validateServerSideRouteProtection();

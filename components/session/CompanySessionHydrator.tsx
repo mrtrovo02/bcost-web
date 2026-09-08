@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { normalizeCompanyPayload } from '@/services/company-normalizer';
-import { setStoredUser, type BcostCompany, type BcostUser } from '@/services/api';
+import { api, setStoredUser, type BcostCompany, type BcostUser } from '@/services/api';
 
 type CompanyLike = {
   id: string;
@@ -53,31 +53,16 @@ function shouldUseLocalDemo() {
   const isBcostProductionHost = hostname === 'bcost.com.br' || hostname.endsWith('.bcost.com.br');
 
   if (isBcostProductionHost) {
-    return process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true';
+    return (
+      process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true' &&
+      process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK === 'true' &&
+      process.env.NEXT_PUBLIC_DEMO_ACCESS_MODE === 'controlled'
+    );
   }
 
   if (process.env.NODE_ENV === 'development' || isLocalHost) return true;
 
   return process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true';
-}
-
-function resolveApiBase() {
-  const configuredBase =
-    process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || null;
-
-  if (
-    typeof window !== 'undefined' &&
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-  ) {
-    return configuredBase || 'http://localhost:5000/api/v1';
-  }
-
-  return (
-    configuredBase ||
-    (process.env.NODE_ENV === 'development'
-      ? 'http://localhost:5000/api/v1'
-      : 'https://api.bcost.com.br/api/v1')
-  );
 }
 
 function readLocalStorage(keys: string[]): string | null {
@@ -261,7 +246,7 @@ function persistAuthenticatedUser(authMe: AuthMeLike, companies: CompanyLike[]) 
     twoFactor: user.twoFactor,
     companyId: companyId ?? undefined,
     activeCompanyId: companyId ?? undefined,
-    company: storedCompanies[0],
+    company: storedCompanies.find((company) => company.id === companyId) ?? storedCompanies[0],
     companies: storedCompanies,
   };
 
@@ -288,14 +273,6 @@ function clearAuthContext() {
   }
 }
 
-function redirectToExpiredLogin(): void {
-  if (typeof window === 'undefined') return;
-  if (window.location.pathname.startsWith('/login')) return;
-
-  const redirect = encodeURIComponent(`${window.location.pathname}${window.location.search}`);
-  window.location.replace(`/login?session=expired&redirect=${redirect}`);
-}
-
 function companyContextAlreadyExists() {
   const companyId = readLocalStorage(COMPANY_ID_KEYS);
   const companies = readCompaniesFromStorage();
@@ -306,54 +283,14 @@ function readActiveCompanyId(): string | null {
   return readLocalStorage(COMPANY_ID_KEYS);
 }
 
-async function fetchAuthMe(token: string) {
-  const apiBase = resolveApiBase();
-
-  // Alinha a chamada removendo o prefixo /api/v1 redundante caso a URL base mude
-  const endpoint = apiBase.endsWith('/') ? `${apiBase}auth/me` : `${apiBase}/auth/me`;
-
-  const response = await fetch(endpoint, {
-    method: 'GET',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    credentials: 'include',
-  });
-
-  if (!response.ok) {
-    if (response.status === 401) {
-      // Se a requisição de hidratação falhar por não estar autorizada, limpa traços antigos
-      if (typeof window !== 'undefined') {
-        clearAuthContext();
-        clearCompanyContext();
-        redirectToExpiredLogin();
-      }
-    }
-    return null;
-  }
-
-  return response.json();
+async function fetchAuthMe(): Promise<AuthMeLike | null> {
+  const response = await api.get<AuthMeLike>('/auth/me');
+  return response.data;
 }
 
-async function fetchCompanies(token: string): Promise<CompanyLike[]> {
-  const apiBase = resolveApiBase();
-  const endpoint = apiBase.endsWith('/') ? `${apiBase}company` : `${apiBase}/company`;
-
-  const response = await fetch(endpoint, {
-    method: 'GET',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    credentials: 'include',
-  });
-
-  if (!response.ok) return [];
-
-  const payload: unknown = await response.json();
-
-  return normalizeCompanies(payload);
+async function fetchCompanies(): Promise<CompanyLike[]> {
+  const response = await api.get<unknown>('/company');
+  return normalizeCompanies(response.data);
 }
 
 export function CompanySessionHydrator() {
@@ -412,7 +349,7 @@ export function CompanySessionHydrator() {
         persistRealCompanyContext(String(jwtCompanyId), storedCompanies);
       }
 
-      const authMe = (await fetchAuthMe(token).catch(() => null)) as AuthMeLike | null;
+      const authMe = await fetchAuthMe().catch(() => null);
       if (cancelled) return;
 
       const user = authMe?.user || authMe || {};
@@ -422,7 +359,7 @@ export function CompanySessionHydrator() {
       }
 
       if (authCompanies.length === 0) {
-        authCompanies = await fetchCompanies(token).catch(() => []);
+        authCompanies = await fetchCompanies().catch(() => []);
         if (cancelled) return;
       }
 

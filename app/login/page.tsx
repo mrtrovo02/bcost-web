@@ -20,8 +20,17 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const router = useRouter();
+  const isOfficialHost =
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'bcost.com.br' ||
+      window.location.hostname.endsWith('.bcost.com.br'));
+  const controlledDemoEnabled =
+    process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true' &&
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK === 'true' &&
+    process.env.NEXT_PUBLIC_DEMO_ACCESS_MODE === 'controlled';
   const demoModeEnabled =
-    process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true' ||
+    (typeof window !== 'undefined' &&
+      (isOfficialHost ? controlledDemoEnabled : process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true')) ||
     (process.env.NODE_ENV === 'development' &&
       (typeof window === 'undefined' ||
         window.location.hostname === 'localhost' ||

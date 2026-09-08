@@ -14,6 +14,8 @@ describe('seedDemoData', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv('NEXT_PUBLIC_ENABLE_DEMO', 'true');
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_DEMO_FALLBACK', 'true');
+    vi.stubEnv('NEXT_PUBLIC_DEMO_ACCESS_MODE', 'controlled');
     vi.stubEnv('NODE_ENV', 'development');
     Object.defineProperty(window, 'location', {
       configurable: true,
@@ -67,6 +69,23 @@ describe('seedDemoData', () => {
 
   it('blocks demo seeding on official domains when the public demo flag is disabled', () => {
     vi.stubEnv('NEXT_PUBLIC_ENABLE_DEMO', 'false');
+    vi.stubEnv('NODE_ENV', 'development');
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: {
+        hostname: 'app.bcost.com.br',
+      },
+    });
+
+    expect(seedDemoData()).toBe(false);
+    expect(window.localStorage.getItem('bcost_token')).toBeNull();
+    expect(writeCookieMock).not.toHaveBeenCalled();
+  });
+
+  it('blocks demo seeding on official domains without controlled access mode', () => {
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_DEMO', 'true');
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_DEMO_FALLBACK', 'true');
+    vi.stubEnv('NEXT_PUBLIC_DEMO_ACCESS_MODE', '');
     vi.stubEnv('NODE_ENV', 'development');
     Object.defineProperty(window, 'location', {
       configurable: true,

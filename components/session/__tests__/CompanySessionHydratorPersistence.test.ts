@@ -34,4 +34,11 @@ describe('CompanySessionHydrator persistence contract', () => {
     expect(hydratorSource).toContain('setStoredUser(storedUser)');
     expect(hydratorSource).toContain('persistAuthenticatedUser(authMe, authCompanies)');
   });
+
+  it('usa o cliente HTTP oficial para hidratar sessao real com refresh token', () => {
+    expect(hydratorSource).toContain("api.get<AuthMeLike>('/auth/me')");
+    expect(hydratorSource).toContain("api.get<unknown>('/company')");
+    expect(hydratorSource).not.toContain('Authorization: `Bearer ${token}`');
+    expect(hydratorSource).not.toContain('redirectToExpiredLogin');
+  });
 });
