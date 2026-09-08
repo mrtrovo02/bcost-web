@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { api } from '@/services/api';
+import { api, getToken } from '@/services/api';
 import { paymentsApi } from '../payments';
 
 vi.mock('@/services/api', () => ({
@@ -7,14 +7,17 @@ vi.mock('@/services/api', () => ({
     get: vi.fn(),
     post: vi.fn(),
   },
+  getToken: vi.fn(() => 'real-jwt-token'),
 }));
 
 const apiGetMock = vi.mocked(api.get);
 const apiPostMock = vi.mocked(api.post);
+const getTokenMock = vi.mocked(getToken);
 
 describe('paymentsApi', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getTokenMock.mockReturnValue('real-jwt-token');
   });
 
   it('creates checkout sessions through the backend payments endpoint', async () => {
@@ -83,6 +86,23 @@ describe('paymentsApi', () => {
       'Checkout real bloqueado em sessão demo. Use uma empresa real autenticada para contratar o plano.',
     );
 
+    expect(apiPostMock).not.toHaveBeenCalled();
+  });
+
+  it('blocks monetizable payment operations without a real authenticated session', async () => {
+    getTokenMock.mockReturnValue(null);
+
+    await expect(
+      paymentsApi.createCheckoutSession('company-001', {
+        planLevel: 'PRO',
+      }),
+    ).rejects.toThrow('Cobrança real exige usuário autenticado com sessão produtiva.');
+
+    await expect(paymentsApi.subscription('company-001')).rejects.toThrow(
+      'Cobrança real exige usuário autenticado com sessão produtiva.',
+    );
+
+    expect(apiGetMock).not.toHaveBeenCalled();
     expect(apiPostMock).not.toHaveBeenCalled();
   });
 

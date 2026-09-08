@@ -1,7 +1,7 @@
 'use strict';
 
-import { api } from '@/services/api';
-import { isDemoEntityId } from '@/lib/config/demo-policy';
+import { api, isDemoSession } from '@/services/api';
+import { assertOperationalDemoFallbackEnabled, isDemoEntityId } from '@/lib/config/demo-policy';
 
 export type NotificationType =
   | 'TAX_READY'
@@ -223,8 +223,19 @@ type DemoNotificationsStore = {
 
 const DEMO_STORE_VERSION = 'v1';
 
-function isDemoCompany(companyId: string): boolean {
-  return isDemoEntityId(companyId);
+function shouldUseNotificationsDemo(companyId: string): boolean {
+  if (!isDemoEntityId(companyId)) return false;
+
+  const message =
+    'Notificacoes demonstrativas indisponiveis e fallback demonstrativo desabilitado neste ambiente.';
+
+  if (!isDemoSession()) {
+    throw new Error(message);
+  }
+
+  assertOperationalDemoFallbackEnabled(message);
+
+  return true;
 }
 
 function isBrowserRuntime(): boolean {
@@ -502,7 +513,7 @@ function updateNotificationStatus(
 
 export const notificationsEnterpriseApi = {
   summary: async (companyId: string): Promise<NotificationsEnterpriseSummaryResponse> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseNotificationsDemo(companyId)) {
       const store = readStore(companyId);
       return {
         status: 'OK_DEMO',
@@ -525,7 +536,7 @@ export const notificationsEnterpriseApi = {
     companyId: string,
     params: NotificationQuery = {},
   ): Promise<NotificationListResponse> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseNotificationsDemo(companyId)) {
       const store = readStore(companyId);
       const filtered = filterNotifications(store.notifications, params);
       const items = pageItems(filtered, params);
@@ -555,7 +566,7 @@ export const notificationsEnterpriseApi = {
     companyId: string,
     payload: CreateNotificationPayload,
   ): Promise<ActionResponse<NotificationEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseNotificationsDemo(companyId)) {
       const store = readStore(companyId);
       const item: NotificationEnterpriseRecord = {
         id: `demo-notification-${Date.now()}`,
@@ -592,7 +603,7 @@ export const notificationsEnterpriseApi = {
     companyId: string,
     notificationId: string,
   ): Promise<ActionResponse<NotificationEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseNotificationsDemo(companyId)) {
       return updateNotificationStatus(
         companyId,
         notificationId,
@@ -612,7 +623,7 @@ export const notificationsEnterpriseApi = {
     companyId: string,
     notificationId: string,
   ): Promise<ActionResponse<NotificationEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseNotificationsDemo(companyId)) {
       return updateNotificationStatus(
         companyId,
         notificationId,
@@ -632,7 +643,7 @@ export const notificationsEnterpriseApi = {
     companyId: string,
     notificationId: string,
   ): Promise<ActionResponse<NotificationEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseNotificationsDemo(companyId)) {
       return updateNotificationStatus(
         companyId,
         notificationId,
@@ -652,7 +663,7 @@ export const notificationsEnterpriseApi = {
     companyId: string,
     notificationId: string,
   ): Promise<ActionResponse<NotificationEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseNotificationsDemo(companyId)) {
       return updateNotificationStatus(
         companyId,
         notificationId,
@@ -672,7 +683,7 @@ export const notificationsEnterpriseApi = {
     companyId: string,
     params: NotificationQuery = {},
   ): Promise<WebhookListResponse> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseNotificationsDemo(companyId)) {
       const store = readStore(companyId);
       const filtered = filterWebhooks(store.webhooks, params);
       const items = pageItems(filtered, params);
@@ -702,7 +713,7 @@ export const notificationsEnterpriseApi = {
     companyId: string,
     payload: CreateWebhookPayload,
   ): Promise<ActionResponse<WebhookEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseNotificationsDemo(companyId)) {
       const store = readStore(companyId);
       const item: WebhookEnterpriseRecord = {
         id: `demo-webhook-${Date.now()}`,
@@ -733,7 +744,7 @@ export const notificationsEnterpriseApi = {
     webhookId: string,
     payload: UpdateWebhookPayload,
   ): Promise<ActionResponse<WebhookEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseNotificationsDemo(companyId)) {
       const store = readStore(companyId);
       const current = store.webhooks.find((item) => item.id === webhookId);
       if (!current) throw new Error(`Webhook demo não encontrado: ${webhookId}`);
@@ -762,7 +773,7 @@ export const notificationsEnterpriseApi = {
     companyId: string,
     webhookId: string,
   ): Promise<ActionResponse<WebhookEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseNotificationsDemo(companyId)) {
       return notificationsEnterpriseApi.updateWebhook(companyId, webhookId, { active: true });
     }
 
@@ -777,7 +788,7 @@ export const notificationsEnterpriseApi = {
     companyId: string,
     webhookId: string,
   ): Promise<ActionResponse<WebhookEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseNotificationsDemo(companyId)) {
       return notificationsEnterpriseApi.updateWebhook(companyId, webhookId, { active: false });
     }
 
@@ -792,7 +803,7 @@ export const notificationsEnterpriseApi = {
     companyId: string,
     webhookId: string,
   ): Promise<ActionResponse<WebhookEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseNotificationsDemo(companyId)) {
       const store = readStore(companyId);
       const current = store.webhooks.find((item) => item.id === webhookId);
       if (!current) throw new Error(`Webhook demo não encontrado: ${webhookId}`);
@@ -814,7 +825,7 @@ export const notificationsEnterpriseApi = {
     companyId: string,
     payload: DispatchWebhookPayload,
   ): Promise<ActionResponse<WebhookEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseNotificationsDemo(companyId)) {
       const store = readStore(companyId);
       const activeTargets = store.webhooks.filter(
         (item) => item.active && item.events.includes(payload.event),
@@ -848,7 +859,7 @@ export const notificationsEnterpriseApi = {
     companyId: string,
     module: 'notifications' | 'webhooks',
   ): Promise<AuditLogListResponse> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseNotificationsDemo(companyId)) {
       const store = readStore(companyId);
       const items = store.audits.filter((item) => item.module === module).slice(0, 30);
       return {

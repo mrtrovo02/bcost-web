@@ -152,7 +152,7 @@ function throwBillingOperationError(error: unknown, fallbackMessage: string): ne
 }
 
 function assertBillingDemoFallbackAllowed(message: string): void {
-  if (hasRealAuthToken() && !isDemoSession()) {
+  if (!isDemoSession() || hasRealAuthToken()) {
     throw new Error(message);
   }
 
@@ -165,10 +165,6 @@ function assertBillingCompanyDemoFallbackAllowed(companyId: string, message: str
   }
 
   assertBillingDemoFallbackAllowed(message);
-}
-
-function isDemoBillingCompany(companyId: string): boolean {
-  return isDemoEntityId(companyId);
 }
 
 export const DEMO_BILLING_PLANS: BillingPlan[] = [
@@ -345,7 +341,12 @@ export const billingApi = {
   },
 
   entitlements: async (companyId: string): Promise<BillingEntitlementsResponse> => {
-    if (isDemoBillingCompany(companyId)) {
+    if (isDemoEntityId(companyId)) {
+      assertBillingCompanyDemoFallbackAllowed(
+        companyId,
+        'Entitlements comerciais indisponiveis e fallback demonstrativo desabilitado neste ambiente.',
+      );
+
       return getDemoBillingEntitlements({ id: companyId }, 'ENTERPRISE');
     }
 
@@ -369,7 +370,12 @@ export const billingApi = {
     companyId: string,
     feature: string,
   ): Promise<BillingFeatureCheckResponse> => {
-    if (isDemoBillingCompany(companyId)) {
+    if (isDemoEntityId(companyId)) {
+      assertBillingCompanyDemoFallbackAllowed(
+        companyId,
+        'Validacao de feature indisponivel e fallback demonstrativo desabilitado neste ambiente.',
+      );
+
       const demo = getDemoBillingEntitlements({ id: companyId }, 'ENTERPRISE');
       const found = demo.features.find((item) => item.key === feature);
 
@@ -427,7 +433,12 @@ export const billingApi = {
     planLevel: PlanLevel,
     reason?: string,
   ): Promise<BillingUpdatePlanResponse> => {
-    if (isDemoBillingCompany(companyId)) {
+    if (isDemoEntityId(companyId)) {
+      assertBillingCompanyDemoFallbackAllowed(
+        companyId,
+        'Alteracao de plano indisponivel e fallback demonstrativo desabilitado neste ambiente.',
+      );
+
       return {
         ...getDemoBillingEntitlements({ id: companyId }, planLevel),
         message: `Plano simulado como ${planLevel}. Conecte a API para persistir a alteração.`,

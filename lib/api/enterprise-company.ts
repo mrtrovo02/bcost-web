@@ -1,6 +1,7 @@
 'use strict';
 
 import { getDemoEnterpriseCompanyId } from '@/lib/api/enterprise-demo';
+import { assertOperationalDemoFallbackEnabled } from '@/lib/config/demo-policy';
 import { api, isDemoSession } from '@/services/api';
 import { normalizeCompanyPayload } from '@/services/company-normalizer';
 
@@ -121,6 +122,10 @@ export function readStoredEnterpriseCompanyId(): string | null {
 
 export async function resolveEnterpriseCompanyIdWithFallback(): Promise<string> {
   if (isDemoSession()) {
+    assertOperationalDemoFallbackEnabled(
+      'Empresa demonstrativa indisponivel e fallback demonstrativo desabilitado neste ambiente.',
+    );
+
     const demoCompanyId = getDemoEnterpriseCompanyId();
 
     persistEnterpriseCompanyId(demoCompanyId);

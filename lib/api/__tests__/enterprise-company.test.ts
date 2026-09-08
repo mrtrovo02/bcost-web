@@ -16,17 +16,27 @@ vi.mock('@/lib/api/enterprise-demo', () => ({
   getDemoEnterpriseCompanyId: () => 'demo-001',
 }));
 
+vi.mock('@/lib/config/demo-policy', () => ({
+  assertOperationalDemoFallbackEnabled: vi.fn((message?: string) => {
+    if (process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK === 'false') {
+      throw new Error(message || 'Fallback demonstrativo desabilitado.');
+    }
+  }),
+}));
+
 const apiGetMock = vi.mocked(api.get);
 const isDemoSessionMock = vi.mocked(isDemoSession);
 
 describe('enterprise-company resolver', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'false';
     window.localStorage.clear();
     isDemoSessionMock.mockReturnValue(false);
   });
 
   it('keeps explicit demo company ids stored by the demo session', async () => {
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'true';
     isDemoSessionMock.mockReturnValue(true);
     window.localStorage.setItem('bcost_active_company', 'demo-001');
 
@@ -36,11 +46,22 @@ describe('enterprise-company resolver', () => {
   });
 
   it('uses demo company id for explicit demo sessions', async () => {
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'true';
     isDemoSessionMock.mockReturnValue(true);
 
     await expect(resolveEnterpriseCompanyIdWithFallback()).resolves.toBe('demo-001');
     expect(window.localStorage.getItem('bcost_active_company')).toBe('demo-001');
     expect(apiGetMock).not.toHaveBeenCalled();
+  });
+
+  it('blocks demo sessions when operational demo fallback is disabled', async () => {
+    isDemoSessionMock.mockReturnValue(true);
+
+    await expect(resolveEnterpriseCompanyIdWithFallback()).rejects.toThrow(
+      'Empresa demonstrativa indisponivel e fallback demonstrativo desabilitado neste ambiente.',
+    );
+    expect(apiGetMock).not.toHaveBeenCalled();
+    expect(window.localStorage.getItem('bcost_active_company')).toBeNull();
   });
 
   it('ignores stale demo company id in real sessions and resolves auth company', async () => {

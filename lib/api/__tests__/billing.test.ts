@@ -37,6 +37,10 @@ describe('billingApi demo mode', () => {
   });
 
   it('serves demo entitlements, feature checks and plan changes locally for demo companies', async () => {
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'true';
+    getTokenMock.mockReturnValue('demo-token-local');
+    isDemoSessionMock.mockReturnValue(true);
+
     const [entitlements, feature, planChange] = await Promise.all([
       billingApi.entitlements('demo-001'),
       billingApi.checkFeature('demo-001', 'ai.copilot'),
@@ -48,6 +52,23 @@ describe('billingApi demo mode', () => {
     expect(feature.allowed).toBe(true);
     expect(planChange.newPlan).toBe('PRO');
     expect(planChange.audit.recorded).toBe(true);
+    expect(apiGetMock).not.toHaveBeenCalled();
+    expect(apiPatchMock).not.toHaveBeenCalled();
+  });
+
+  it('blocks stale demo company ids outside explicit demo sessions', async () => {
+    await expect(billingApi.entitlements('demo-001')).rejects.toThrow(
+      'Entitlements comerciais indisponiveis e fallback demonstrativo desabilitado neste ambiente.',
+    );
+
+    await expect(billingApi.checkFeature('demo-001', 'ai.copilot')).rejects.toThrow(
+      'Validacao de feature indisponivel e fallback demonstrativo desabilitado neste ambiente.',
+    );
+
+    await expect(billingApi.updatePlan('demo-001', 'PRO', 'teste demo')).rejects.toThrow(
+      'Alteracao de plano indisponivel e fallback demonstrativo desabilitado neste ambiente.',
+    );
+
     expect(apiGetMock).not.toHaveBeenCalled();
     expect(apiPatchMock).not.toHaveBeenCalled();
   });

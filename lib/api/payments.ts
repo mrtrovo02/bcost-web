@@ -1,7 +1,7 @@
 'use strict';
 
 import { isDemoEntityId } from '@/lib/config/demo-policy';
-import { api } from '@/services/api';
+import { api, getToken } from '@/services/api';
 import type { BillingEntitlementsResponse, PlanLevel } from './billing';
 
 export type MonetizablePlanLevel = Exclude<PlanLevel, 'FREE'>;
@@ -151,6 +151,12 @@ function throwCommercialCheckoutError(error: unknown): never {
 }
 
 function assertRealPaymentCompany(companyId: string): void {
+  const token = getToken();
+
+  if (!token || token === 'demo-token-local') {
+    throw new Error('Cobrança real exige usuário autenticado com sessão produtiva.');
+  }
+
   if (!companyId || companyId === 'ID_DA_EMPRESA') {
     throw new Error('Empresa ativa não encontrada para iniciar cobrança.');
   }
