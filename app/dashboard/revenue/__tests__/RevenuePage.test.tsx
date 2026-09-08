@@ -15,6 +15,16 @@ vi.mock('@/services/api', () => ({
   isDemoSession: vi.fn(() => false),
 }));
 
+vi.mock('@/app/context/CompanyContext', () => ({
+  useCompany: vi.fn(() => ({
+    selectedCompany: {
+      id: 'company-real-001',
+      name: 'Amel Contabilidade Digital LTDA',
+      cnpj: '12.345.678/0001-90',
+    },
+  })),
+}));
+
 vi.mock('@/components/split-payment/SplitPaymentProjector', () => ({
   default: () => <div data-testid="split-payment-projector" />,
 }));

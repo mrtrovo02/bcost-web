@@ -2,8 +2,8 @@
  * bCost Engine - Revenue & Growth Service
  */
 import { resolveEnterpriseCompanyIdWithFallback } from '@/lib/api/enterprise-company';
-import { isDemoEntityId } from '@/lib/config/demo-policy';
-import { api } from '@/services/api';
+import { assertOperationalDemoFallbackEnabled, isDemoEntityId } from '@/lib/config/demo-policy';
+import { api, isDemoSession } from '@/services/api';
 import { RevenueStats } from '../types/global';
 
 type RevenueContract = {
@@ -67,11 +67,24 @@ function createDemoRevenueContracts(companyId: string): RevenueContract[] {
   ];
 }
 
+function assertRevenueDemoAllowed(companyId: string): void {
+  if (!isDemoSession() || !isDemoEntityId(companyId)) {
+    throw new Error(
+      'Revenue demonstrativo indisponível fora de uma sessão demo explícita.',
+    );
+  }
+
+  assertOperationalDemoFallbackEnabled(
+    'Revenue demonstrativo desabilitado neste ambiente.',
+  );
+}
+
 export const revenueApi = {
   getStats: async (): Promise<RevenueStats> => {
     const companyId = await requireRevenueCompanyId();
 
     if (isDemoEntityId(companyId)) {
+      assertRevenueDemoAllowed(companyId);
       return createDemoRevenueStats();
     }
 
@@ -83,6 +96,7 @@ export const revenueApi = {
     const companyId = await requireRevenueCompanyId();
 
     if (isDemoEntityId(companyId)) {
+      assertRevenueDemoAllowed(companyId);
       return createDemoRevenueContracts(companyId);
     }
 
