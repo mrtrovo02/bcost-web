@@ -1,7 +1,7 @@
 'use strict';
 
-import { api } from '@/services/api';
-import { isDemoEntityId } from '@/lib/config/demo-policy';
+import { api, isDemoSession } from '@/services/api';
+import { assertOperationalDemoFallbackEnabled, isDemoEntityId } from '@/lib/config/demo-policy';
 
 export type CertificateStatus = 'ACTIVE' | 'EXPIRED' | 'REVOKED';
 
@@ -144,8 +144,19 @@ type DemoCertificatesStore = {
 
 const DEMO_STORE_VERSION = 'v1';
 
-function isDemoCompany(companyId: string): boolean {
-  return isDemoEntityId(companyId);
+function shouldUseDigitalCertificatesDemo(companyId: string): boolean {
+  if (!isDemoEntityId(companyId)) return false;
+
+  const message =
+    'Certificados demonstrativos indisponiveis e fallback demonstrativo desabilitado neste ambiente.';
+
+  if (!isDemoSession()) {
+    throw new Error(message);
+  }
+
+  assertOperationalDemoFallbackEnabled(message);
+
+  return true;
 }
 
 function isBrowserRuntime(): boolean {
@@ -362,7 +373,7 @@ export const digitalCertificatesApi = {
   ): Promise<DigitalCertificatesListResponse> => {
     const query = buildQuery(params);
 
-    if (isDemoCompany(companyId)) {
+    if (shouldUseDigitalCertificatesDemo(companyId)) {
       const store = readStore(companyId);
       const filtered = filterCertificates(store.certificates, params);
       const items = pageItems(filtered, params);
@@ -398,7 +409,7 @@ export const digitalCertificatesApi = {
     summary: DigitalCertificateSummary;
     generatedAt: string;
   }> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseDigitalCertificatesDemo(companyId)) {
       const store = readStore(companyId);
       return {
         status: 'OK_DEMO',
@@ -419,7 +430,7 @@ export const digitalCertificatesApi = {
     companyId: string,
     certificateId: string,
   ): Promise<DigitalCertificateDetailResponse> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseDigitalCertificatesDemo(companyId)) {
       const store = readStore(companyId);
       const item = store.certificates.find((certificate) => certificate.id === certificateId);
       if (!item) throw new Error(`Certificado demo não encontrado: ${certificateId}`);
@@ -444,7 +455,7 @@ export const digitalCertificatesApi = {
     companyId: string,
     payload: CreateDigitalCertificatePayload,
   ): Promise<DigitalCertificateActionResponse> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseDigitalCertificatesDemo(companyId)) {
       const store = readStore(companyId);
       const item = enrichCertificate({
         id: `demo-certificate-${Date.now()}`,
@@ -476,7 +487,7 @@ export const digitalCertificatesApi = {
     certificateId: string,
     payload: UpdateDigitalCertificatePayload,
   ): Promise<DigitalCertificateActionResponse> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseDigitalCertificatesDemo(companyId)) {
       const store = readStore(companyId);
       const current = store.certificates.find((item) => item.id === certificateId);
       if (!current) throw new Error(`Certificado demo não encontrado: ${certificateId}`);
@@ -501,7 +512,7 @@ export const digitalCertificatesApi = {
     companyId: string,
     certificateId: string,
   ): Promise<DigitalCertificateActionResponse> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseDigitalCertificatesDemo(companyId)) {
       const store = readStore(companyId);
       const current = store.certificates.find((item) => item.id === certificateId);
       if (!current) throw new Error(`Certificado demo não encontrado: ${certificateId}`);
@@ -525,7 +536,7 @@ export const digitalCertificatesApi = {
     companyId: string,
     certificateId: string,
   ): Promise<DigitalCertificateActionResponse> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseDigitalCertificatesDemo(companyId)) {
       const store = readStore(companyId);
       const exists = store.certificates.some((item) => item.id === certificateId);
       if (!exists) throw new Error(`Certificado demo não encontrado: ${certificateId}`);
@@ -552,7 +563,7 @@ export const digitalCertificatesApi = {
       ...params,
     });
 
-    if (isDemoCompany(companyId)) {
+    if (shouldUseDigitalCertificatesDemo(companyId)) {
       const store = readStore(companyId);
       return {
         items: store.audits.slice(0, Number(params.limit || 10)),

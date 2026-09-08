@@ -1,7 +1,7 @@
 'use strict';
 
-import { api } from '@/services/api';
-import { isDemoEntityId } from '@/lib/config/demo-policy';
+import { api, isDemoSession } from '@/services/api';
+import { assertOperationalDemoFallbackEnabled, isDemoEntityId } from '@/lib/config/demo-policy';
 
 export type FinanceOperationStatus =
   | 'PAID'
@@ -362,7 +362,18 @@ function fallbackFinanceSummary(companyId: string): FinanceOperationsSummaryResp
 }
 
 function shouldUseFinanceFallback(companyId: string): boolean {
-  return isDemoEntityId(companyId);
+  if (!isDemoEntityId(companyId)) return false;
+
+  const message =
+    'Operacoes financeiras demonstrativas indisponiveis e fallback demonstrativo desabilitado neste ambiente.';
+
+  if (!isDemoSession()) {
+    throw new Error(message);
+  }
+
+  assertOperationalDemoFallbackEnabled(message);
+
+  return true;
 }
 
 export const financeOperationsEnterpriseApi = {
@@ -374,19 +385,11 @@ export const financeOperationsEnterpriseApi = {
       return fallbackFinanceSummary(companyId);
     }
 
-    try {
-      const response = await api.get<FinanceOperationsSummaryResponse>(
-        `/finance/operations/${companyId}${buildQuery(query)}`,
-      );
+    const response = await api.get<FinanceOperationsSummaryResponse>(
+      `/finance/operations/${companyId}${buildQuery(query)}`,
+    );
 
-      return response.data;
-    } catch (error) {
-      if (isDemoEntityId(companyId)) {
-        return fallbackFinanceSummary(companyId);
-      }
-
-      throw error;
-    }
+    return response.data;
   },
 
   receivables: async (
@@ -406,28 +409,11 @@ export const financeOperationsEnterpriseApi = {
       };
     }
 
-    try {
-      const response = await api.get<FinanceOperationsListResponse>(
-        `/finance/operations/${companyId}/receivables${buildQuery(query)}`,
-      );
+    const response = await api.get<FinanceOperationsListResponse>(
+      `/finance/operations/${companyId}/receivables${buildQuery(query)}`,
+    );
 
-      return response.data;
-    } catch (error) {
-      if (!isDemoEntityId(companyId)) {
-        throw error;
-      }
-
-      const summary = fallbackFinanceSummary(companyId);
-      return {
-        status: summary.status,
-        module: summary.module,
-        companyId,
-        summary: summary.executiveSummary.receivables,
-        aging: summary.aging.receivables,
-        items: summary.lists.receivables,
-        generatedAt: summary.generatedAt,
-      };
-    }
+    return response.data;
   },
 
   payables: async (
@@ -447,28 +433,11 @@ export const financeOperationsEnterpriseApi = {
       };
     }
 
-    try {
-      const response = await api.get<FinanceOperationsListResponse>(
-        `/finance/operations/${companyId}/payables${buildQuery(query)}`,
-      );
+    const response = await api.get<FinanceOperationsListResponse>(
+      `/finance/operations/${companyId}/payables${buildQuery(query)}`,
+    );
 
-      return response.data;
-    } catch (error) {
-      if (!isDemoEntityId(companyId)) {
-        throw error;
-      }
-
-      const summary = fallbackFinanceSummary(companyId);
-      return {
-        status: summary.status,
-        module: summary.module,
-        companyId,
-        summary: summary.executiveSummary.payables,
-        aging: summary.aging.payables,
-        items: summary.lists.payables,
-        generatedAt: summary.generatedAt,
-      };
-    }
+    return response.data;
   },
 
   cashflow: async (
@@ -488,28 +457,11 @@ export const financeOperationsEnterpriseApi = {
       };
     }
 
-    try {
-      const response = await api.get<FinanceOperationsCashflowResponse>(
-        `/finance/operations/${companyId}/cashflow${buildQuery(query)}`,
-      );
+    const response = await api.get<FinanceOperationsCashflowResponse>(
+      `/finance/operations/${companyId}/cashflow${buildQuery(query)}`,
+    );
 
-      return response.data;
-    } catch (error) {
-      if (!isDemoEntityId(companyId)) {
-        throw error;
-      }
-
-      const summary = fallbackFinanceSummary(companyId);
-      return {
-        status: summary.status,
-        module: summary.module,
-        companyId,
-        cashflow: summary.executiveSummary.cashflow,
-        cashItems: summary.lists.cashItems,
-        cashFlowProjections: summary.supportingData.cashFlowProjections || [],
-        generatedAt: summary.generatedAt,
-      };
-    }
+    return response.data;
   },
 
   timeline: async (
@@ -532,30 +484,10 @@ export const financeOperationsEnterpriseApi = {
       };
     }
 
-    try {
-      const response = await api.get<FinanceOperationsTimelineResponse>(
-        `/finance/operations/${companyId}/timeline${buildQuery(query)}`,
-      );
+    const response = await api.get<FinanceOperationsTimelineResponse>(
+      `/finance/operations/${companyId}/timeline${buildQuery(query)}`,
+    );
 
-      return response.data;
-    } catch (error) {
-      if (!isDemoEntityId(companyId)) {
-        throw error;
-      }
-
-      const summary = fallbackFinanceSummary(companyId);
-      return {
-        status: summary.status,
-        module: summary.module,
-        companyId,
-        items: [
-          ...summary.lists.receivables,
-          ...summary.lists.payables,
-          ...summary.lists.cashItems,
-        ],
-        financialEvents: [],
-        generatedAt: summary.generatedAt,
-      };
-    }
+    return response.data;
   },
 };

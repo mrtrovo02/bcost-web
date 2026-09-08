@@ -1,7 +1,7 @@
 'use strict';
 
-import { api } from '@/services/api';
-import { isDemoEntityId } from '@/lib/config/demo-policy';
+import { api, isDemoSession } from '@/services/api';
+import { assertOperationalDemoFallbackEnabled, isDemoEntityId } from '@/lib/config/demo-policy';
 
 export type TaxObligationStatus = 'PENDING' | 'PAID' | 'OVERDUE' | 'CANCELLED' | 'PARTIAL';
 
@@ -257,8 +257,19 @@ type DemoObligationsStore = {
 
 const DEMO_STORE_VERSION = 'v1';
 
-function isDemoCompany(companyId: string): boolean {
-  return isDemoEntityId(companyId);
+function shouldUseObligationsDemo(companyId: string): boolean {
+  if (!isDemoEntityId(companyId)) return false;
+
+  const message =
+    'Obrigacoes demonstrativas indisponiveis e fallback demonstrativo desabilitado neste ambiente.';
+
+  if (!isDemoSession()) {
+    throw new Error(message);
+  }
+
+  assertOperationalDemoFallbackEnabled(message);
+
+  return true;
 }
 
 function isBrowserRuntime(): boolean {
@@ -577,7 +588,7 @@ function fiscalSummary(items: FiscalObligationRecord[]): FiscalSummary {
 
 export const obligationsApi = {
   listTax: async (companyId: string, params: ObligationsQuery = {}): Promise<TaxListResponse> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseObligationsDemo(companyId)) {
       const store = readStore(companyId);
       const filtered = filterTax(store.tax.map(enrichTax), params);
       const items = paginate(filtered, params);
@@ -608,7 +619,7 @@ export const obligationsApi = {
     companyId: string,
     params: ObligationsQuery = {},
   ): Promise<FiscalListResponse> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseObligationsDemo(companyId)) {
       const store = readStore(companyId);
       const filtered = filterFiscal(store.fiscal.map(enrichFiscal), params);
       const items = paginate(filtered, params);
@@ -639,7 +650,7 @@ export const obligationsApi = {
     companyId: string,
     payload: CreateTaxPayload,
   ): Promise<ObligationActionResponse<TaxObligationRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseObligationsDemo(companyId)) {
       const store = readStore(companyId);
       const item = enrichTax({
         id: `demo-tax-${Date.now()}`,
@@ -685,7 +696,7 @@ export const obligationsApi = {
     companyId: string,
     payload: CreateFiscalPayload,
   ): Promise<ObligationActionResponse<FiscalObligationRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseObligationsDemo(companyId)) {
       const store = readStore(companyId);
       const item = enrichFiscal({
         id: `demo-fiscal-${Date.now()}`,
@@ -737,7 +748,7 @@ export const obligationsApi = {
     obligationId: string,
     payload: UpdateTaxPayload,
   ): Promise<ObligationActionResponse<TaxObligationRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseObligationsDemo(companyId)) {
       const store = readStore(companyId);
       const index = store.tax.findIndex((item) => item.id === obligationId);
       const current = store.tax[index];
@@ -783,7 +794,7 @@ export const obligationsApi = {
     obligationId: string,
     payload: UpdateFiscalPayload,
   ): Promise<ObligationActionResponse<FiscalObligationRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseObligationsDemo(companyId)) {
       const store = readStore(companyId);
       const index = store.fiscal.findIndex((item) => item.id === obligationId);
       const current = store.fiscal[index];
@@ -828,7 +839,7 @@ export const obligationsApi = {
     companyId: string,
     obligationId: string,
   ): Promise<ObligationActionResponse<TaxObligationRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseObligationsDemo(companyId)) {
       return obligationsApi.updateTax(companyId, obligationId, { status: 'PAID' });
     }
 
@@ -843,7 +854,7 @@ export const obligationsApi = {
     companyId: string,
     obligationId: string,
   ): Promise<ObligationActionResponse<TaxObligationRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseObligationsDemo(companyId)) {
       return obligationsApi.updateTax(companyId, obligationId, { status: 'CANCELLED' });
     }
 
@@ -859,7 +870,7 @@ export const obligationsApi = {
     obligationId: string,
     payload: RegisterTaxEvidencePayload,
   ): Promise<TaxEvidenceResponse> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseObligationsDemo(companyId)) {
       const store = readStore(companyId);
       const index = store.tax.findIndex((item) => item.id === obligationId);
       const current = store.tax[index];
@@ -920,7 +931,7 @@ export const obligationsApi = {
     obligationId: string,
     payload: SubmitFiscalPayload = {},
   ): Promise<ObligationActionResponse<FiscalObligationRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseObligationsDemo(companyId)) {
       return obligationsApi.updateFiscal(companyId, obligationId, {
         status: 'SUBMITTED',
         submittedAt: payload.submittedAt || nowIso(),
@@ -941,7 +952,7 @@ export const obligationsApi = {
     companyId: string,
     obligationId: string,
   ): Promise<ObligationActionResponse<FiscalObligationRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseObligationsDemo(companyId)) {
       return obligationsApi.updateFiscal(companyId, obligationId, { status: 'ACCEPTED' });
     }
 
@@ -956,7 +967,7 @@ export const obligationsApi = {
     companyId: string,
     obligationId: string,
   ): Promise<ObligationActionResponse<FiscalObligationRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseObligationsDemo(companyId)) {
       return obligationsApi.updateFiscal(companyId, obligationId, { status: 'REJECTED' });
     }
 
@@ -972,7 +983,7 @@ export const obligationsApi = {
     module: 'tax-obligations' | 'fiscal-obligations',
     params: Record<string, unknown> = {},
   ): Promise<AuditLogListResponse> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseObligationsDemo(companyId)) {
       const store = readStore(companyId);
       const limit = Number(params.limit || 20);
       const offset = Number(params.offset || 0);

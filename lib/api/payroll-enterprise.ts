@@ -1,7 +1,7 @@
 'use strict';
 
-import { api } from '@/services/api';
-import { isDemoEntityId } from '@/lib/config/demo-policy';
+import { api, isDemoSession } from '@/services/api';
+import { assertOperationalDemoFallbackEnabled, isDemoEntityId } from '@/lib/config/demo-policy';
 
 export type EmployeeRegime = 'CLT' | 'PJ' | 'ESTAGIO' | 'AUTONOMO' | 'SOCIO_ADMINISTRADOR';
 
@@ -278,8 +278,19 @@ function isBrowserRuntime(): boolean {
   return typeof window !== 'undefined';
 }
 
-function isDemoCompany(companyId: string): boolean {
-  return isDemoEntityId(companyId);
+function shouldUsePayrollDemo(companyId: string): boolean {
+  if (!isDemoEntityId(companyId)) return false;
+
+  const message =
+    'Folha demonstrativa indisponivel e fallback demonstrativo desabilitado neste ambiente.';
+
+  if (!isDemoSession()) {
+    throw new Error(message);
+  }
+
+  assertOperationalDemoFallbackEnabled(message);
+
+  return true;
 }
 
 function roundMoney(value: number): number {
@@ -597,7 +608,7 @@ function filterEntries(items: PayrollEntryEnterpriseRecord[], params: PayrollQue
 
 export const payrollEnterpriseApi = {
   summary: async (companyId: string): Promise<PayrollSummaryResponse> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUsePayrollDemo(companyId)) {
       const store = readDemoStore(companyId);
       return {
         status: 'success',
@@ -621,7 +632,7 @@ export const payrollEnterpriseApi = {
     companyId: string,
     params: PayrollQuery = {},
   ): Promise<EmployeesListResponse> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUsePayrollDemo(companyId)) {
       const store = readDemoStore(companyId);
       const filtered = filterEmployees(store.employees, params);
       const items = paginate(filtered, params);
@@ -652,7 +663,7 @@ export const payrollEnterpriseApi = {
     companyId: string,
     payload: CreateEmployeePayload,
   ): Promise<PayrollActionResponse<EmployeeEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUsePayrollDemo(companyId)) {
       const store = readDemoStore(companyId);
       const employee: EmployeeEnterpriseRecord = {
         id: `demo-employee-${Date.now()}`,
@@ -697,7 +708,7 @@ export const payrollEnterpriseApi = {
     employeeId: string,
     payload: UpdateEmployeePayload,
   ): Promise<PayrollActionResponse<EmployeeEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUsePayrollDemo(companyId)) {
       const store = readDemoStore(companyId);
       const index = store.employees.findIndex((item) => item.id === employeeId);
       const current = store.employees[index];
@@ -746,7 +757,7 @@ export const payrollEnterpriseApi = {
     companyId: string,
     employeeId: string,
   ): Promise<PayrollActionResponse<EmployeeEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUsePayrollDemo(companyId)) {
       return payrollEnterpriseApi.updateEmployee(companyId, employeeId, {
         active: false,
         dismissalAt: currentIso(),
@@ -764,7 +775,7 @@ export const payrollEnterpriseApi = {
     companyId: string,
     params: PayrollQuery = {},
   ): Promise<PayrollsListResponse> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUsePayrollDemo(companyId)) {
       const store = readDemoStore(companyId);
       const filtered = filterPayrolls(store.payrolls, params);
       const items = paginate(filtered, params);
@@ -795,7 +806,7 @@ export const payrollEnterpriseApi = {
     companyId: string,
     payload: CreatePayrollPayload,
   ): Promise<PayrollActionResponse<PayrollEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUsePayrollDemo(companyId)) {
       const store = readDemoStore(companyId);
       const payroll: PayrollEnterpriseRecord = {
         id: `demo-payroll-${payload.year}-${payload.month}-${Date.now()}`,
@@ -836,7 +847,7 @@ export const payrollEnterpriseApi = {
     companyId: string,
     payload: GeneratePayrollPayload,
   ): Promise<PayrollActionResponse<PayrollEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUsePayrollDemo(companyId)) {
       const store = readDemoStore(companyId);
       const activeEmployees = store.employees.filter(
         (employee) => employee.active && !employee.deletedAt,
@@ -925,7 +936,7 @@ export const payrollEnterpriseApi = {
     companyId: string,
     params: PayrollQuery = {},
   ): Promise<PayrollEntriesListResponse> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUsePayrollDemo(companyId)) {
       const store = readDemoStore(companyId);
       const filtered = filterEntries(store.entries, params);
       const items = paginate(filtered, params);
@@ -956,7 +967,7 @@ export const payrollEnterpriseApi = {
     companyId: string,
     payload: CreatePayrollEntryPayload,
   ): Promise<PayrollActionResponse<PayrollEntryEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUsePayrollDemo(companyId)) {
       const store = readDemoStore(companyId);
       const employee = store.employees.find((item) => item.id === payload.employeeId);
       const payroll = store.payrolls.find((item) => item.id === payload.payrollId);
@@ -1015,7 +1026,7 @@ export const payrollEnterpriseApi = {
     payrollEntryId: string,
     payload: UpdatePayrollEntryPayload,
   ): Promise<PayrollActionResponse<PayrollEntryEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUsePayrollDemo(companyId)) {
       const store = readDemoStore(companyId);
       const index = store.entries.findIndex((item) => item.id === payrollEntryId);
       const current = store.entries[index];
@@ -1069,7 +1080,7 @@ export const payrollEnterpriseApi = {
     module: 'employees' | 'payrolls' | 'payroll-entries',
     params: Record<string, unknown> = {},
   ): Promise<AuditLogListResponse> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUsePayrollDemo(companyId)) {
       const store = readDemoStore(companyId);
       const filtered = store.audits.filter((item) => item.module === module);
       const limit = Number(params.limit || 30);

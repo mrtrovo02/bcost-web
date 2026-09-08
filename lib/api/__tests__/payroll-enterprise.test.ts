@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { api } from '@/services/api';
+import { api, isDemoSession } from '@/services/api';
 import { payrollEnterpriseApi } from '../payroll-enterprise';
 
 vi.mock('@/services/api', () => ({
@@ -8,9 +8,15 @@ vi.mock('@/services/api', () => ({
     post: vi.fn(),
     patch: vi.fn(),
   },
+  isDemoSession: vi.fn(() => false),
 }));
 
 vi.mock('@/lib/config/demo-policy', () => ({
+  assertOperationalDemoFallbackEnabled: vi.fn((message?: string) => {
+    if (process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK === 'false') {
+      throw new Error(message || 'Fallback demonstrativo desabilitado.');
+    }
+  }),
   isDemoEntityId: (value?: string | null) =>
     typeof value === 'string' && value.toLowerCase().startsWith('demo-'),
 }));
@@ -18,14 +24,20 @@ vi.mock('@/lib/config/demo-policy', () => ({
 const apiGetMock = vi.mocked(api.get);
 const apiPostMock = vi.mocked(api.post);
 const apiPatchMock = vi.mocked(api.patch);
+const isDemoSessionMock = vi.mocked(isDemoSession);
 
 describe('payrollEnterpriseApi demo mode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'false';
+    isDemoSessionMock.mockReturnValue(false);
     window.localStorage.clear();
   });
 
   it('serves summary and lists from the local demo store without calling the backend', async () => {
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'true';
+    isDemoSessionMock.mockReturnValue(true);
+
     const [summary, employees, payrolls, entries] = await Promise.all([
       payrollEnterpriseApi.summary('demo-001'),
       payrollEnterpriseApi.listEmployees('demo-001'),
@@ -42,6 +54,9 @@ describe('payrollEnterpriseApi demo mode', () => {
   });
 
   it('keeps demo create and generate actions local to avoid protected production endpoints', async () => {
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'true';
+    isDemoSessionMock.mockReturnValue(true);
+
     const employeeResponse = await payrollEnterpriseApi.createEmployee('demo-001', {
       name: 'Novo Analista Demo',
       cpf: '111.222.333-44',
@@ -62,6 +77,27 @@ describe('payrollEnterpriseApi demo mode', () => {
     expect(payrollResponse.entries?.length).toBeGreaterThan(0);
     expect(apiPostMock).not.toHaveBeenCalled();
     expect(apiPatchMock).not.toHaveBeenCalled();
+  });
+
+  it('blocks stale demo company ids outside explicit demo sessions', async () => {
+    await expect(payrollEnterpriseApi.summary('demo-001')).rejects.toThrow(
+      'Folha demonstrativa indisponivel e fallback demonstrativo desabilitado neste ambiente.',
+    );
+
+    await expect(
+      payrollEnterpriseApi.createEmployee('demo-001', {
+        name: 'Demo bloqueado',
+        cpf: '111.222.333-44',
+        admissionAt: '2026-08-01T00:00:00.000Z',
+        role: 'Analista',
+        baseSalary: 4300,
+      }),
+    ).rejects.toThrow(
+      'Folha demonstrativa indisponivel e fallback demonstrativo desabilitado neste ambiente.',
+    );
+
+    expect(apiGetMock).not.toHaveBeenCalled();
+    expect(apiPostMock).not.toHaveBeenCalled();
   });
 
   it('keeps real companies on backend payroll endpoints', async () => {

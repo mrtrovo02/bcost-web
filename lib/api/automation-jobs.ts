@@ -1,7 +1,7 @@
 'use strict';
 
-import { api } from '@/services/api';
-import { isDemoEntityId } from '@/lib/config/demo-policy';
+import { api, isDemoSession } from '@/services/api';
+import { assertOperationalDemoFallbackEnabled, isDemoEntityId } from '@/lib/config/demo-policy';
 import { createDemoEnterpriseResponse } from './enterprise-demo';
 
 export type AutomationJobStatus =
@@ -107,24 +107,79 @@ export type AuditLogListResponse = {
 
 function demoAutomationResponse(companyId: string, params: AutomationJobsQuery = {}) {
   const demo = createDemoEnterpriseResponse('automation-jobs', companyId, params);
+  const items =
+    demo.items.length > 0
+      ? (demo.items as AutomationJobRecord[])
+      : createLocalDemoAutomationJobs(companyId);
 
   return {
     status: demo.status,
     module: 'automation-jobs',
     model: 'AutomationJob',
     companyId,
-    items: demo.items as AutomationJobRecord[],
-    total: demo.total,
+    items,
+    total: items.length,
     limit: demo.limit,
     offset: demo.offset,
-    hasMore: demo.hasMore,
+    hasMore: demo.hasMore && demo.items.length > 0,
     summary: demo.summary,
     generatedAt: demo.generatedAt,
   } satisfies AutomationJobsListResponse;
 }
 
+function createLocalDemoAutomationJobs(companyId: string): AutomationJobRecord[] {
+  const generatedAt = new Date().toISOString();
+
+  return [
+    {
+      id: 'job-001',
+      companyId,
+      name: 'Importacao XML e classificacao fiscal',
+      type: 'XML_IMPORT',
+      status: 'COMPLETED',
+      progress: 100,
+      result: { imported: 128, classified: 126, pendingReview: 2 },
+      createdAt: generatedAt,
+      updatedAt: generatedAt,
+    },
+    {
+      id: 'job-002',
+      companyId,
+      name: 'Conciliacao bancaria assistida',
+      type: 'BANK_RECONCILIATION',
+      status: 'RUNNING',
+      progress: 72,
+      result: { matched: 84, pending: 19 },
+      createdAt: generatedAt,
+      updatedAt: generatedAt,
+    },
+    {
+      id: 'job-003',
+      companyId,
+      name: 'Agenda de obrigacoes fiscais',
+      type: 'COMPLIANCE_CALENDAR',
+      status: 'QUEUED',
+      progress: 0,
+      result: null,
+      createdAt: generatedAt,
+      updatedAt: generatedAt,
+    },
+  ];
+}
+
 function shouldUseAutomationDemo(companyId: string): boolean {
-  return isDemoEntityId(companyId);
+  if (!isDemoEntityId(companyId)) return false;
+
+  const message =
+    'Automacoes demonstrativas indisponiveis e fallback demonstrativo desabilitado neste ambiente.';
+
+  if (!isDemoSession()) {
+    throw new Error(message);
+  }
+
+  assertOperationalDemoFallbackEnabled(message);
+
+  return true;
 }
 
 function isDemoAutomationJobId(jobId: string): boolean {
@@ -200,19 +255,11 @@ export const automationJobsApi = {
       return demoAutomationResponse(companyId, params);
     }
 
-    try {
-      const response = await api.get<AutomationJobsListResponse>(
-        `/automation/jobs/${companyId}${query}`,
-      );
+    const response = await api.get<AutomationJobsListResponse>(
+      `/automation/jobs/${companyId}${query}`,
+    );
 
-      return response.data;
-    } catch (error) {
-      if (isDemoEntityId(companyId)) {
-        return demoAutomationResponse(companyId, params);
-      }
-
-      throw error;
-    }
+    return response.data;
   },
 
   detail: async (companyId: string, jobId: string): Promise<AutomationJobDetailResponse> => {
@@ -230,29 +277,11 @@ export const automationJobsApi = {
       };
     }
 
-    try {
-      const response = await api.get<AutomationJobDetailResponse>(
-        `/automation/jobs/${companyId}/${jobId}`,
-      );
+    const response = await api.get<AutomationJobDetailResponse>(
+      `/automation/jobs/${companyId}/${jobId}`,
+    );
 
-      return response.data;
-    } catch (error) {
-      if (!isDemoEntityId(companyId)) {
-        throw error;
-      }
-
-      const demo = demoAutomationResponse(companyId);
-      const job = demo.items.find((item) => item.id === jobId) || demo.items[0];
-
-      return {
-        status: 'OK_DEMO',
-        module: 'automation-jobs',
-        model: 'AutomationJob',
-        companyId,
-        job,
-        generatedAt: new Date().toISOString(),
-      };
-    }
+    return response.data;
   },
 
   retry: async (companyId: string, jobId: string): Promise<AutomationJobActionResponse> => {
@@ -299,11 +328,7 @@ export const automationJobsApi = {
       ...params,
     });
 
-    try {
-      const response = await api.get<AuditLogListResponse>(`/audit/${companyId}${query}`);
-
-      return response.data;
-    } catch {
+    if (shouldUseAutomationDemo(companyId)) {
       return {
         items: [],
         total: 0,
@@ -312,5 +337,9 @@ export const automationJobsApi = {
         generatedAt: new Date().toISOString(),
       };
     }
+
+    const response = await api.get<AuditLogListResponse>(`/audit/${companyId}${query}`);
+
+    return response.data;
   },
 };

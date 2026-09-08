@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { api } from '@/services/api';
+import { api, isDemoSession } from '@/services/api';
 import { obligationsApi } from '../obligations';
 
 vi.mock('@/services/api', () => ({
@@ -8,9 +8,15 @@ vi.mock('@/services/api', () => ({
     post: vi.fn(),
     patch: vi.fn(),
   },
+  isDemoSession: vi.fn(() => false),
 }));
 
 vi.mock('@/lib/config/demo-policy', () => ({
+  assertOperationalDemoFallbackEnabled: vi.fn((message?: string) => {
+    if (process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK === 'false') {
+      throw new Error(message || 'Fallback demonstrativo desabilitado.');
+    }
+  }),
   isDemoEntityId: (value?: string | null) =>
     typeof value === 'string' && value.toLowerCase().startsWith('demo-'),
 }));
@@ -18,14 +24,20 @@ vi.mock('@/lib/config/demo-policy', () => ({
 const apiGetMock = vi.mocked(api.get);
 const apiPostMock = vi.mocked(api.post);
 const apiPatchMock = vi.mocked(api.patch);
+const isDemoSessionMock = vi.mocked(isDemoSession);
 
 describe('obligationsApi demo mode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'false';
+    isDemoSessionMock.mockReturnValue(false);
     window.localStorage.clear();
   });
 
   it('serves fiscal and tax obligations locally for demo companies', async () => {
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'true';
+    isDemoSessionMock.mockReturnValue(true);
+
     const [tax, fiscal] = await Promise.all([
       obligationsApi.listTax('demo-001'),
       obligationsApi.listFiscal('demo-001'),
@@ -39,6 +51,9 @@ describe('obligationsApi demo mode', () => {
   });
 
   it('keeps create, payment and evidence actions local in demo mode', async () => {
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'true';
+    isDemoSessionMock.mockReturnValue(true);
+
     const created = await obligationsApi.createTax('demo-001', {
       name: 'DAS Demo',
       dueDate: '2026-08-20T23:59:59.000Z',
@@ -63,6 +78,9 @@ describe('obligationsApi demo mode', () => {
   });
 
   it('keeps fiscal workflow actions local in demo mode', async () => {
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'true';
+    isDemoSessionMock.mockReturnValue(true);
+
     const created = await obligationsApi.createFiscal('demo-001', {
       type: 'DCTF',
       referenceMonth: 8,
@@ -79,6 +97,26 @@ describe('obligationsApi demo mode', () => {
 
     expect(submitted.item?.status).toBe('SUBMITTED');
     expect(accepted.item?.status).toBe('ACCEPTED');
+    expect(apiPostMock).not.toHaveBeenCalled();
+  });
+
+  it('blocks stale demo company ids outside explicit demo sessions', async () => {
+    await expect(obligationsApi.listTax('demo-001')).rejects.toThrow(
+      'Obrigacoes demonstrativas indisponiveis e fallback demonstrativo desabilitado neste ambiente.',
+    );
+
+    await expect(
+      obligationsApi.createFiscal('demo-001', {
+        type: 'DCTF',
+        referenceMonth: 8,
+        referenceYear: 2026,
+        dueDate: '2026-09-15T23:59:59.000Z',
+      }),
+    ).rejects.toThrow(
+      'Obrigacoes demonstrativas indisponiveis e fallback demonstrativo desabilitado neste ambiente.',
+    );
+
+    expect(apiGetMock).not.toHaveBeenCalled();
     expect(apiPostMock).not.toHaveBeenCalled();
   });
 
