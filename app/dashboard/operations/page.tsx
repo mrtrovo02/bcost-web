@@ -26,6 +26,7 @@ import {
   type ManagementCockpitResponse,
 } from '@/lib/api/management-cockpit';
 import { isDemoSession } from '@/services/api';
+import { assertOperationalDemoFallbackEnabled, isDemoEntityId } from '@/lib/config/demo-policy';
 
 const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
@@ -40,14 +41,24 @@ export default function OperationsPage() {
     setError(null);
 
     try {
-      if (isDemoSession()) {
+      const canUseDemoOperations = Boolean(
+        selectedCompany?.id && isDemoSession() && isDemoEntityId(selectedCompany.id),
+      );
+
+      if (canUseDemoOperations) {
+        assertOperationalDemoFallbackEnabled(
+          'Controladoria demonstrativa desabilitada neste ambiente.',
+        );
         setData(getDemoManagementCockpit(selectedCompany?.name));
         return;
       }
 
       setData(await getManagementCockpit());
     } catch (err) {
-      if (isDemoSession()) {
+      if (selectedCompany?.id && isDemoSession() && isDemoEntityId(selectedCompany.id)) {
+        assertOperationalDemoFallbackEnabled(
+          'Controladoria demonstrativa desabilitada neste ambiente.',
+        );
         setData(getDemoManagementCockpit(selectedCompany?.name));
         setError(err instanceof Error ? err.message : 'API indisponível; exibindo leitura local.');
         return;
@@ -62,7 +73,7 @@ export default function OperationsPage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedCompany?.name]);
+  }, [selectedCompany?.id, selectedCompany?.name]);
 
   useEffect(() => {
     loadData();

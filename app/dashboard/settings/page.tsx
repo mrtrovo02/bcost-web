@@ -106,7 +106,7 @@ function hasBillableSubscription(
 function BillingSection() {
   const { selectedCompany } = useCompany();
   const isDemoBillingContext = Boolean(
-    selectedCompany?.id && (isDemoEntityId(selectedCompany.id) || isDemoSession()),
+    selectedCompany?.id && isDemoSession() && isDemoEntityId(selectedCompany.id),
   );
   const [plans, setPlans] = useState<BillingPlan[]>([]);
   const [entitlements, setEntitlements] = useState<BillingEntitlementsResponse | null>(null);

@@ -6,6 +6,8 @@ import { RevenueStats } from '../../../lib/types/global';
 import { AlertCircle, TrendingUp, Users, Target, DollarSign, ArrowUpRight, BarChart3 } from 'lucide-react';
 import SplitPaymentProjector from '@/components/split-payment/SplitPaymentProjector';
 import { isDemoSession } from '@/services/api';
+import { useCompany } from '@/app/context/CompanyContext';
+import { assertOperationalDemoFallbackEnabled, isDemoEntityId } from '@/lib/config/demo-policy';
 
 function readCompanyRevenue(): number {
   if (typeof window === 'undefined') return 150000;
@@ -19,6 +21,7 @@ function readCompanyRevenue(): number {
 }
 
 export default function RevenuePage() {
+  const { selectedCompany } = useCompany();
   const [stats, setStats] = useState<RevenueStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [faturamento, setFaturamento] = useState(150000);
@@ -31,7 +34,14 @@ export default function RevenuePage() {
       try {
         setLoading(true);
         setError(null);
-        if (isDemoSession()) {
+        const canUseDemoRevenue = Boolean(
+          selectedCompany?.id && isDemoSession() && isDemoEntityId(selectedCompany.id),
+        );
+
+        if (canUseDemoRevenue) {
+          assertOperationalDemoFallbackEnabled(
+            'Revenue demonstrativo desabilitado neste ambiente.',
+          );
           setStats({
             totalRevenue: 830000,
             projectedRevenue: 980000,
@@ -59,7 +69,7 @@ export default function RevenuePage() {
       }
     };
     loadRevenueData();
-  }, []);
+  }, [selectedCompany?.id]);
 
   if (loading)
     return (
