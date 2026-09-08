@@ -13,6 +13,7 @@ import { MonthlyPerformance } from '@/lib/types/fiscal';
 import { CBS_IBS_TRANSITION } from '@/lib/tax-reform/official-data';
 import { buildDashboardPdfCanvasOptions } from '@/lib/export/html2canvas-options';
 import { FiscalModuleFactory } from '@/shared/factories/fiscal-factory.shared';
+import { assertOperationalDemoFallbackEnabled, isDemoEntityId } from '@/lib/config/demo-policy';
 import {
   TrendingUp,
   Download,
@@ -74,7 +75,10 @@ export default function DashboardPage() {
     setOperationalError(null);
 
     try {
-      if (isDemoSession()) {
+      if (isDemoSession() && isDemoEntityId(companyId)) {
+        assertOperationalDemoFallbackEnabled(
+          'Intelligence demonstrativo desabilitado neste ambiente.',
+        );
         const demoData = getDemoFiscalData(selectedCompany?.name || '');
         const totalRevenue = demoData.evolucao.reduce((sum, item) => sum + item.faturamento, 0);
         setData({

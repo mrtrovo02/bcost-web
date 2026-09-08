@@ -70,7 +70,7 @@ describe('enterpriseUniversalApi', () => {
   });
 
   it('serves catalog and commercial lanes locally during demo sessions', async () => {
-    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'false';
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'true';
     isDemoSessionMock.mockReturnValue(true);
 
     const [catalog, lanes] = await Promise.all([
@@ -312,8 +312,9 @@ describe('enterpriseUniversalApi', () => {
     );
   });
 
-  it('serves explicit demo company modules locally even when global fallback is disabled', async () => {
-    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'false';
+  it('serves explicit demo company modules locally during explicit demo sessions', async () => {
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'true';
+    isDemoSessionMock.mockReturnValue(true);
 
     const [catalogModule, summary, health] = await Promise.all([
       enterpriseUniversalApi.getModule('users', 'demo-001'),
@@ -334,7 +335,8 @@ describe('enterpriseUniversalApi', () => {
   });
 
   it('serves regulated roadmap modules without fake operational records in demo mode', async () => {
-    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'false';
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'true';
+    isDemoSessionMock.mockReturnValue(true);
 
     const [bankingProducts, balanceSheet, operationalWorkflows, taxScenarios] = await Promise.all([
       enterpriseUniversalApi.getModule('banking-products', 'demo-001'),

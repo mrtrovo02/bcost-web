@@ -211,7 +211,7 @@ export function getStoredCompanyId(): string | null {
 }
 
 function assertEnterpriseModuleDemoAllowed(companyId: string, message: string): void {
-  if (!isDemoEntityId(companyId)) {
+  if (!isDemoSession() || !isDemoEntityId(companyId)) {
     throw new Error(message);
   }
 
@@ -351,6 +351,9 @@ export const enterpriseUniversalApi = {
     const now = Date.now();
 
     if (isDemoSession()) {
+      assertOperationalDemoFallbackEnabled(
+        'Catalogo enterprise demonstrativo desabilitado neste ambiente.',
+      );
       return createDemoEnterpriseCatalog();
     }
 
@@ -408,6 +411,9 @@ export const enterpriseUniversalApi = {
     const now = Date.now();
 
     if (isDemoSession()) {
+      assertOperationalDemoFallbackEnabled(
+        'Trilhas comerciais enterprise demonstrativas desabilitadas neste ambiente.',
+      );
       return createEnterpriseCommercialLanesFromCatalog(createDemoEnterpriseCatalog());
     }
 
@@ -465,7 +471,10 @@ export const enterpriseUniversalApi = {
       to?: string;
     },
   ): Promise<EnterpriseModuleResponse> {
-    if (isDemoEntityId(companyId)) {
+    if (isDemoSession() && isDemoEntityId(companyId)) {
+      assertOperationalDemoFallbackEnabled(
+        'Modulo enterprise demonstrativo desabilitado neste ambiente.',
+      );
       return createDemoEnterpriseResponse(slug, companyId, params);
     }
 
@@ -514,7 +523,10 @@ export const enterpriseUniversalApi = {
   },
 
   async summary(slug: string, companyId: string) {
-    if (isDemoEntityId(companyId)) {
+    if (isDemoSession() && isDemoEntityId(companyId)) {
+      assertOperationalDemoFallbackEnabled(
+        'Resumo enterprise demonstrativo desabilitado neste ambiente.',
+      );
       return createDemoEnterpriseResponse(slug, companyId).summary;
     }
 
@@ -532,7 +544,10 @@ export const enterpriseUniversalApi = {
   },
 
   async health(slug: string, companyId: string) {
-    if (isDemoEntityId(companyId)) {
+    if (isDemoSession() && isDemoEntityId(companyId)) {
+      assertOperationalDemoFallbackEnabled(
+        'Health enterprise demonstrativo desabilitado neste ambiente.',
+      );
       return {
         slug,
         companyId,
