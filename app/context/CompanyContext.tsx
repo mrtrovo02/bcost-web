@@ -64,6 +64,27 @@ function removeDemoCompanies(companies: Company[]): Company[] {
   return companies.filter((company) => !isDemoEntityId(company.id));
 }
 
+function readCompaniesFromStoredUser(): Company[] {
+  for (const key of ['bcost_user', 'user', 'auth_user']) {
+    const payload = safeJsonParse<unknown>(safeLocalStorageGet(key), null);
+    const companies = normalizeCompanyPayload(payload) as Company[];
+
+    if (companies.length > 0) {
+      return companies;
+    }
+  }
+
+  return [];
+}
+
+function readStoredCompanies(): Company[] {
+  const directCompanies = normalizeCompanyPayload(
+    safeJsonParse<unknown>(safeLocalStorageGet('bcost_companies'), []),
+  ) as Company[];
+
+  return directCompanies.length > 0 ? directCompanies : readCompaniesFromStoredUser();
+}
+
 function persistCompaniesForSession(companies: Company[], isDemo: boolean): Company[] {
   const normalizedCompanies = normalizeCompanyPayload(companies) as Company[];
   const sanitizedCompanies = isDemo ? normalizedCompanies : removeDemoCompanies(normalizedCompanies);
@@ -96,12 +117,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       try {
         const saved = safeLocalStorageGet('bcost_active_company_data');
         const savedId = getActiveCompanyId();
-        const rawStoredCompanies = normalizeCompanyPayload(
-          safeJsonParse<unknown>(
-            safeLocalStorageGet('bcost_companies'),
-            [],
-          ),
-        ) as Company[];
+        const rawStoredCompanies = readStoredCompanies();
         const isDemo = detectDemoSession();
         const storedCompanies = persistCompaniesForSession(rawStoredCompanies, isDemo);
 
@@ -184,7 +200,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     const handleCompanyContextUpdated = (event: Event) => {
       const { companyId, companies: eventCompanies = [] } =
         (event as CompanyContextUpdateEvent).detail ?? {};
-      const storedCompanies = safeJsonParse<Company[]>(safeLocalStorageGet('bcost_companies'), []);
+      const storedCompanies = readStoredCompanies();
       const isDemo = detectDemoSession();
       const rawNextCompanies = eventCompanies.length > 0 ? eventCompanies : storedCompanies;
       const nextCompanies = persistCompaniesForSession(rawNextCompanies, isDemo);
@@ -214,9 +230,11 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     };
 
     window.addEventListener('bcost:company-context-updated', handleCompanyContextUpdated);
+    window.addEventListener('bcost:user-session-updated', handleCompanyContextUpdated);
 
     return () => {
       window.removeEventListener('bcost:company-context-updated', handleCompanyContextUpdated);
+      window.removeEventListener('bcost:user-session-updated', handleCompanyContextUpdated);
     };
   }, []);
 

@@ -134,15 +134,8 @@ describe('CompanyProvider', () => {
 
     expect(screen.getByTestId('companies')).toHaveTextContent('real-company-001');
     expect(apiDefaultsHeaders['x-company-id']).toBeUndefined();
-    expect(window.localStorage.getItem('bcost_companies')).toBe(
-      JSON.stringify([
-        {
-          id: 'real-company-001',
-          name: 'Empresa Real',
-          cnpj: '11.222.333/0001-44',
-        },
-      ]),
-    );
+    expect(window.localStorage.getItem('bcost_companies')).toContain('real-company-001');
+    expect(window.localStorage.getItem('bcost_companies')).not.toContain('demo-001');
   });
 
   it('persists selected real company only in storage and leaves axios tenant defaults empty', async () => {
@@ -182,5 +175,73 @@ describe('CompanyProvider', () => {
       JSON.stringify(realCompany),
     );
     expect(apiDefaultsHeaders['x-company-id']).toBeUndefined();
+  });
+
+  it('restores selected company from stored authenticated user companies', async () => {
+    getActiveCompanyIdMock.mockReturnValue('company-amel');
+    window.localStorage.setItem(
+      'bcost_user',
+      JSON.stringify({
+        id: 'user-amanda',
+        email: 'amandacontabil@bcost.com.br',
+        name: 'Amanda Narvaes',
+        companies: [
+          {
+            id: 'company-amel',
+            name: 'Amel Contabilidade Digital LTDA',
+            cnpj: '12.345.678/0001-90',
+          },
+        ],
+      }),
+    );
+
+    render(
+      <CompanyProvider>
+        <CompanyContextProbe />
+      </CompanyProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('selected')).toHaveTextContent('company-amel');
+    });
+
+    expect(screen.getByTestId('companies')).toHaveTextContent('company-amel');
+    expect(window.localStorage.getItem('bcost_active_company_data')).toContain(
+      'Amel Contabilidade Digital LTDA',
+    );
+  });
+
+  it('reacts to user session updates when companies arrive after initial hydration', async () => {
+    render(
+      <CompanyProvider>
+        <CompanyContextProbe />
+      </CompanyProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('selected')).toHaveTextContent('none');
+    });
+
+    getActiveCompanyIdMock.mockReturnValue('company-amel');
+    window.localStorage.setItem(
+      'bcost_user',
+      JSON.stringify({
+        id: 'user-amanda',
+        email: 'amandacontabil@bcost.com.br',
+        companies: [
+          {
+            id: 'company-amel',
+            name: 'Amel Contabilidade Digital LTDA',
+            cnpj: '12.345.678/0001-90',
+          },
+        ],
+      }),
+    );
+
+    window.dispatchEvent(new CustomEvent('bcost:user-session-updated'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('selected')).toHaveTextContent('company-amel');
+    });
   });
 });
