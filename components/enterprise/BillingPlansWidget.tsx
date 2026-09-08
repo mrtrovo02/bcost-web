@@ -35,7 +35,7 @@ import {
   type PaymentSubscriptionResponse,
   type PaymentSubscriptionStatus,
 } from '@/lib/api/payments';
-import { getToken } from '@/services/api';
+import { getToken, isDemoSession } from '@/services/api';
 
 type UiMessage = {
   type: 'success' | 'warning' | 'error' | 'info';
@@ -58,6 +58,10 @@ function hasBillableSubscription(
   subscription: PaymentSubscriptionResponse['subscription'],
 ): boolean {
   return Boolean(subscription?.status && BILLABLE_SUBSCRIPTION_STATUSES.has(subscription.status));
+}
+
+function canUseBillingDemoFallback(companyId?: string): boolean {
+  return Boolean(companyId && isDemoSession() && isDemoEntityId(companyId));
 }
 
 async function resolveCompanyId(): Promise<string> {
@@ -357,7 +361,11 @@ export default function BillingPlansWidget() {
         });
       }
     } catch (error) {
-      if (hasRealAuthToken() || !isOperationalDemoFallbackEnabled()) {
+      if (
+        hasRealAuthToken() ||
+        !canUseBillingDemoFallback(companyId) ||
+        !isOperationalDemoFallbackEnabled()
+      ) {
         setPlans([]);
         setEntitlements(null);
         setSubscription(null);
@@ -373,7 +381,7 @@ export default function BillingPlansWidget() {
       }
 
       const fallbackCompany = {
-        id: isDemoEntityId(companyId) ? companyId : 'demo-001',
+        id: companyId,
         name: 'Empresa Demo',
       };
       setCompanyId(fallbackCompany.id);
@@ -419,6 +427,16 @@ export default function BillingPlansWidget() {
       setMessage(null);
 
       try {
+        if (isDemoEntityId(companyId) && !canUseBillingDemoFallback(companyId)) {
+          setMessage({
+            type: 'error',
+            title: 'Billing demonstrativo bloqueado',
+            description:
+              'A empresa demonstrativa só pode alterar plano dentro de uma sessão demo explícita.',
+          });
+          return;
+        }
+
         if (hasRealAuthToken() && !isDemoEntityId(companyId) && planLevel !== 'FREE') {
           const origin = typeof window !== 'undefined' ? window.location.origin : '';
 

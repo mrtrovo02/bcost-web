@@ -11,7 +11,11 @@ import {
   getSchemaModuleBySlug,
 } from '@/lib/product/schema-modules';
 import { createDemoEnterprisePayload } from '@/lib/api/enterprise-demo';
-import { assertOperationalDemoFallbackEnabled, isDemoEntityId } from '@/lib/config/demo-policy';
+import {
+  DemoFallbackDisabledError,
+  assertOperationalDemoFallbackEnabled,
+  isDemoEntityId,
+} from '@/lib/config/demo-policy';
 
 export type EnterpriseEndpointStrategy = {
   slug: string;
@@ -49,9 +53,14 @@ async function resolveCompanyId(input?: string | null): Promise<string | null> {
 }
 
 function assertEnterpriseDemoPayloadAllowed(companyId: string | null): void {
-  if (isDemoSession() || isDemoEntityId(companyId)) return;
+  if (companyId && isDemoSession() && isDemoEntityId(companyId)) {
+    assertOperationalDemoFallbackEnabled(
+      'Módulo enterprise demonstrativo desabilitado neste ambiente.',
+    );
+    return;
+  }
 
-  assertOperationalDemoFallbackEnabled(
+  throw new DemoFallbackDisabledError(
     'Módulo enterprise indisponível e fallback demonstrativo desabilitado neste ambiente.',
   );
 }

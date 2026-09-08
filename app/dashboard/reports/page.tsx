@@ -12,7 +12,7 @@ import type {
 import { formatCurrency } from '@/lib/formatters';
 import { isDemoSession } from '@/services/api';
 import { useCompany } from '@/app/context/CompanyContext';
-import { isDemoEntityId } from '@/lib/config/demo-policy';
+import { assertOperationalDemoFallbackEnabled, isDemoEntityId } from '@/lib/config/demo-policy';
 
 // ---------------------------------------------------------------------------
 // Tipos e helpers
@@ -672,7 +672,9 @@ export default function ReportsPage() {
   const [razaoData, setRazaoData] = useState<RazaoContabilResult | null>(null);
 
   const companyId = selectedCompany?.id ?? '';
-  const isDemoReportContext = Boolean(companyId && (isDemoEntityId(companyId) || isDemoSession()));
+  const isDemoReportContext = Boolean(
+    companyId && isDemoSession() && isDemoEntityId(companyId),
+  );
 
   const fetchReport = useCallback(async () => {
     setLoading(true);
@@ -689,6 +691,9 @@ export default function ReportsPage() {
       }
 
       if (isDemoReportContext) {
+        assertOperationalDemoFallbackEnabled(
+          'Relatórios contábeis demonstrativos desabilitados neste ambiente.',
+        );
         await new Promise((r) => setTimeout(r, 600));
         if (tab === 'dre') setDreData(getDemoDRE(ano, mes));
         if (tab === 'balanco') setBalancoData(getDemoBalanco(ano));

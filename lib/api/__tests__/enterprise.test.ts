@@ -42,6 +42,8 @@ describe('enterpriseApi legacy module resolver', () => {
   });
 
   it('keeps explicit demo company modules local when endpoint fails', async () => {
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'true';
+    isDemoSessionMock.mockReturnValue(true);
     apiGetMock.mockRejectedValueOnce({ response: { status: 404 } });
 
     const payload = await enterpriseApi.getModuleData('companies', 'demo-001');
@@ -51,14 +53,15 @@ describe('enterpriseApi legacy module resolver', () => {
     expect(payload.records.length).toBeGreaterThan(0);
   });
 
-  it('allows operational fallback when explicitly enabled', async () => {
+  it('blocks operational fallback for real companies even when explicitly enabled', async () => {
     process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'true';
     apiGetMock.mockRejectedValueOnce({ response: { status: 503 } });
 
-    const payload = await enterpriseApi.getModuleData('companies', 'company-real-001');
-
-    expect(payload.connected).toBe(false);
-    expect(payload.raw).toMatchObject({ fallback: true });
+    await expect(
+      enterpriseApi.getModuleData('companies', 'company-real-001'),
+    ).rejects.toMatchObject({
+      code: 'DEMO_FALLBACK_DISABLED',
+    });
   });
 
   it('returns real API payloads without fallback when the endpoint responds', async () => {
