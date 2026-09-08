@@ -1,7 +1,7 @@
 'use strict';
 
-import { api } from '@/services/api';
-import { isDemoEntityId } from '@/lib/config/demo-policy';
+import { api, isDemoSession } from '@/services/api';
+import { assertOperationalDemoFallbackEnabled, isDemoEntityId } from '@/lib/config/demo-policy';
 
 export type ComplianceSeverity = 'INFO' | 'WARNING' | 'CRITICAL';
 export type ComplianceStatus = 'OPEN' | 'RESOLVED' | 'IGNORED' | 'IN_PROGRESS';
@@ -197,8 +197,19 @@ type DemoComplianceStore = {
 
 const DEMO_STORE_VERSION = 'v1';
 
-function isDemoCompany(companyId: string): boolean {
-  return isDemoEntityId(companyId);
+function shouldUseComplianceDemo(companyId: string): boolean {
+  if (!isDemoEntityId(companyId)) return false;
+
+  const message =
+    'Compliance demonstrativo indisponivel e fallback demonstrativo desabilitado neste ambiente.';
+
+  if (!isDemoSession()) {
+    throw new Error(message);
+  }
+
+  assertOperationalDemoFallbackEnabled(message);
+
+  return true;
 }
 
 function nowIso(): string {
@@ -504,7 +515,7 @@ function updateCheckStatus(
 
 export const complianceEnterpriseApi = {
   summary: async (companyId: string): Promise<ComplianceEnterpriseSummaryResponse> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseComplianceDemo(companyId)) {
       const store = readStore(companyId);
       return {
         status: 'success',
@@ -527,7 +538,7 @@ export const complianceEnterpriseApi = {
     companyId: string,
     params: ComplianceQuery = {},
   ): Promise<BusinessRulesListResponse> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseComplianceDemo(companyId)) {
       const store = readStore(companyId);
       const filtered = filterRules(store.rules, params);
       const items = paginate(filtered, params);
@@ -557,7 +568,7 @@ export const complianceEnterpriseApi = {
     companyId: string,
     payload: CreateBusinessRulePayload,
   ): Promise<ComplianceActionResponse<BusinessRuleEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseComplianceDemo(companyId)) {
       const store = readStore(companyId);
       const item = makeRule(companyId, payload);
       store.rules.unshift(item);
@@ -593,7 +604,7 @@ export const complianceEnterpriseApi = {
     ruleId: string,
     payload: UpdateBusinessRulePayload,
   ): Promise<ComplianceActionResponse<BusinessRuleEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseComplianceDemo(companyId)) {
       const store = readStore(companyId);
       const index = store.rules.findIndex((rule) => rule.id === ruleId);
       const current = store.rules[index];
@@ -643,7 +654,7 @@ export const complianceEnterpriseApi = {
     companyId: string,
     ruleId: string,
   ): Promise<ComplianceActionResponse<BusinessRuleEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseComplianceDemo(companyId)) {
       return complianceEnterpriseApi.updateRule(companyId, ruleId, { enabled: true });
     }
 
@@ -658,7 +669,7 @@ export const complianceEnterpriseApi = {
     companyId: string,
     ruleId: string,
   ): Promise<ComplianceActionResponse<BusinessRuleEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseComplianceDemo(companyId)) {
       return complianceEnterpriseApi.updateRule(companyId, ruleId, { enabled: false });
     }
 
@@ -672,7 +683,7 @@ export const complianceEnterpriseApi = {
   createDefaultRules: async (
     companyId: string,
   ): Promise<ComplianceActionResponse<BusinessRuleEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseComplianceDemo(companyId)) {
       const store = readStore(companyId);
       const existingNames = new Set(store.rules.map((rule) => rule.name));
       const created: BusinessRuleEnterpriseRecord[] = [];
@@ -726,7 +737,7 @@ export const complianceEnterpriseApi = {
     companyId: string,
     params: ComplianceQuery = {},
   ): Promise<ComplianceChecksListResponse> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseComplianceDemo(companyId)) {
       const store = readStore(companyId);
       const filtered = filterChecks(store.checks, params);
       const items = paginate(filtered, params);
@@ -756,7 +767,7 @@ export const complianceEnterpriseApi = {
     companyId: string,
     payload: CreateComplianceCheckPayload,
   ): Promise<ComplianceActionResponse<ComplianceCheckEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseComplianceDemo(companyId)) {
       const store = readStore(companyId);
       const item = makeCheck(companyId, payload);
       store.checks.unshift(item);
@@ -793,7 +804,7 @@ export const complianceEnterpriseApi = {
     checkId: string,
     payload: UpdateComplianceCheckPayload,
   ): Promise<ComplianceActionResponse<ComplianceCheckEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseComplianceDemo(companyId)) {
       const store = readStore(companyId);
       const index = store.checks.findIndex((check) => check.id === checkId);
       const current = store.checks[index];
@@ -845,7 +856,7 @@ export const complianceEnterpriseApi = {
     companyId: string,
     checkId: string,
   ): Promise<ComplianceActionResponse<ComplianceCheckEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) return updateCheckStatus(companyId, checkId, 'IN_PROGRESS');
+    if (shouldUseComplianceDemo(companyId)) return updateCheckStatus(companyId, checkId, 'IN_PROGRESS');
 
     const response = await api.post<ComplianceActionResponse<ComplianceCheckEnterpriseRecord>>(
       `/compliance/enterprise/checks/${companyId}/${checkId}/in-progress`,
@@ -858,7 +869,7 @@ export const complianceEnterpriseApi = {
     companyId: string,
     checkId: string,
   ): Promise<ComplianceActionResponse<ComplianceCheckEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) return updateCheckStatus(companyId, checkId, 'RESOLVED');
+    if (shouldUseComplianceDemo(companyId)) return updateCheckStatus(companyId, checkId, 'RESOLVED');
 
     const response = await api.post<ComplianceActionResponse<ComplianceCheckEnterpriseRecord>>(
       `/compliance/enterprise/checks/${companyId}/${checkId}/resolve`,
@@ -871,7 +882,7 @@ export const complianceEnterpriseApi = {
     companyId: string,
     checkId: string,
   ): Promise<ComplianceActionResponse<ComplianceCheckEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) return updateCheckStatus(companyId, checkId, 'IGNORED');
+    if (shouldUseComplianceDemo(companyId)) return updateCheckStatus(companyId, checkId, 'IGNORED');
 
     const response = await api.post<ComplianceActionResponse<ComplianceCheckEnterpriseRecord>>(
       `/compliance/enterprise/checks/${companyId}/${checkId}/ignore`,
@@ -884,7 +895,7 @@ export const complianceEnterpriseApi = {
     companyId: string,
     checkId: string,
   ): Promise<ComplianceActionResponse<ComplianceCheckEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) return updateCheckStatus(companyId, checkId, 'OPEN');
+    if (shouldUseComplianceDemo(companyId)) return updateCheckStatus(companyId, checkId, 'OPEN');
 
     const response = await api.post<ComplianceActionResponse<ComplianceCheckEnterpriseRecord>>(
       `/compliance/enterprise/checks/${companyId}/${checkId}/reopen`,
@@ -897,7 +908,7 @@ export const complianceEnterpriseApi = {
     companyId: string,
     payload: RunComplianceEnginePayload,
   ): Promise<ComplianceActionResponse<ComplianceCheckEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseComplianceDemo(companyId)) {
       const store = readStore(companyId);
       const activeRules = store.rules.filter((rule) => rule.enabled);
       const findings = activeRules.map((rule) => ({
@@ -993,7 +1004,7 @@ export const complianceEnterpriseApi = {
     module: 'business-rules' | 'compliance-checks' | 'compliance-engine',
     params: Record<string, unknown> = {},
   ): Promise<AuditLogListResponse> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseComplianceDemo(companyId)) {
       const store = readStore(companyId);
       const limit = Number(params.limit || 30);
       const offset = Number(params.offset || 0);

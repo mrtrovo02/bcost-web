@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { api } from '@/services/api';
+import { api, isDemoSession } from '@/services/api';
 import { bankingEnterpriseApi } from '../banking-enterprise';
 
 vi.mock('@/services/api', () => ({
@@ -8,9 +8,15 @@ vi.mock('@/services/api', () => ({
     post: vi.fn(),
     patch: vi.fn(),
   },
+  isDemoSession: vi.fn(() => false),
 }));
 
 vi.mock('@/lib/config/demo-policy', () => ({
+  assertOperationalDemoFallbackEnabled: vi.fn((message?: string) => {
+    if (process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK === 'false') {
+      throw new Error(message || 'Fallback demonstrativo desabilitado.');
+    }
+  }),
   isDemoEntityId: (value?: string | null) =>
     typeof value === 'string' && value.toLowerCase().startsWith('demo-'),
 }));
@@ -18,14 +24,20 @@ vi.mock('@/lib/config/demo-policy', () => ({
 const apiGetMock = vi.mocked(api.get);
 const apiPostMock = vi.mocked(api.post);
 const apiPatchMock = vi.mocked(api.patch);
+const isDemoSessionMock = vi.mocked(isDemoSession);
 
 describe('bankingEnterpriseApi demo mode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'false';
+    isDemoSessionMock.mockReturnValue(false);
     window.localStorage.clear();
   });
 
   it('serves banking summary, accounts and transactions locally', async () => {
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'true';
+    isDemoSessionMock.mockReturnValue(true);
+
     const [summary, accounts, transactions] = await Promise.all([
       bankingEnterpriseApi.summary('demo-001'),
       bankingEnterpriseApi.listAccounts('demo-001'),
@@ -40,6 +52,9 @@ describe('bankingEnterpriseApi demo mode', () => {
   });
 
   it('keeps account and transaction writes local in demo mode', async () => {
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'true';
+    isDemoSessionMock.mockReturnValue(true);
+
     const account = await bankingEnterpriseApi.createAccount('demo-001', {
       bankName: 'Banco Demo',
       agency: '0001',
@@ -61,6 +76,9 @@ describe('bankingEnterpriseApi demo mode', () => {
   });
 
   it('keeps reconciliation workflow local in demo mode', async () => {
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'true';
+    isDemoSessionMock.mockReturnValue(true);
+
     const transactions = await bankingEnterpriseApi.listTransactions('demo-001', {
       reconciled: 'false',
     });
@@ -80,6 +98,26 @@ describe('bankingEnterpriseApi demo mode', () => {
     expect(undone.item?.reconciled).toBe(false);
     expect(apiPostMock).not.toHaveBeenCalled();
     expect(apiPatchMock).not.toHaveBeenCalled();
+  });
+
+  it('blocks stale demo company ids outside explicit demo sessions', async () => {
+    await expect(bankingEnterpriseApi.summary('demo-001')).rejects.toThrow(
+      'Banking demonstrativo indisponivel e fallback demonstrativo desabilitado neste ambiente.',
+    );
+
+    await expect(
+      bankingEnterpriseApi.createAccount('demo-001', {
+        bankName: 'Banco Demo',
+        agency: '0001',
+        account: '99999-9',
+        balanceCache: 1000,
+      }),
+    ).rejects.toThrow(
+      'Banking demonstrativo indisponivel e fallback demonstrativo desabilitado neste ambiente.',
+    );
+
+    expect(apiGetMock).not.toHaveBeenCalled();
+    expect(apiPostMock).not.toHaveBeenCalled();
   });
 
   it('keeps real companies on backend banking endpoints', async () => {

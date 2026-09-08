@@ -1,7 +1,7 @@
 'use strict';
 
-import { api } from '@/services/api';
-import { isDemoEntityId } from '@/lib/config/demo-policy';
+import { api, isDemoSession } from '@/services/api';
+import { assertOperationalDemoFallbackEnabled, isDemoEntityId } from '@/lib/config/demo-policy';
 
 export type AuditQualityStatus = 'HEALTHY' | 'ATTENTION' | 'CRITICAL';
 
@@ -146,8 +146,19 @@ function buildQuery(params?: AuditIntelligenceExecutiveQuery): string {
   return value ? `?${value}` : '';
 }
 
-function isDemoCompany(companyId: string): boolean {
-  return isDemoEntityId(companyId);
+function shouldUseAuditIntelligenceDemo(companyId: string): boolean {
+  if (!isDemoEntityId(companyId)) return false;
+
+  const message =
+    'Auditoria demonstrativa indisponivel e fallback demonstrativo desabilitado neste ambiente.';
+
+  if (!isDemoSession()) {
+    throw new Error(message);
+  }
+
+  assertOperationalDemoFallbackEnabled(message);
+
+  return true;
 }
 
 function nowIso(): string {
@@ -353,7 +364,7 @@ export const auditIntelligenceEnterpriseApi = {
     companyId: string,
     query: AuditIntelligenceExecutiveQuery = {},
   ): Promise<AuditIntelligenceExecutiveResponse> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseAuditIntelligenceDemo(companyId)) {
       return createDemoAuditIntelligenceResponse(companyId, query);
     }
 

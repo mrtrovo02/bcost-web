@@ -1,8 +1,8 @@
 'use strict';
 
-import { api } from '@/services/api';
+import { api, isDemoSession } from '@/services/api';
 import { createDemoEnterpriseCatalog } from '@/lib/api/enterprise-demo';
-import { isDemoEntityId } from '@/lib/config/demo-policy';
+import { assertOperationalDemoFallbackEnabled, isDemoEntityId } from '@/lib/config/demo-policy';
 
 export type ExecutiveStatus = 'HEALTHY' | 'ATTENTION' | 'CRITICAL' | 'UNAVAILABLE';
 
@@ -373,7 +373,18 @@ function createDemoCommandCenterSummary(companyId: string): CommandCenterSummary
 }
 
 function shouldUseCommandCenterFallback(companyId: string): boolean {
-  return isDemoEntityId(companyId);
+  if (!isDemoEntityId(companyId)) return false;
+
+  const message =
+    'Command Center demonstrativo indisponivel e fallback demonstrativo desabilitado neste ambiente.';
+
+  if (!isDemoSession()) {
+    throw new Error(message);
+  }
+
+  assertOperationalDemoFallbackEnabled(message);
+
+  return true;
 }
 
 export const commandCenterEnterpriseApi = {
@@ -385,19 +396,11 @@ export const commandCenterEnterpriseApi = {
       return createDemoCommandCenterSummary(companyId);
     }
 
-    try {
-      const response = await api.get<CommandCenterSummaryResponse>(
-        `/operations/command-center/${companyId}${buildQuery(query)}`,
-      );
+    const response = await api.get<CommandCenterSummaryResponse>(
+      `/operations/command-center/${companyId}${buildQuery(query)}`,
+    );
 
-      return response.data;
-    } catch (error) {
-      if (isDemoEntityId(companyId)) {
-        return createDemoCommandCenterSummary(companyId);
-      }
-
-      throw error;
-    }
+    return response.data;
   },
 
   risks: async (
@@ -417,28 +420,11 @@ export const commandCenterEnterpriseApi = {
       };
     }
 
-    try {
-      const response = await api.get<CommandCenterRisksResponse>(
-        `/operations/command-center/${companyId}/risks${buildQuery(query)}`,
-      );
+    const response = await api.get<CommandCenterRisksResponse>(
+      `/operations/command-center/${companyId}/risks${buildQuery(query)}`,
+    );
 
-      return response.data;
-    } catch (error) {
-      if (!isDemoEntityId(companyId)) {
-        throw error;
-      }
-
-      const summary = createDemoCommandCenterSummary(companyId);
-      return {
-        status: summary.status,
-        module: summary.module,
-        companyId,
-        executiveSummary: summary.executiveSummary,
-        risks: summary.risks,
-        auditIntelligence: summary.auditIntelligence,
-        generatedAt: summary.generatedAt,
-      };
-    }
+    return response.data;
   },
 
   modules: async (
@@ -457,27 +443,11 @@ export const commandCenterEnterpriseApi = {
       };
     }
 
-    try {
-      const response = await api.get<CommandCenterModulesResponse>(
-        `/operations/command-center/${companyId}/modules${buildQuery(query)}`,
-      );
+    const response = await api.get<CommandCenterModulesResponse>(
+      `/operations/command-center/${companyId}/modules${buildQuery(query)}`,
+    );
 
-      return response.data;
-    } catch (error) {
-      if (!isDemoEntityId(companyId)) {
-        throw error;
-      }
-
-      const summary = createDemoCommandCenterSummary(companyId);
-      return {
-        status: summary.status,
-        module: summary.module,
-        companyId,
-        executiveSummary: summary.executiveSummary,
-        modules: summary.modules,
-        generatedAt: summary.generatedAt,
-      };
-    }
+    return response.data;
   },
 
   activity: async (
@@ -496,26 +466,10 @@ export const commandCenterEnterpriseApi = {
       };
     }
 
-    try {
-      const response = await api.get<CommandCenterActivityResponse>(
-        `/operations/command-center/${companyId}/activity${buildQuery(query)}`,
-      );
+    const response = await api.get<CommandCenterActivityResponse>(
+      `/operations/command-center/${companyId}/activity${buildQuery(query)}`,
+    );
 
-      return response.data;
-    } catch (error) {
-      if (!isDemoEntityId(companyId)) {
-        throw error;
-      }
-
-      const summary = createDemoCommandCenterSummary(companyId);
-      return {
-        status: summary.status,
-        module: summary.module,
-        companyId,
-        activity: summary.activity,
-        audit: summary.audit,
-        generatedAt: summary.generatedAt,
-      };
-    }
+    return response.data;
   },
 };

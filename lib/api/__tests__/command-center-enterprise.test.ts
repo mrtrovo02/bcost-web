@@ -1,14 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { api } from '@/services/api';
+import { api, isDemoSession } from '@/services/api';
 import { commandCenterEnterpriseApi } from '../command-center-enterprise';
 
 vi.mock('@/services/api', () => ({
   api: {
     get: vi.fn(),
   },
+  isDemoSession: vi.fn(() => false),
 }));
 
 vi.mock('@/lib/config/demo-policy', () => ({
+  assertOperationalDemoFallbackEnabled: vi.fn((message?: string) => {
+    if (process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK === 'false') {
+      throw new Error(message || 'Fallback demonstrativo desabilitado.');
+    }
+  }),
   isDemoEntityId: (value?: string | null) =>
     typeof value === 'string' && value.toLowerCase().startsWith('demo-'),
 }));
@@ -23,13 +29,19 @@ vi.mock('@/lib/api/enterprise-demo', () => ({
 }));
 
 const apiGetMock = vi.mocked(api.get);
+const isDemoSessionMock = vi.mocked(isDemoSession);
 
 describe('commandCenterEnterpriseApi demo mode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'false';
+    isDemoSessionMock.mockReturnValue(false);
   });
 
-  it('serves command center views locally for demo companies when global fallback is disabled', async () => {
+  it('serves command center views locally for explicit demo sessions', async () => {
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'true';
+    isDemoSessionMock.mockReturnValue(true);
+
     const [summary, risks, modules, activity] = await Promise.all([
       commandCenterEnterpriseApi.summary('demo-001', {
         includeAudit: true,
@@ -48,6 +60,18 @@ describe('commandCenterEnterpriseApi demo mode', () => {
     expect(risks.risks.length).toBeGreaterThan(0);
     expect(modules.modules.length).toBeGreaterThan(0);
     expect(activity.activity.length).toBeGreaterThan(0);
+    expect(apiGetMock).not.toHaveBeenCalled();
+  });
+
+  it('blocks stale demo company ids outside explicit demo sessions', async () => {
+    await expect(commandCenterEnterpriseApi.summary('demo-001')).rejects.toThrow(
+      'Command Center demonstrativo indisponivel e fallback demonstrativo desabilitado neste ambiente.',
+    );
+
+    await expect(commandCenterEnterpriseApi.modules('demo-001')).rejects.toThrow(
+      'Command Center demonstrativo indisponivel e fallback demonstrativo desabilitado neste ambiente.',
+    );
+
     expect(apiGetMock).not.toHaveBeenCalled();
   });
 

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { api } from '@/services/api';
+import { api, isDemoSession } from '@/services/api';
 import { accountingApi } from '../accounting';
 
 vi.mock('@/services/api', () => ({
@@ -9,9 +9,15 @@ vi.mock('@/services/api', () => ({
     patch: vi.fn(),
     delete: vi.fn(),
   },
+  isDemoSession: vi.fn(() => false),
 }));
 
 vi.mock('@/lib/config/demo-policy', () => ({
+  assertOperationalDemoFallbackEnabled: vi.fn((message?: string) => {
+    if (process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK === 'false') {
+      throw new Error(message || 'Fallback demonstrativo desabilitado.');
+    }
+  }),
   isDemoEntityId: (value?: string | null) =>
     typeof value === 'string' && value.toLowerCase().startsWith('demo-'),
 }));
@@ -20,14 +26,20 @@ const apiGetMock = vi.mocked(api.get);
 const apiPostMock = vi.mocked(api.post);
 const apiPatchMock = vi.mocked(api.patch);
 const apiDeleteMock = vi.mocked(api.delete);
+const isDemoSessionMock = vi.mocked(isDemoSession);
 
 describe('accountingApi demo mode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'false';
+    isDemoSessionMock.mockReturnValue(false);
     window.localStorage.clear();
   });
 
   it('serves account plan and accounting entries locally for demo companies', async () => {
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'true';
+    isDemoSessionMock.mockReturnValue(true);
+
     const [plan, entries, locks] = await Promise.all([
       accountingApi.listAccountPlan('demo-001'),
       accountingApi.listEntries('demo-001'),
@@ -43,6 +55,9 @@ describe('accountingApi demo mode', () => {
   });
 
   it('keeps account plan and entry writes local in demo mode', async () => {
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'true';
+    isDemoSessionMock.mockReturnValue(true);
+
     const account = await accountingApi.createAccountPlan('demo-001', {
       code: '6.1.01',
       name: 'Despesa Demo',
@@ -65,6 +80,9 @@ describe('accountingApi demo mode', () => {
   });
 
   it('keeps period lock and unlock local in demo mode', async () => {
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'true';
+    isDemoSessionMock.mockReturnValue(true);
+
     const lock = await accountingApi.lockPeriod('demo-001', {
       month: 8,
       year: 2026,
@@ -80,6 +98,27 @@ describe('accountingApi demo mode', () => {
     expect(locksAfterUnlock.total).toBe(0);
     expect(apiPatchMock).not.toHaveBeenCalled();
     expect(apiDeleteMock).not.toHaveBeenCalled();
+  });
+
+  it('blocks stale demo company ids outside explicit demo sessions', async () => {
+    await expect(accountingApi.listEntries('demo-001')).rejects.toThrow(
+      'Contabilidade demonstrativa indisponivel e fallback demonstrativo desabilitado neste ambiente.',
+    );
+
+    await expect(
+      accountingApi.createEntry('demo-001', {
+        date: '2026-08-23T00:00:00.000Z',
+        description: 'Lançamento bloqueado',
+        debitCode: '6.1.01',
+        creditCode: '1.1.02',
+        amount: 1250,
+      }),
+    ).rejects.toThrow(
+      'Contabilidade demonstrativa indisponivel e fallback demonstrativo desabilitado neste ambiente.',
+    );
+
+    expect(apiGetMock).not.toHaveBeenCalled();
+    expect(apiPostMock).not.toHaveBeenCalled();
   });
 
   it('keeps real companies on backend accounting endpoints', async () => {

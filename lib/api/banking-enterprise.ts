@@ -1,7 +1,7 @@
 'use strict';
 
-import { api } from '@/services/api';
-import { isDemoEntityId } from '@/lib/config/demo-policy';
+import { api, isDemoSession } from '@/services/api';
+import { assertOperationalDemoFallbackEnabled, isDemoEntityId } from '@/lib/config/demo-policy';
 
 export type TransactionType = 'CREDIT' | 'DEBIT';
 
@@ -258,8 +258,19 @@ type DemoBankingStore = {
 
 const DEMO_STORE_VERSION = 'v1';
 
-function isDemoCompany(companyId: string): boolean {
-  return isDemoEntityId(companyId);
+function shouldUseBankingDemo(companyId: string): boolean {
+  if (!isDemoEntityId(companyId)) return false;
+
+  const message =
+    'Banking demonstrativo indisponivel e fallback demonstrativo desabilitado neste ambiente.';
+
+  if (!isDemoSession()) {
+    throw new Error(message);
+  }
+
+  assertOperationalDemoFallbackEnabled(message);
+
+  return true;
 }
 
 function isBrowserRuntime(): boolean {
@@ -574,7 +585,7 @@ function buildCandidates(
 
 export const bankingEnterpriseApi = {
   summary: async (companyId: string): Promise<BankingSummaryResponse> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseBankingDemo(companyId)) {
       const store = readStore(companyId);
       return {
         status: 'success',
@@ -597,7 +608,7 @@ export const bankingEnterpriseApi = {
     companyId: string,
     params: BankingQuery = {},
   ): Promise<BankAccountsListResponse> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseBankingDemo(companyId)) {
       const store = readStore(companyId);
       const filtered = filterAccounts(store.accounts, params);
       const items = paginate(filtered, params);
@@ -627,7 +638,7 @@ export const bankingEnterpriseApi = {
     companyId: string,
     payload: CreateBankAccountPayload,
   ): Promise<BankingActionResponse<BankAccountEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseBankingDemo(companyId)) {
       const store = readStore(companyId);
       const account: BankAccountEnterpriseRecord = {
         id: `demo-bank-account-${Date.now()}`,
@@ -674,7 +685,7 @@ export const bankingEnterpriseApi = {
     bankAccountId: string,
     payload: UpdateBankAccountPayload,
   ): Promise<BankingActionResponse<BankAccountEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseBankingDemo(companyId)) {
       const store = readStore(companyId);
       const index = store.accounts.findIndex((account) => account.id === bankAccountId);
       const current = store.accounts[index];
@@ -729,7 +740,7 @@ export const bankingEnterpriseApi = {
     companyId: string,
     bankAccountId: string,
   ): Promise<BankingActionResponse<BankAccountEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseBankingDemo(companyId)) {
       const response = await bankingEnterpriseApi.updateAccount(companyId, bankAccountId, {});
       const item = response.item
         ? { ...response.item, status: 'DELETED', deletedAt: nowIso() }
@@ -769,7 +780,7 @@ export const bankingEnterpriseApi = {
     companyId: string,
     params: BankingQuery = {},
   ): Promise<BankTransactionsListResponse> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseBankingDemo(companyId)) {
       const store = readStore(companyId);
       const filtered = filterTransactions(store.transactions, params);
       const items = paginate(filtered, params);
@@ -799,7 +810,7 @@ export const bankingEnterpriseApi = {
     companyId: string,
     payload: CreateBankTransactionPayload,
   ): Promise<BankingActionResponse<BankTransactionEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseBankingDemo(companyId)) {
       const store = readStore(companyId);
       const account = store.accounts.find((item) => item.id === payload.bankAccountId);
 
@@ -857,7 +868,7 @@ export const bankingEnterpriseApi = {
     transactionId: string,
     payload: UpdateBankTransactionPayload,
   ): Promise<BankingActionResponse<BankTransactionEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseBankingDemo(companyId)) {
       const store = readStore(companyId);
       const index = store.transactions.findIndex((transaction) => transaction.id === transactionId);
       const current = store.transactions[index];
@@ -912,7 +923,7 @@ export const bankingEnterpriseApi = {
     item: BankTransactionEnterpriseRecord;
     generatedAt: string;
   }> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseBankingDemo(companyId)) {
       const store = readStore(companyId);
       const item = store.transactions.find((transaction) => transaction.id === transactionId);
 
@@ -939,7 +950,7 @@ export const bankingEnterpriseApi = {
     transactionId: string,
     params: AutoReconciliationPayload = {},
   ): Promise<ReconciliationCandidatesResponse> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseBankingDemo(companyId)) {
       const store = readStore(companyId);
       const transaction = store.transactions.find((item) => item.id === transactionId);
 
@@ -974,7 +985,7 @@ export const bankingEnterpriseApi = {
     companyId: string,
     payload: ManualReconciliationPayload,
   ): Promise<BankingActionResponse<BankTransactionEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseBankingDemo(companyId)) {
       const store = readStore(companyId);
       const index = store.transactions.findIndex(
         (transaction) => transaction.id === payload.bankTransactionId,
@@ -1039,7 +1050,7 @@ export const bankingEnterpriseApi = {
     companyId: string,
     payload: AutoReconciliationPayload,
   ): Promise<AutoReconciliationResponse> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseBankingDemo(companyId)) {
       const store = readStore(companyId);
       const limit = Number(payload.limit || 50);
       let matched = 0;
@@ -1115,7 +1126,7 @@ export const bankingEnterpriseApi = {
     companyId: string,
     transactionId: string,
   ): Promise<BankingActionResponse<BankTransactionEnterpriseRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseBankingDemo(companyId)) {
       const store = readStore(companyId);
       const index = store.transactions.findIndex((transaction) => transaction.id === transactionId);
       const current = store.transactions[index];
@@ -1168,7 +1179,7 @@ export const bankingEnterpriseApi = {
     module: 'bank-accounts' | 'bank-transactions' | 'bank-reconciliation',
     params: Record<string, unknown> = {},
   ): Promise<AuditLogListResponse> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseBankingDemo(companyId)) {
       const store = readStore(companyId);
       const limit = Number(params.limit || 30);
       const offset = Number(params.offset || 0);

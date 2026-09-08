@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { api } from '@/services/api';
+import { api, isDemoSession } from '@/services/api';
 import { complianceEnterpriseApi } from '../compliance-enterprise';
 
 vi.mock('@/services/api', () => ({
@@ -8,9 +8,15 @@ vi.mock('@/services/api', () => ({
     post: vi.fn(),
     patch: vi.fn(),
   },
+  isDemoSession: vi.fn(() => false),
 }));
 
 vi.mock('@/lib/config/demo-policy', () => ({
+  assertOperationalDemoFallbackEnabled: vi.fn((message?: string) => {
+    if (process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK === 'false') {
+      throw new Error(message || 'Fallback demonstrativo desabilitado.');
+    }
+  }),
   isDemoEntityId: (value?: string | null) =>
     typeof value === 'string' && value.toLowerCase().startsWith('demo-'),
 }));
@@ -18,14 +24,20 @@ vi.mock('@/lib/config/demo-policy', () => ({
 const apiGetMock = vi.mocked(api.get);
 const apiPostMock = vi.mocked(api.post);
 const apiPatchMock = vi.mocked(api.patch);
+const isDemoSessionMock = vi.mocked(isDemoSession);
 
 describe('complianceEnterpriseApi demo mode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'false';
+    isDemoSessionMock.mockReturnValue(false);
     window.localStorage.clear();
   });
 
   it('serves summary, rules and checks locally for demo companies', async () => {
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'true';
+    isDemoSessionMock.mockReturnValue(true);
+
     const [summary, rules, checks] = await Promise.all([
       complianceEnterpriseApi.summary('demo-001'),
       complianceEnterpriseApi.listRules('demo-001'),
@@ -40,6 +52,9 @@ describe('complianceEnterpriseApi demo mode', () => {
   });
 
   it('keeps rule and check writes local in demo mode', async () => {
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'true';
+    isDemoSessionMock.mockReturnValue(true);
+
     const rule = await complianceEnterpriseApi.createRule('demo-001', {
       name: 'Regra demo de teste',
       description: 'Gera check em ambiente demo',
@@ -68,6 +83,9 @@ describe('complianceEnterpriseApi demo mode', () => {
   });
 
   it('runs compliance engine locally in demo mode', async () => {
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK = 'true';
+    isDemoSessionMock.mockReturnValue(true);
+
     const response = await complianceEnterpriseApi.runEngine('demo-001', {
       createChecks: true,
       includeResolved: false,
@@ -76,6 +94,26 @@ describe('complianceEnterpriseApi demo mode', () => {
 
     expect(Number(response.totals?.findings || 0)).toBeGreaterThan(0);
     expect(response.audit?.recorded).toBe(true);
+    expect(apiPostMock).not.toHaveBeenCalled();
+  });
+
+  it('blocks stale demo company ids outside explicit demo sessions', async () => {
+    await expect(complianceEnterpriseApi.summary('demo-001')).rejects.toThrow(
+      'Compliance demonstrativo indisponivel e fallback demonstrativo desabilitado neste ambiente.',
+    );
+
+    await expect(
+      complianceEnterpriseApi.createCheck('demo-001', {
+        checkName: 'Check demo bloqueado',
+        severity: 'WARNING',
+        status: 'OPEN',
+        description: 'Verificação bloqueada',
+      }),
+    ).rejects.toThrow(
+      'Compliance demonstrativo indisponivel e fallback demonstrativo desabilitado neste ambiente.',
+    );
+
+    expect(apiGetMock).not.toHaveBeenCalled();
     expect(apiPostMock).not.toHaveBeenCalled();
   });
 

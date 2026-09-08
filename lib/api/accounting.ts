@@ -1,7 +1,7 @@
 'use strict';
 
-import { api } from '@/services/api';
-import { isDemoEntityId } from '@/lib/config/demo-policy';
+import { api, isDemoSession } from '@/services/api';
+import { assertOperationalDemoFallbackEnabled, isDemoEntityId } from '@/lib/config/demo-policy';
 
 export type AccountType =
   | 'ATIVO'
@@ -306,8 +306,19 @@ const DEFAULT_DEMO_ACCOUNTS: DemoAccountSeed[] = [
   },
 ];
 
-function isDemoCompany(companyId: string): boolean {
-  return isDemoEntityId(companyId);
+function shouldUseAccountingDemo(companyId: string): boolean {
+  if (!isDemoEntityId(companyId)) return false;
+
+  const message =
+    'Contabilidade demonstrativa indisponivel e fallback demonstrativo desabilitado neste ambiente.';
+
+  if (!isDemoSession()) {
+    throw new Error(message);
+  }
+
+  assertOperationalDemoFallbackEnabled(message);
+
+  return true;
 }
 
 function isBrowserRuntime(): boolean {
@@ -578,7 +589,7 @@ export const accountingApi = {
     companyId: string,
     params: AccountingQuery = {},
   ): Promise<AccountPlanListResponse> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseAccountingDemo(companyId)) {
       const store = readStore(companyId);
       const filtered = filterAccounts(store.accountPlan, params);
       const items = paginate(filtered, params);
@@ -608,7 +619,7 @@ export const accountingApi = {
   seedDefaultAccountPlan: async (
     companyId: string,
   ): Promise<AccountingActionResponse<AccountPlanRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseAccountingDemo(companyId)) {
       const store = readStore(companyId);
       const existingCodes = new Set(store.accountPlan.map((item) => item.code));
       const results: NonNullable<AccountingActionResponse<AccountPlanRecord>['results']> = [];
@@ -649,7 +660,7 @@ export const accountingApi = {
     companyId: string,
     payload: CreateAccountPlanPayload,
   ): Promise<AccountingActionResponse<AccountPlanRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseAccountingDemo(companyId)) {
       const store = readStore(companyId);
 
       if (store.accountPlan.some((item) => item.code === payload.code)) {
@@ -699,7 +710,7 @@ export const accountingApi = {
     accountId: string,
     payload: UpdateAccountPlanPayload,
   ): Promise<AccountingActionResponse<AccountPlanRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseAccountingDemo(companyId)) {
       const store = readStore(companyId);
       const index = store.accountPlan.findIndex((item) => item.id === accountId);
       const current = store.accountPlan[index];
@@ -745,7 +756,7 @@ export const accountingApi = {
     companyId: string,
     accountId: string,
   ): Promise<AccountingActionResponse<AccountPlanRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseAccountingDemo(companyId)) {
       const response = await accountingApi.updateAccountPlan(companyId, accountId, {
         active: false,
       });
@@ -767,7 +778,7 @@ export const accountingApi = {
     companyId: string,
     params: AccountingQuery = {},
   ): Promise<AccountingEntriesListResponse> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseAccountingDemo(companyId)) {
       const store = readStore(companyId);
       const filtered = filterEntries(store.entries, params);
       const items = paginate(filtered, params);
@@ -798,7 +809,7 @@ export const accountingApi = {
     companyId: string,
     payload: CreateAccountingEntryPayload,
   ): Promise<AccountingActionResponse<AccountingEntryRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseAccountingDemo(companyId)) {
       const store = readStore(companyId);
       const { month, year } = monthYearFromDate(payload.date);
       const locked = store.locks.some((lock) => lock.month === month && lock.year === year);
@@ -842,7 +853,7 @@ export const accountingApi = {
     entryId: string,
     payload: UpdateAccountingEntryPayload,
   ): Promise<AccountingActionResponse<AccountingEntryRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseAccountingDemo(companyId)) {
       const store = readStore(companyId);
       const index = store.entries.findIndex((entry) => entry.id === entryId);
       const current = store.entries[index];
@@ -900,7 +911,7 @@ export const accountingApi = {
     companyId: string,
     entryId: string,
   ): Promise<AccountingActionResponse<AccountingEntryRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseAccountingDemo(companyId)) {
       const store = readStore(companyId);
       const index = store.entries.findIndex((entry) => entry.id === entryId);
       const item = store.entries[index];
@@ -938,7 +949,7 @@ export const accountingApi = {
   },
 
   listLocks: async (companyId: string): Promise<BalanceLocksListResponse> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseAccountingDemo(companyId)) {
       const store = readStore(companyId);
       return {
         status: 'success',
@@ -962,7 +973,7 @@ export const accountingApi = {
     companyId: string,
     payload: LockPeriodPayload,
   ): Promise<AccountingActionResponse<BalanceLockRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseAccountingDemo(companyId)) {
       const store = readStore(companyId);
       const existing = store.locks.find(
         (lock) => lock.month === payload.month && lock.year === payload.year,
@@ -1027,7 +1038,7 @@ export const accountingApi = {
     month: number,
     year: number,
   ): Promise<AccountingActionResponse<BalanceLockRecord>> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseAccountingDemo(companyId)) {
       const store = readStore(companyId);
       const index = store.locks.findIndex((lock) => lock.month === month && lock.year === year);
       const item = store.locks[index];
@@ -1070,7 +1081,7 @@ export const accountingApi = {
     module: 'account-plan' | 'accounting-entries' | 'balance-locks',
     params: Record<string, unknown> = {},
   ): Promise<AuditLogListResponse> => {
-    if (isDemoCompany(companyId)) {
+    if (shouldUseAccountingDemo(companyId)) {
       const store = readStore(companyId);
       const limit = Number(params.limit || 30);
       const offset = Number(params.offset || 0);
