@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { normalizeCompanyPayload } from '@/services/company-normalizer';
+import { setStoredUser, type BcostCompany, type BcostUser } from '@/services/api';
 
 type CompanyLike = {
   id: string;
@@ -15,6 +16,9 @@ type AuthMeLike = {
   id?: string;
   email?: string;
   name?: string;
+  role?: string;
+  active?: boolean;
+  twoFactor?: boolean;
   companyId?: string;
   activeCompanyId?: string;
   company_id?: string;
@@ -226,6 +230,44 @@ function persistRealCompanyContext(companyId: string, companies: CompanyLike[]) 
   persistCompanyContext(companyId, removeDemoCompanies(companies));
 }
 
+function toStoredCompanies(companies: CompanyLike[]): BcostCompany[] {
+  return removeDemoCompanies(companies).map((company) => ({
+    ...company,
+    id: company.id,
+    name: company.name || 'Empresa vinculada',
+  }));
+}
+
+function persistAuthenticatedUser(authMe: AuthMeLike, companies: CompanyLike[]) {
+  const user = authMe.user || authMe;
+  if (!user.id || !user.email) return;
+
+  const storedCompanies = toStoredCompanies(companies);
+  const companyId = firstString(
+    user.companyId,
+    user.activeCompanyId,
+    user.company_id,
+    authMe.companyId,
+    authMe.activeCompanyId,
+    storedCompanies[0]?.id,
+  );
+
+  const storedUser: BcostUser = {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    active: user.active,
+    twoFactor: user.twoFactor,
+    companyId: companyId ?? undefined,
+    activeCompanyId: companyId ?? undefined,
+    company: storedCompanies[0],
+    companies: storedCompanies,
+  };
+
+  setStoredUser(storedUser);
+}
+
 function clearCompanyContext() {
   if (typeof window === 'undefined') return;
 
@@ -368,7 +410,6 @@ export function CompanySessionHydrator() {
         !isDemoCompanyId(String(jwtCompanyId))
       ) {
         persistRealCompanyContext(String(jwtCompanyId), storedCompanies);
-        return;
       }
 
       const authMe = (await fetchAuthMe(token).catch(() => null)) as AuthMeLike | null;
@@ -383,6 +424,10 @@ export function CompanySessionHydrator() {
       if (authCompanies.length === 0) {
         authCompanies = await fetchCompanies(token).catch(() => []);
         if (cancelled) return;
+      }
+
+      if (authMe) {
+        persistAuthenticatedUser(authMe, authCompanies);
       }
 
       const resolvedCompanyId = firstString(

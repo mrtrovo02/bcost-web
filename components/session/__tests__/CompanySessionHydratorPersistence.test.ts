@@ -28,4 +28,10 @@ describe('CompanySessionHydrator persistence contract', () => {
     expect(hydratorSource).toContain('persistCompanyContext(companyId, removeDemoCompanies(companies))');
     expect(hydratorSource).toContain('persistRealCompanyContext(String(resolvedCompanyId), authCompanies)');
   });
+
+  it('persiste o usuario real retornado por auth/me durante a hidratacao', () => {
+    expect(hydratorSource).toContain('function persistAuthenticatedUser');
+    expect(hydratorSource).toContain('setStoredUser(storedUser)');
+    expect(hydratorSource).toContain('persistAuthenticatedUser(authMe, authCompanies)');
+  });
 });
