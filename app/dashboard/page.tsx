@@ -11,7 +11,7 @@ import SplitPaymentProjector from '@/components/split-payment/SplitPaymentProjec
 import { MonthlyPerformance } from '@/lib/types/fiscal';
 import { CBS_IBS_TRANSITION } from '@/lib/tax-reform/official-data';
 import { buildDashboardPdfCanvasOptions } from '@/lib/export/html2canvas-options';
-import { isDemoEntityId } from '@/lib/config/demo-policy';
+import { assertOperationalDemoFallbackEnabled, isDemoEntityId } from '@/lib/config/demo-policy';
 import { TrendingUp, Download, Activity, AlertCircle, Clock, DollarSign, ShieldAlert } from 'lucide-react';
 
 type DashboardHistoryEntry = MonthlyPerformance;
@@ -121,8 +121,12 @@ export default function DashboardPage() {
       const now = new Date();
       const month = now.getMonth() + 1;
       const year = now.getFullYear();
+      const canUseDemoDashboard = isDemoSession() && isDemoEntityId(selectedCompany.id);
 
-      if (isDemoSession() || isDemoEntityId(selectedCompany.id)) {
+      if (canUseDemoDashboard) {
+        assertOperationalDemoFallbackEnabled(
+          'Dashboard demonstrativo desabilitado neste ambiente.',
+        );
         const demoData = getDemoFiscalData(selectedCompany.name);
         const totalRevenue = demoData.evolucao.reduce((sum, item) => sum + item.faturamento, 0);
         setData({
@@ -221,7 +225,10 @@ export default function DashboardPage() {
 
       const status = getErrorStatus(error);
 
-      if (isDemoSession()) {
+      if (isDemoSession() && isDemoEntityId(selectedCompany.id)) {
+        assertOperationalDemoFallbackEnabled(
+          'Dashboard demonstrativo desabilitado neste ambiente.',
+        );
         const demoData = getDemoFiscalData(selectedCompany.name);
         const totalRevenue = demoData.evolucao.reduce((sum, item) => sum + item.faturamento, 0);
         setData({

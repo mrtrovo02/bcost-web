@@ -6,6 +6,8 @@ import { Invoice } from '../../../lib/types/fiscal';
 import UploadModal from '../../../components/UploadModal';
 import { getDemoInvoices } from '@/services/demo-data';
 import { isDemoSession } from '@/services/api';
+import { assertOperationalDemoFallbackEnabled, isDemoEntityId } from '@/lib/config/demo-policy';
+import { useCompany } from '@/app/context/CompanyContext';
 import { calcularCbsIbs } from '@/components/alerts/CbsIbsAlertBanner';
 import {
   Search,
@@ -42,6 +44,7 @@ function getInvoiceTaxImpact(invoice: Invoice) {
 }
 
 export default function InvoicesPage() {
+  const { selectedCompany } = useCompany();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -53,7 +56,14 @@ export default function InvoicesPage() {
     try {
       setIsLoading(true);
       setLoadError(null);
-      if (isDemoSession()) {
+      const canUseDemoInvoices = Boolean(
+        selectedCompany?.id && isDemoSession() && isDemoEntityId(selectedCompany.id),
+      );
+
+      if (canUseDemoInvoices) {
+        assertOperationalDemoFallbackEnabled(
+          'Notas fiscais demonstrativas desabilitadas neste ambiente.',
+        );
         const demoData = getDemoInvoices();
         setInvoices(Array.isArray(demoData) ? demoData : []);
         return;
@@ -61,7 +71,10 @@ export default function InvoicesPage() {
       const data = await fiscalApi.getInvoices();
       setInvoices(Array.isArray(data) ? data : []);
     } catch (error: unknown) {
-      if (isDemoSession()) {
+      if (selectedCompany?.id && isDemoSession() && isDemoEntityId(selectedCompany.id)) {
+        assertOperationalDemoFallbackEnabled(
+          'Notas fiscais demonstrativas desabilitadas neste ambiente.',
+        );
         const demoData = getDemoInvoices();
         setInvoices(Array.isArray(demoData) ? demoData : []);
         return;
@@ -73,7 +86,7 @@ export default function InvoicesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [selectedCompany?.id]);
 
   useEffect(() => {
     fetchInvoices();
