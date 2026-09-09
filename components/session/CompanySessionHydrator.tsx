@@ -146,8 +146,9 @@ function readCompaniesFromStorage(): CompanyLike[] {
 
     try {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        return parsed.filter((company) => company?.id);
+      const companies = normalizeCompanies(parsed);
+      if (companies.length > 0) {
+        return companies;
       }
     } catch {
       window.localStorage.removeItem(key);

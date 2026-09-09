@@ -35,6 +35,12 @@ describe('CompanySessionHydrator persistence contract', () => {
     expect(hydratorSource).toContain('persistAuthenticatedUser(authMe, authCompanies)');
   });
 
+  it('normaliza payloads de empresas salvos no storage antes de restaurar a sessao', () => {
+    expect(hydratorSource).toContain('const companies = normalizeCompanies(parsed);');
+    expect(hydratorSource).toContain('if (companies.length > 0)');
+    expect(hydratorSource).not.toContain('return parsed.filter((company) => company?.id);');
+  });
+
   it('usa o cliente HTTP oficial para hidratar sessao real com refresh token', () => {
     expect(hydratorSource).toContain("api.get<AuthMeLike>('/auth/me')");
     expect(hydratorSource).toContain("api.get<unknown>('/company')");

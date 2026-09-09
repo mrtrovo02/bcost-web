@@ -34,6 +34,9 @@ const COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 const COOKIE_DOMAIN = '.bcost.com.br';
 const DEMO_TOKEN = 'demo-token-local';
 const TRACE_HEADER = 'x-bcost-trace-id';
+const TRACE_SESSION_KEY = 'bcost_trace_id';
+const TRACE_SESSION_EXPIRES_AT_KEY = 'bcost_trace_id_expires_at';
+const TRACE_SESSION_TTL_MS = 15 * 60 * 1000;
 
 const TOKEN_KEYS = ['bcost_token', 'bcost_access_token'] as const;
 const REFRESH_KEYS = ['bcost_refresh_token'] as const;
@@ -302,15 +305,35 @@ export function resolveRequestHeaders(
 }
 
 export function createBcostTraceId(): string {
-  const randomUuid = globalThis.crypto?.randomUUID;
+  if (isBrowser()) {
+    const storedTraceId = window.sessionStorage.getItem(TRACE_SESSION_KEY);
+    const storedExpiresAt = Number(window.sessionStorage.getItem(TRACE_SESSION_EXPIRES_AT_KEY));
 
-  if (typeof randomUuid === 'function') {
-    return `web-${randomUuid.call(globalThis.crypto)}`;
+    if (storedTraceId?.startsWith('web-') && storedExpiresAt > Date.now()) {
+      return storedTraceId;
+    }
   }
 
-  const timestamp = Date.now().toString(36);
-  const entropy = Math.random().toString(16).slice(2, 10);
-  return `web-${timestamp}-${entropy}`;
+  const randomUuid = globalThis.crypto?.randomUUID;
+  let traceId: string;
+
+  if (typeof randomUuid === 'function') {
+    traceId = `web-${randomUuid.call(globalThis.crypto)}`;
+  } else {
+    const timestamp = Date.now().toString(36);
+    const entropy = Math.random().toString(16).slice(2, 10);
+    traceId = `web-${timestamp}-${entropy}`;
+  }
+
+  if (isBrowser()) {
+    window.sessionStorage.setItem(TRACE_SESSION_KEY, traceId);
+    window.sessionStorage.setItem(
+      TRACE_SESSION_EXPIRES_AT_KEY,
+      String(Date.now() + TRACE_SESSION_TTL_MS),
+    );
+  }
+
+  return traceId;
 }
 
 function clearStoredCompanyData(): void {
@@ -510,6 +533,10 @@ export function clearSession(): void {
   clearRefreshToken();
   clearStoredUser();
   clearStoredCompanyData();
+  if (isBrowser()) {
+    window.sessionStorage.removeItem(TRACE_SESSION_KEY);
+    window.sessionStorage.removeItem(TRACE_SESSION_EXPIRES_AT_KEY);
+  }
 }
 
 export const clearStorageSession = clearSession;

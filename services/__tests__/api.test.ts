@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   api,
+  clearSession,
   createBcostTraceId,
   getToken,
   isDemoSession,
@@ -134,6 +135,23 @@ describe('isDemoSession', () => {
 
   it('creates frontend trace IDs with the bCost web prefix', () => {
     expect(createBcostTraceId()).toMatch(/^web-/);
+  });
+
+  it('reuses the frontend trace ID during a short browser session', () => {
+    const firstTraceId = createBcostTraceId();
+    const secondTraceId = createBcostTraceId();
+
+    expect(secondTraceId).toBe(firstTraceId);
+    expect(sessionStorage.getItem('bcost_trace_id')).toBe(firstTraceId);
+  });
+
+  it('clears the frontend trace correlation when the auth session is cleared', () => {
+    createBcostTraceId();
+
+    clearSession();
+
+    expect(sessionStorage.getItem('bcost_trace_id')).toBeNull();
+    expect(sessionStorage.getItem('bcost_trace_id_expires_at')).toBeNull();
   });
 
   it('overwrites stale per-call auth and tenant headers through the axios interceptor', async () => {
