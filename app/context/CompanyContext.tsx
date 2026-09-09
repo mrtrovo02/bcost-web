@@ -101,6 +101,14 @@ function canUseCompanyInCurrentSession(company: Company, isDemo: boolean): boole
   return isDemo || !isDemoEntityId(company.id);
 }
 
+function ensureCompanyInList(company: Company, companies: Company[]): Company[] {
+  if (companies.some((item) => item.id === company.id)) {
+    return companies;
+  }
+
+  return [company, ...companies];
+}
+
 export function CompanyProvider({ children }: { children: ReactNode }) {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
@@ -143,11 +151,14 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
               return;
             }
 
+            const nextCompanies = ensureCompanyInList(parsedCompany, storedCompanies);
+
             setSelectedCompany(parsedCompany);
-            setCompanies(storedCompanies);
+            setCompanies(nextCompanies);
+            setActiveCompanyId(parsedCompany.id);
             if (!isDemo) {
-              safeLocalStorageSet('bcost_companies', JSON.stringify(storedCompanies));
-              safeLocalStorageSet('companies', JSON.stringify(storedCompanies));
+              safeLocalStorageSet('bcost_companies', JSON.stringify(nextCompanies));
+              safeLocalStorageSet('companies', JSON.stringify(nextCompanies));
             }
             trackEvent('company_context_restored', { companyId: parsedCompany.id });
           }

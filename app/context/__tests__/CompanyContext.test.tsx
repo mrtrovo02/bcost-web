@@ -2,7 +2,13 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CompanyProvider, useCompany, type Company } from '../CompanyContext';
-import { api, clearActiveCompanyId, getActiveCompanyId, isDemoSession } from '@/services/api';
+import {
+  api,
+  clearActiveCompanyId,
+  getActiveCompanyId,
+  isDemoSession,
+  setActiveCompanyId,
+} from '@/services/api';
 
 vi.mock('@/services/api', () => ({
   api: {
@@ -31,6 +37,7 @@ vi.mock('@/lib/utils/telemetry', () => ({
 const isDemoSessionMock = vi.mocked(isDemoSession);
 const clearActiveCompanyIdMock = vi.mocked(clearActiveCompanyId);
 const getActiveCompanyIdMock = vi.mocked(getActiveCompanyId);
+const setActiveCompanyIdMock = vi.mocked(setActiveCompanyId);
 const apiDefaultsHeaders = api.defaults.headers.common as Record<string, string | undefined>;
 
 function CompanyContextProbe() {
@@ -209,6 +216,32 @@ describe('CompanyProvider', () => {
     expect(window.localStorage.getItem('bcost_active_company_data')).toContain(
       'Amel Contabilidade Digital LTDA',
     );
+  });
+
+  it('keeps the active stored company visible in the company list when storage has no list', async () => {
+    window.localStorage.setItem(
+      'bcost_active_company_data',
+      JSON.stringify({
+        id: 'company-amel',
+        name: 'Amel Contabilidade Digital LTDA',
+        cnpj: '12.345.678/0001-90',
+      }),
+    );
+
+    render(
+      <CompanyProvider>
+        <CompanyContextProbe />
+      </CompanyProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('selected')).toHaveTextContent('company-amel');
+    });
+
+    expect(screen.getByTestId('companies')).toHaveTextContent('company-amel');
+    expect(window.localStorage.getItem('bcost_companies')).toContain('company-amel');
+    expect(window.localStorage.getItem('companies')).toContain('company-amel');
+    expect(setActiveCompanyIdMock).toHaveBeenCalledWith('company-amel');
   });
 
   it('reacts to user session updates when companies arrive after initial hydration', async () => {
