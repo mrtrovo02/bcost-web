@@ -367,6 +367,11 @@ export function CompanySessionHydrator() {
         jwtCompanyId,
       );
 
+      if (authCompanies.length === 0) {
+        authCompanies = await fetchCompanies().catch(() => []);
+        if (cancelled) return;
+      }
+
       if (authCompanies.length === 0 && authCompanyId && !isDemoCompanyId(authCompanyId)) {
         authCompanies = [
           {
@@ -375,11 +380,6 @@ export function CompanySessionHydrator() {
             role: 'MEMBER',
           },
         ];
-      }
-
-      if (authCompanies.length === 0) {
-        authCompanies = await fetchCompanies().catch(() => []);
-        if (cancelled) return;
       }
 
       if (authMe) {
