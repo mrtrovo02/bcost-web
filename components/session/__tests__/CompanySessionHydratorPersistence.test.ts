@@ -47,4 +47,12 @@ describe('CompanySessionHydrator persistence contract', () => {
     expect(hydratorSource).not.toContain('Authorization: `Bearer ${token}`');
     expect(hydratorSource).not.toContain('redirectToExpiredLogin');
   });
+
+  it('cria contexto minimo quando auth/me possui empresa ativa mas lista ainda nao chegou', () => {
+    expect(hydratorSource).toContain('const authCompanyId = firstString(');
+    expect(hydratorSource).toContain(
+      'if (authCompanies.length === 0 && authCompanyId && !isDemoCompanyId(authCompanyId))',
+    );
+    expect(hydratorSource).toContain("name: 'Empresa vinculada'");
+  });
 });

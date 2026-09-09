@@ -89,10 +89,25 @@ export function normalizeCompanyPayload(payload: unknown): NormalizedCompany[] {
 
   if (!isRecord(payload)) return [];
 
-  for (const key of ['data', 'companies', 'items', 'records']) {
+  for (const key of [
+    'data',
+    'companies',
+    'companyUsers',
+    'memberships',
+    'linkedCompanies',
+    'items',
+    'records',
+  ]) {
     const value = payload[key];
     if (Array.isArray(value)) {
       return normalizeCompanyPayload(value);
+    }
+  }
+
+  if (isRecord(payload.data)) {
+    const dataCompanies = normalizeCompanyPayload(payload.data);
+    if (dataCompanies.length > 0) {
+      return dataCompanies;
     }
   }
 

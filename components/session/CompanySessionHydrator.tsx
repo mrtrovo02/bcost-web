@@ -359,6 +359,24 @@ export function CompanySessionHydrator() {
         authCompanies = [user.company];
       }
 
+      const authCompanyId = firstString(
+        user?.companyId,
+        user?.activeCompanyId,
+        authMe?.companyId,
+        authMe?.activeCompanyId,
+        jwtCompanyId,
+      );
+
+      if (authCompanies.length === 0 && authCompanyId && !isDemoCompanyId(authCompanyId)) {
+        authCompanies = [
+          {
+            id: authCompanyId,
+            name: 'Empresa vinculada',
+            role: 'MEMBER',
+          },
+        ];
+      }
+
       if (authCompanies.length === 0) {
         authCompanies = await fetchCompanies().catch(() => []);
         if (cancelled) return;
