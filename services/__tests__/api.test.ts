@@ -240,6 +240,34 @@ describe('isDemoSession', () => {
     expect(error).toMatchObject({ bcostTraceId: expect.stringMatching(/^web-/) });
   });
 
+  it('reads the backend trace ID from RFC 7807 problem details when headers are unavailable', async () => {
+    const error = await api
+      .get('/fails-with-problem-details', {
+        adapter: async (config) => {
+          throw {
+            isAxiosError: true,
+            config,
+            response: {
+              status: 400,
+              headers: {},
+              data: {
+                type: 'https://docs.bcost.com.br/problems/bad-request',
+                title: 'Bad Request',
+                status: 400,
+                traceId: 'problem-trace-001',
+                requestId: 'problem-trace-001',
+                message: 'payload invalido',
+              },
+            },
+          };
+        },
+      })
+      .catch((caught: unknown) => caught);
+
+    expect(getBcostTraceIdFromError(error)).toBe('problem-trace-001');
+    expect(error).toMatchObject({ bcostTraceId: 'problem-trace-001' });
+  });
+
   it('does not persist an MFA challenge as an authenticated session', async () => {
     vi.spyOn(api, 'post').mockResolvedValueOnce({
       data: {

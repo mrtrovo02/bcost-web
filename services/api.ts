@@ -204,6 +204,19 @@ function readHeaderValue(headers: unknown, name: string): string | null {
   return null;
 }
 
+function readTraceIdFromProblemDetails(data: unknown): string | null {
+  if (!data || typeof data !== 'object') return null;
+
+  const problem = data as Record<string, unknown>;
+  const traceId = problem.traceId;
+  if (isValidValue(traceId)) return traceId;
+
+  const requestId = problem.requestId;
+  if (isValidValue(requestId)) return requestId;
+
+  return null;
+}
+
 export function getBcostTraceIdFromError(error: unknown): string | null {
   if (!error || typeof error !== 'object') return null;
 
@@ -216,6 +229,7 @@ export function getBcostTraceIdFromError(error: unknown): string | null {
 
   return (
     readHeaderValue(error.response?.headers, TRACE_HEADER) ??
+    readTraceIdFromProblemDetails(error.response?.data) ??
     readHeaderValue(error.config?.headers, TRACE_HEADER)
   );
 }
