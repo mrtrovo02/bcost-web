@@ -3,6 +3,7 @@ import {
   api,
   clearSession,
   createBcostTraceId,
+  formatBcostApiErrorMessage,
   getBcostTraceIdFromError,
   getToken,
   isDemoSession,
@@ -266,6 +267,38 @@ describe('isDemoSession', () => {
 
     expect(getBcostTraceIdFromError(error)).toBe('problem-trace-001');
     expect(error).toMatchObject({ bcostTraceId: 'problem-trace-001' });
+  });
+
+  it('formats API errors with problem detail messages and support trace IDs', () => {
+    const message = formatBcostApiErrorMessage(
+      {
+        isAxiosError: true,
+        config: {},
+        response: {
+          status: 503,
+          headers: {},
+          data: {
+            type: 'https://docs.bcost.com.br/problems/service-unavailable',
+            title: 'Service Unavailable',
+            status: 503,
+            traceId: 'problem-trace-002',
+            message: 'Gateway de pagamento indisponível.',
+          },
+        },
+      },
+      'Não foi possível processar a operação.',
+    );
+
+    expect(message).toBe('Gateway de pagamento indisponível. Código de suporte: problem-trace-002');
+  });
+
+  it('formats non-Axios errors without inventing support codes', () => {
+    expect(
+      formatBcostApiErrorMessage(
+        new Error('Empresa ativa não encontrada para iniciar cobrança.'),
+        'Não foi possível processar a operação.',
+      ),
+    ).toBe('Empresa ativa não encontrada para iniciar cobrança.');
   });
 
   it('does not persist an MFA challenge as an authenticated session', async () => {

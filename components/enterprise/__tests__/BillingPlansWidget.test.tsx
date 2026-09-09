@@ -33,6 +33,8 @@ vi.mock('@/lib/api/enterprise-company', () => ({
 }));
 
 vi.mock('@/services/api', () => ({
+  formatBcostApiErrorMessage: (error: unknown, fallback: string) =>
+    error instanceof Error ? error.message : fallback,
   getToken: vi.fn(),
 }));
 

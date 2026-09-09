@@ -234,6 +234,31 @@ export function getBcostTraceIdFromError(error: unknown): string | null {
   );
 }
 
+function readProblemMessage(data: unknown): string | null {
+  if (!data || typeof data !== 'object') return null;
+
+  const payload = data as Record<string, unknown>;
+  const message = payload.message;
+  if (isValidValue(message)) return message;
+
+  const detail = payload.detail;
+  if (isValidValue(detail)) return detail;
+
+  const title = payload.title;
+  if (isValidValue(title)) return title;
+
+  return null;
+}
+
+export function formatBcostApiErrorMessage(error: unknown, fallback: string): string {
+  const traceId = getBcostTraceIdFromError(error);
+  const apiMessage = axios.isAxiosError(error) ? readProblemMessage(error.response?.data) : null;
+  const errorMessage = error instanceof Error && isValidValue(error.message) ? error.message : null;
+  const message = apiMessage ?? errorMessage ?? fallback;
+
+  return traceId ? `${message} Código de suporte: ${traceId}` : message;
+}
+
 function enrichAxiosErrorWithTraceId(error: unknown): void {
   if (!axios.isAxiosError(error)) return;
 

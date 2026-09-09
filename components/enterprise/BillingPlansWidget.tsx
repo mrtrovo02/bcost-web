@@ -35,7 +35,7 @@ import {
   type PaymentSubscriptionResponse,
   type PaymentSubscriptionStatus,
 } from '@/lib/api/payments';
-import { getToken, isDemoSession } from '@/services/api';
+import { formatBcostApiErrorMessage, getToken, isDemoSession } from '@/services/api';
 
 type UiMessage = {
   type: 'success' | 'warning' | 'error' | 'info';
@@ -480,10 +480,10 @@ export default function BillingPlansWidget() {
         setMessage({
           type: 'error',
           title: planLevel === 'FREE' ? 'Falha ao alterar plano' : 'Falha ao iniciar checkout',
-          description:
-            error instanceof Error
-              ? error.message
-              : 'Não foi possível iniciar a operação comercial.',
+          description: formatBcostApiErrorMessage(
+            error,
+            'Não foi possível iniciar a operação comercial.',
+          ),
         });
       } finally {
         setActionLoading(null);

@@ -12,7 +12,7 @@ import {
   ChevronRight,
   Activity,
 } from 'lucide-react';
-import { isDemoSession } from '@/services/api';
+import { formatBcostApiErrorMessage, isDemoSession } from '@/services/api';
 import { useCompany } from '@/app/context/CompanyContext';
 import { isDemoEntityId } from '@/lib/config/demo-policy';
 import {
@@ -31,11 +31,6 @@ import {
   type PaymentWebhookDeliveryStatus,
   type PaymentWebhookEvent,
 } from '@/lib/api/payments';
-
-type ApiErrorLike = {
-  response?: { data?: { message?: string } };
-  message?: string;
-};
 
 type SectionKey = 'profile' | 'company' | 'users' | 'billing';
 
@@ -218,12 +213,7 @@ function BillingSection() {
       setFeedback(response.message ?? 'Plano atualizado com sucesso.');
       await load();
     } catch (err: unknown) {
-      const apiError = err as ApiErrorLike;
-      const message =
-        apiError.response?.data?.message ||
-        apiError.message ||
-        'Não foi possível atualizar o plano.';
-      setError(message);
+      setError(formatBcostApiErrorMessage(err, 'Não foi possível atualizar o plano.'));
     } finally {
       setUpdating(null);
     }
@@ -242,12 +232,7 @@ function BillingSection() {
 
       window.location.assign(portal.portalSession.portalUrl);
     } catch (err: unknown) {
-      const apiError = err as ApiErrorLike;
-      const message =
-        apiError.response?.data?.message ||
-        apiError.message ||
-        'Não foi possível abrir o portal de cobrança.';
-      setError(message);
+      setError(formatBcostApiErrorMessage(err, 'Não foi possível abrir o portal de cobrança.'));
     } finally {
       setOpeningPortal(false);
     }
