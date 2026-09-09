@@ -100,6 +100,8 @@ describe('enterprise-company resolver', () => {
   });
 
   it('resolves linked membership company from authenticated user payload', async () => {
+    const contextListener = vi.fn();
+    window.addEventListener('bcost:company-context-updated', contextListener);
     apiGetMock.mockResolvedValueOnce({
       data: {
         user: {
@@ -123,6 +125,24 @@ describe('enterprise-company resolver', () => {
     await expect(resolveEnterpriseCompanyIdWithFallback()).resolves.toBe('company-amel');
     expect(window.localStorage.getItem('bcost_active_company')).toBe('company-amel');
     expect(window.localStorage.getItem('bcost_company_id')).toBe('company-amel');
+    expect(window.localStorage.getItem('bcost_active_company_data')).toContain(
+      'Amel Contabilidade Digital LTDA',
+    );
+    expect(window.localStorage.getItem('bcost_companies')).toContain('company-amel');
+    expect(contextListener).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          companyId: 'company-amel',
+          companies: expect.arrayContaining([
+            expect.objectContaining({
+              id: 'company-amel',
+              name: 'Amel Contabilidade Digital LTDA',
+            }),
+          ]),
+        }),
+      }),
+    );
+    window.removeEventListener('bcost:company-context-updated', contextListener);
   });
 
   it('uses stored real company when it belongs to authenticated membership list', async () => {

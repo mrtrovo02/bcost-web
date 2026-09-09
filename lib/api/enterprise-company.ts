@@ -60,6 +60,30 @@ function persistEnterpriseCompanyId(companyId: string): void {
   localStorage.setItem('activeCompanyId', companyId);
 }
 
+function persistEnterpriseCompanyContext(
+  companyId: string,
+  companies: ReturnType<typeof normalizeCompanyPayload>,
+): void {
+  persistEnterpriseCompanyId(companyId);
+
+  if (!isBrowser() || companies.length === 0) return;
+
+  const activeCompany = companies.find((company) => company.id === companyId) ?? companies[0];
+
+  localStorage.setItem('bcost_companies', JSON.stringify(companies));
+  localStorage.setItem('companies', JSON.stringify(companies));
+  localStorage.setItem('bcost_active_company_data', JSON.stringify(activeCompany));
+
+  window.dispatchEvent(
+    new CustomEvent('bcost:company-context-updated', {
+      detail: {
+        companyId,
+        companies,
+      },
+    }),
+  );
+}
+
 function createRealCompanyContextError(): Error {
   const error = new Error(
     'Nenhuma empresa real ativa foi encontrada. Cadastre ou selecione uma empresa antes de abrir modulos de producao.',
@@ -158,7 +182,7 @@ export async function resolveEnterpriseCompanyIdWithFallback(): Promise<string> 
 
     if (companyId) {
       clearStoredEnterpriseCompanyContext();
-      persistEnterpriseCompanyId(companyId);
+      persistEnterpriseCompanyContext(companyId, companies);
 
       return companyId;
     }
