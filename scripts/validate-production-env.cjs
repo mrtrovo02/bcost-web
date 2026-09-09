@@ -119,6 +119,8 @@ function validateServerSideRouteProtection() {
     "'/upload-xml/:path*'",
     'demo-token-local',
     'demo-disabled',
+    'isControlledDemoAccessEnabled',
+    'disallowedDemoSessionOnOfficialHost',
     'bcost_company_id',
   ];
 

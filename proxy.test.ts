@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { proxy } from './proxy';
 
@@ -9,6 +9,10 @@ function makeRequest(pathname: string, cookie?: string, origin = 'https://app.bc
 }
 
 describe('proxy', () => {
+  beforeEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it('redirects protected dashboard routes to login without a session cookie', () => {
     const response = proxy(makeRequest('/dashboard/intelligence'));
     const location = response.headers.get('location');
@@ -26,6 +30,15 @@ describe('proxy', () => {
     expect(response.headers.get('location')).toBeNull();
   });
 
+  it('does not treat company cookies as authenticated sessions', () => {
+    const response = proxy(makeRequest('/dashboard/companies', 'bcost_company_id=company-001'));
+    const location = response.headers.get('location');
+
+    expect(response.status).toBe(307);
+    expect(location).toContain('/login');
+    expect(location).toContain('session=required');
+  });
+
   it('blocks stale demo cookies on official hosts before serving protected pages', () => {
     const response = proxy(
       makeRequest('/dashboard/intelligence', 'bcost_token=demo-token-local; bcost_company_id=demo-001'),
@@ -38,6 +51,19 @@ describe('proxy', () => {
     expect(location).toContain('session=demo-disabled');
     expect(expiredCookies).toContain('bcost_token=');
     expect(expiredCookies).toContain('bcost_company_id=');
+  });
+
+  it('allows controlled demo cookies on official hosts when release flags are explicit', () => {
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_DEMO', 'true');
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_DEMO_FALLBACK', 'true');
+    vi.stubEnv('NEXT_PUBLIC_DEMO_ACCESS_MODE', 'controlled');
+
+    const response = proxy(
+      makeRequest('/dashboard/intelligence', 'bcost_token=demo-token-local; bcost_company_id=demo-001'),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('location')).toBeNull();
   });
 
   it('keeps demo cookies usable outside official hosts for controlled local demos', () => {

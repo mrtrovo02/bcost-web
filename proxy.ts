@@ -3,12 +3,18 @@ import { NextRequest, NextResponse } from 'next/server';
 const SESSION_COOKIE_NAMES = [
   'bcost_token',
   'bcost_access_token',
-  'bcost_company_id',
   'token',
   'access_token',
   'accessToken',
+] as const;
+const COMPANY_COOKIE_NAMES = [
+  'bcost_company_id',
   'companyId',
   'activeCompanyId',
+] as const;
+const CLEARABLE_SESSION_COOKIE_NAMES = [
+  ...SESSION_COOKIE_NAMES,
+  ...COMPANY_COOKIE_NAMES,
 ] as const;
 const AUTH_REQUIRED_PATHS = ['/dashboard', '/upload-xml'];
 const PUBLIC_PATHS = ['/login'];
@@ -24,6 +30,14 @@ function hasSession(request: NextRequest): boolean {
 
 function hasDemoSession(request: NextRequest): boolean {
   return SESSION_COOKIE_NAMES.some((name) => request.cookies.get(name)?.value === DEMO_TOKEN);
+}
+
+function isControlledDemoAccessEnabled(): boolean {
+  return (
+    process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true' &&
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_FALLBACK === 'true' &&
+    process.env.NEXT_PUBLIC_DEMO_ACCESS_MODE === 'controlled'
+  );
 }
 
 function isOfficialHost(request: NextRequest): boolean {
@@ -42,17 +56,21 @@ function isPublicPath(pathname: string): boolean {
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const sessionExists = hasSession(request);
-  const demoSessionOnOfficialHost = isOfficialHost(request) && hasDemoSession(request);
+  const disallowedDemoSessionOnOfficialHost =
+    isOfficialHost(request) && hasDemoSession(request) && !isControlledDemoAccessEnabled();
 
-  if (isAuthRequiredPath(pathname) && (!sessionExists || demoSessionOnOfficialHost)) {
+  if (isAuthRequiredPath(pathname) && (!sessionExists || disallowedDemoSessionOnOfficialHost)) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = '/login';
-    loginUrl.searchParams.set('session', demoSessionOnOfficialHost ? 'demo-disabled' : 'required');
+    loginUrl.searchParams.set(
+      'session',
+      disallowedDemoSessionOnOfficialHost ? 'demo-disabled' : 'required',
+    );
     loginUrl.searchParams.set('redirect', `${pathname}${search}`);
     const response = NextResponse.redirect(loginUrl);
 
-    if (demoSessionOnOfficialHost) {
-      for (const cookieName of SESSION_COOKIE_NAMES) {
+    if (disallowedDemoSessionOnOfficialHost) {
+      for (const cookieName of CLEARABLE_SESSION_COOKIE_NAMES) {
         response.cookies.delete(cookieName);
       }
     }

@@ -18,9 +18,15 @@ export const config = {
 };
 const demoToken = 'demo-token-local';
 const demoDisabledReason = 'demo-disabled';
+function isControlledDemoAccessEnabled() {
+  return true;
+}
+const disallowedDemoSessionOnOfficialHost = false;
 const companyCookie = 'bcost_company_id';
 void demoToken;
 void demoDisabledReason;
+void isControlledDemoAccessEnabled;
+void disallowedDemoSessionOnOfficialHost;
 void companyCookie;
 `;
 
@@ -41,13 +47,17 @@ const baseEnv: NodeJS.ProcessEnv = {
 
 function runReleaseCheck(
   overrides: Partial<NodeJS.ProcessEnv> = {},
-  options: { readonly writeProxy?: boolean } = {},
+  options: { readonly writeProxy?: boolean; readonly proxySource?: string } = {},
 ): ReleaseCheckResult {
   const tempDirectory = mkdtempSync(join(tmpdir(), 'bcost-web-release-check-'));
   tempDirectories.push(tempDirectory);
 
   if (options.writeProxy !== false) {
-    writeFileSync(join(tempDirectory, 'proxy.ts'), protectedProxySource, 'utf8');
+    writeFileSync(
+      join(tempDirectory, 'proxy.ts'),
+      options.proxySource ?? protectedProxySource,
+      'utf8',
+    );
   }
 
   const result = spawnSync(process.execPath, [scriptPath], {
@@ -151,5 +161,24 @@ describe('frontend production release gate', () => {
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('proxy.ts');
     expect(result.stderr).toContain('/dashboard/*');
+  });
+
+  it('bloqueia proxy sem regra explicita para demo controlada no host oficial', () => {
+    const result = runReleaseCheck({}, {
+      proxySource: `
+export const config = {
+  matcher: ['/dashboard/:path*', '/upload-xml/:path*', '/login'],
+};
+const demoToken = 'demo-token-local';
+const demoDisabledReason = 'demo-disabled';
+const companyCookie = 'bcost_company_id';
+void demoToken;
+void demoDisabledReason;
+void companyCookie;
+`,
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('isControlledDemoAccessEnabled');
   });
 });
