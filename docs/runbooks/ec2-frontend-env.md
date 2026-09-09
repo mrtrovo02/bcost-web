@@ -14,6 +14,7 @@ NEXT_PUBLIC_SOCKET_URL=https://api.bcost.com.br
 NEXT_PUBLIC_APP_NAME=bCost
 NEXT_PUBLIC_ENABLE_DEMO=false
 NEXT_PUBLIC_ENABLE_DEMO_FALLBACK=false
+NEXT_PUBLIC_DEMO_ACCESS_MODE=disabled
 ```
 
 ## Demo pública controlada
@@ -23,6 +24,7 @@ Para vitrine comercial com demo pública, habilite a demo somente junto com a co
 ```bash
 NEXT_PUBLIC_ENABLE_DEMO=true
 NEXT_PUBLIC_ENABLE_DEMO_FALLBACK=true
+NEXT_PUBLIC_DEMO_ACCESS_MODE=controlled
 ```
 
 O backend exige duas evidências na mesma requisição demo em produção:
@@ -33,6 +35,7 @@ x-demo-session: true
 ```
 
 Não habilite demo pública em ambiente com clientes reais sem segregação operacional validada.
+Nunca use `NEXT_PUBLIC_ENABLE_DEMO=true` com `NEXT_PUBLIC_DEMO_ACCESS_MODE` vazio ou diferente de `controlled` no domínio oficial.
 
 ## Deploy
 

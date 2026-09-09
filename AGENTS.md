@@ -84,4 +84,4 @@ pm2 reload bcost-web --update-env
 pm2 logs bcost-web --lines 80
 ```
 
-Variaveis produtivas obrigatorias incluem `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_SOCKET_URL`, `INTERNAL_API_URL`, `NEXT_PUBLIC_ENABLE_DEMO=false` e `NEXT_PUBLIC_ENABLE_DEMO_FALLBACK=false`.
+Variaveis produtivas obrigatorias incluem `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_SOCKET_URL`, `INTERNAL_API_URL`, `NEXT_PUBLIC_ENABLE_DEMO=false`, `NEXT_PUBLIC_ENABLE_DEMO_FALLBACK=false` e `NEXT_PUBLIC_DEMO_ACCESS_MODE=disabled`.

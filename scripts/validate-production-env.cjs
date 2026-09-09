@@ -151,6 +151,11 @@ function validateDemoPolicy() {
     'false',
     'fallback demonstrativo deve ficar desligado em produção.',
   );
+  requireEquals(
+    'NEXT_PUBLIC_DEMO_ACCESS_MODE',
+    'disabled',
+    'use disabled quando a demo oficial nao estiver em modo controlled.',
+  );
 
   if (demoEnabled === 'true' || demoFallbackEnabled === 'true') {
     errors.push(

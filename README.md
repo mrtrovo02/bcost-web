@@ -25,10 +25,11 @@ For real client operations, keep operational demo fallbacks disabled:
 ```bash
 NEXT_PUBLIC_ENABLE_DEMO=false
 NEXT_PUBLIC_ENABLE_DEMO_FALLBACK=false
+NEXT_PUBLIC_DEMO_ACCESS_MODE=disabled
 NEXT_PUBLIC_API_URL=https://api.seu-dominio.com.br/api/v1
 ```
 
-`NEXT_PUBLIC_ENABLE_DEMO_FALLBACK=true` should only be used in local development or controlled demos. Production screens must fail clearly when the API, tenant company, entitlements, or module endpoints are unavailable, instead of silently showing sample data.
+`NEXT_PUBLIC_ENABLE_DEMO_FALLBACK=true` should only be used in local development or controlled demos with `NEXT_PUBLIC_DEMO_ACCESS_MODE=controlled`. Production screens must fail clearly when the API, tenant company, entitlements, or module endpoints are unavailable, instead of silently showing sample data.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 

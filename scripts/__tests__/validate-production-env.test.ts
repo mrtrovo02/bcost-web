@@ -42,6 +42,7 @@ const baseEnv: NodeJS.ProcessEnv = {
   NEXT_PUBLIC_SOCKET_URL: 'https://api.bcost.com.br',
   NEXT_PUBLIC_ENABLE_DEMO: 'false',
   NEXT_PUBLIC_ENABLE_DEMO_FALLBACK: 'false',
+  NEXT_PUBLIC_DEMO_ACCESS_MODE: 'disabled',
   NEXT_PUBLIC_APP_URL: 'https://app.bcost.com.br',
 };
 
@@ -145,6 +146,16 @@ describe('frontend production release gate', () => {
 
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('NEXT_PUBLIC_DEMO_ACCESS_MODE');
+  });
+
+  it('bloqueia producao estrita sem modo de demo explicitamente disabled', () => {
+    const result = runReleaseCheck({
+      NEXT_PUBLIC_DEMO_ACCESS_MODE: '',
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('NEXT_PUBLIC_DEMO_ACCESS_MODE');
+    expect(result.stderr).toContain('disabled');
   });
 
   it('bloqueia app público apontando para origem não oficial', () => {
