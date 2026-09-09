@@ -263,9 +263,9 @@ function enrichBillingFeatureWithReadiness(feature: BillingFeature): BillingFeat
   if (feature.marketReadiness) return feature;
   if (!feature.moduleSlug) return feature;
 
-  const module = getSchemaModuleBySlug(feature.moduleSlug);
-  const marketReadiness = module
-    ? getModuleMarketReadiness(module.status, module.marketReadinessOverride)
+  const schemaModule = getSchemaModuleBySlug(feature.moduleSlug);
+  const marketReadiness = schemaModule
+    ? getModuleMarketReadiness(schemaModule.status, schemaModule.marketReadinessOverride)
     : 'ROADMAP_LOCKED';
   const commercialGuardrail =
     marketReadiness === 'SELLABLE'
