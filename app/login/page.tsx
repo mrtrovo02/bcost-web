@@ -7,6 +7,7 @@ import {
   verifyMfa,
   getToken,
   clearSession,
+  getBcostTraceIdFromError,
   isMfaRequiredResponse,
   type LoginResponse,
 } from '@/services/api';
@@ -84,11 +85,12 @@ export default function LoginPage() {
       router.replace('/dashboard/intelligence');
     } catch (error: unknown) {
       const err = error as { message?: string; status?: number; response?: { status: number } };
+      const traceId = getBcostTraceIdFromError(error);
       const message = err?.message ?? 'Falha na comunicação com o servidor.';
       const status = err?.status ?? err?.response?.status ?? 'N/A';
 
-      setErrorMessage(message);
-      console.error('[bCost Auth]', { status, message });
+      setErrorMessage(traceId ? `${message} Código de suporte: ${traceId}` : message);
+      console.error('[bCost Auth]', { status, message, traceId });
     } finally {
       setIsLoading(false);
     }

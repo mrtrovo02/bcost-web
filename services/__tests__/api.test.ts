@@ -3,6 +3,7 @@ import {
   api,
   clearSession,
   createBcostTraceId,
+  getBcostTraceIdFromError,
   getToken,
   isDemoSession,
   isMfaRequiredResponse,
@@ -188,6 +189,55 @@ describe('isDemoSession', () => {
     expect(capturedHeaders['x-demo-session']).toBeUndefined();
     expect(capturedHeaders['x-bcost-trace-id']).toMatch(/^web-/);
     expect(capturedHeaders['x-bcost-trace-id']).not.toBe('stale-trace-id');
+  });
+
+  it('exposes the backend trace ID on failed API responses', async () => {
+    const traceId = 'api-trace-001';
+    const error = await api
+      .get('/fails-with-trace', {
+        adapter: async (config) => {
+          throw {
+            isAxiosError: true,
+            config,
+            response: {
+              status: 500,
+              headers: {
+                'x-bcost-trace-id': traceId,
+              },
+              data: {
+                message: 'database unavailable',
+              },
+            },
+          };
+        },
+      })
+      .catch((caught: unknown) => caught);
+
+    expect(getBcostTraceIdFromError(error)).toBe(traceId);
+    expect(error).toMatchObject({ bcostTraceId: traceId });
+  });
+
+  it('falls back to the request trace ID when the response has no trace header', async () => {
+    const error = await api
+      .get('/fails-without-response-trace', {
+        adapter: async (config) => {
+          throw {
+            isAxiosError: true,
+            config,
+            response: {
+              status: 503,
+              headers: {},
+              data: {
+                message: 'upstream unavailable',
+              },
+            },
+          };
+        },
+      })
+      .catch((caught: unknown) => caught);
+
+    expect(getBcostTraceIdFromError(error)).toMatch(/^web-/);
+    expect(error).toMatchObject({ bcostTraceId: expect.stringMatching(/^web-/) });
   });
 
   it('does not persist an MFA challenge as an authenticated session', async () => {

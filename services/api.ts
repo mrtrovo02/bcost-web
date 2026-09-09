@@ -161,6 +161,74 @@ export interface AuthMissingError extends Error {
   config?: AxiosRequestConfig;
 }
 
+export interface BcostApiErrorMetadata {
+  bcostTraceId?: string;
+}
+
+type HeaderReader = {
+  get: (name: string) => unknown;
+};
+
+function isHeaderReader(value: unknown): value is HeaderReader {
+  return (
+    Boolean(value) &&
+    typeof value === 'object' &&
+    typeof (value as { get?: unknown }).get === 'function'
+  );
+}
+
+function readHeaderValue(headers: unknown, name: string): string | null {
+  if (!headers) return null;
+
+  if (isHeaderReader(headers)) {
+    const value = headers.get(name);
+    if (Array.isArray(value)) {
+      const first = value.find((item) => isValidValue(item));
+      return first ?? null;
+    }
+    return isValidValue(value) ? value : null;
+  }
+
+  if (typeof headers !== 'object') return null;
+
+  const normalizedName = name.toLowerCase();
+  for (const [key, value] of Object.entries(headers as Record<string, unknown>)) {
+    if (key.toLowerCase() !== normalizedName) continue;
+    if (Array.isArray(value)) {
+      const first = value.find((item) => isValidValue(item));
+      return first ?? null;
+    }
+    return isValidValue(value) ? value : null;
+  }
+
+  return null;
+}
+
+export function getBcostTraceIdFromError(error: unknown): string | null {
+  if (!error || typeof error !== 'object') return null;
+
+  const enriched = error as BcostApiErrorMetadata;
+  if (isValidValue(enriched.bcostTraceId)) {
+    return enriched.bcostTraceId;
+  }
+
+  if (!axios.isAxiosError(error)) return null;
+
+  return (
+    readHeaderValue(error.response?.headers, TRACE_HEADER) ??
+    readHeaderValue(error.config?.headers, TRACE_HEADER)
+  );
+}
+
+function enrichAxiosErrorWithTraceId(error: unknown): void {
+  if (!axios.isAxiosError(error)) return;
+
+  const traceId = getBcostTraceIdFromError(error);
+  if (traceId) {
+    (error as BcostApiErrorMetadata).bcostTraceId = traceId;
+  }
+}
+
 // Cookie helpers
 function cookieAttrs(maxAge: number): string {
   return isProductionHost()
@@ -679,6 +747,8 @@ let refreshRequest: Promise<string | null> | null = null;
 api.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error: unknown) => {
+    enrichAxiosErrorWithTraceId(error);
+
     if (axios.isAxiosError(error) && error.response?.status === 401) {
       const requestUrl = error.config?.url ?? 'unknown';
       console.warn('[API Interceptor] Requisicao nao autorizada (401) capturada em:', requestUrl);
