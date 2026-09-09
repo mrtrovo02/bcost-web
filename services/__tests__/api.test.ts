@@ -9,6 +9,7 @@ import {
   resolveRequestAuthMetadata,
   resolveRequestCompanyId,
   resolveRequestHeaders,
+  switchActiveCompany,
   verifyMfa,
 } from '../api';
 
@@ -260,5 +261,97 @@ describe('isDemoSession', () => {
         role: 'ACCOUNTANT',
       }),
     ]);
+  });
+
+  it('persists the complete auth contract returned by switch-company', async () => {
+    vi.spyOn(api, 'post').mockResolvedValueOnce({
+      data: {
+        access_token: 'jwt-company-amel',
+        companyId: 'company-amel',
+        activeCompanyId: 'company-amel',
+        companies: [
+          {
+            id: 'company-amel',
+            name: 'Amel Contabilidade Digital LTDA',
+            cnpj: '12.345.678/0001-10',
+          },
+        ],
+        user: {
+          id: 'user-amanda',
+          email: 'amandacontabil@bcost.com.br',
+          name: 'Amanda Narvaes',
+          activeCompanyId: 'company-amel',
+          companies: [
+            {
+              id: 'company-amel',
+              name: 'Amel Contabilidade Digital LTDA',
+              cnpj: '12.345.678/0001-10',
+            },
+          ],
+        },
+      },
+    });
+
+    await switchActiveCompany('company-amel');
+
+    expect(api.post).toHaveBeenCalledWith('/auth/switch-company', { companyId: 'company-amel' }, undefined);
+    expect(getToken()).toBe('jwt-company-amel');
+    expect(localStorage.getItem('bcost_company_id')).toBe('company-amel');
+    expect(localStorage.getItem('bcost_active_company_data')).toContain(
+      'Amel Contabilidade Digital LTDA',
+    );
+  });
+
+  it('stores the active company on the user profile instead of the first company', async () => {
+    vi.spyOn(api, 'post').mockResolvedValueOnce({
+      data: {
+        access_token: 'jwt-company-amel',
+        companyId: 'company-amel',
+        activeCompanyId: 'company-amel',
+        companies: [
+          {
+            id: 'company-first',
+            name: 'Primeira Empresa LTDA',
+            cnpj: '11.111.111/0001-91',
+          },
+          {
+            id: 'company-amel',
+            name: 'Amel Contabilidade Digital LTDA',
+            cnpj: '22.222.222/0001-91',
+          },
+        ],
+        user: {
+          id: 'user-amanda',
+          email: 'amandacontabil@bcost.com.br',
+          name: 'Amanda Narvaes',
+          activeCompanyId: 'company-amel',
+          companies: [
+            {
+              id: 'company-first',
+              name: 'Primeira Empresa LTDA',
+              cnpj: '11.111.111/0001-91',
+            },
+            {
+              id: 'company-amel',
+              name: 'Amel Contabilidade Digital LTDA',
+              cnpj: '22.222.222/0001-91',
+            },
+          ],
+        },
+      },
+    });
+
+    await switchActiveCompany('company-amel');
+
+    const storedUser = JSON.parse(localStorage.getItem('bcost_user') ?? '{}') as {
+      company?: { id?: string; name?: string };
+    };
+
+    expect(storedUser.company).toEqual(
+      expect.objectContaining({
+        id: 'company-amel',
+        name: 'Amel Contabilidade Digital LTDA',
+      }),
+    );
   });
 });

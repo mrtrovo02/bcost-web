@@ -32,6 +32,7 @@ import {
   getActiveCompanyId,
   getToken,
   setActiveCompanyId,
+  switchActiveCompany,
 } from '@/services/api';
 import { normalizeCompanyPayload } from '@/services/company-normalizer';
 import { DEMO_COMPANIES, type DemoCompany } from '@/services/demo-data';
@@ -69,6 +70,28 @@ function getRequestFailureStatus(error: unknown): RequestFailureStatus | null {
 
   const status = (error as HttpErrorLike).response?.status;
   return status === 401 || status === 429 ? status : null;
+}
+
+function safeParseStoragePayload(key: string): unknown {
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    window.localStorage.removeItem(key);
+    return null;
+  }
+}
+
+function readStoredSidebarCompanies(): SidebarCompany[] {
+  for (const key of ['bcost_companies', 'companies', 'bcost_user', 'user', 'auth_user']) {
+    const companies = normalizeCompanyPayload(safeParseStoragePayload(key)) as SidebarCompany[];
+
+    if (companies.length > 0) {
+      return companies;
+    }
+  }
+
+  return [];
 }
 
 export default function Sidebar() {
@@ -153,7 +176,7 @@ export default function Sidebar() {
       const { data } = await api.get<DemoCompany[] | { data?: DemoCompany[] }>('/company');
       const companiesList = normalizeCompanyPayload(data) as SidebarCompany[];
       lastCompanyLoadFailureRef.current = null;
-      applyCompanies(companiesList);
+      applyCompanies(companiesList.length > 0 ? companiesList : readStoredSidebarCompanies());
     } catch (error) {
       const blockedStatus = getRequestFailureStatus(error);
       if (blockedStatus) {
@@ -167,7 +190,8 @@ export default function Sidebar() {
         '[bCost Sidebar]: API indisponível para carregar empresas da sessão real.',
         blockedStatus ? `status=${blockedStatus}` : '',
       );
-      applyCompanies([]);
+      const storedCompanies = readStoredSidebarCompanies();
+      applyCompanies(storedCompanies.length > 0 ? storedCompanies : []);
     } finally {
       isLoadingCompaniesRef.current = false;
     }
@@ -181,7 +205,20 @@ export default function Sidebar() {
     setSelectedCompany(company);
     setActiveCompanyId(company.id);
     localStorage.setItem('bcost_active_company_data', JSON.stringify(company));
-    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(
+      new CustomEvent('bcost:company-context-updated', {
+        detail: {
+          companyId: company.id,
+          companies,
+        },
+      }),
+    );
+
+    if (!isDemoSession) {
+      void switchActiveCompany(company.id).catch((error: unknown) => {
+        console.warn('[bCost Sidebar]: troca remota de empresa não confirmada.', error);
+      });
+    }
   };
 
   const SESSION_COOKIE_NAMES = [

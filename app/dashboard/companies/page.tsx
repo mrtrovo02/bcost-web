@@ -84,7 +84,7 @@ export default function CompaniesPage() {
 
     setIsLoading(false);
 
-    if (companiesQuery.data) {
+    if (companiesQuery.data && companiesQuery.data.length > 0) {
       setCompanies(companiesQuery.data);
     }
 
@@ -99,6 +99,7 @@ export default function CompaniesPage() {
     companiesQuery.data,
     companiesQuery.error,
     companiesQuery.isLoading,
+    companies.length,
     isCompanyContextLoading,
     setCompanies,
   ]);

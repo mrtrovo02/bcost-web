@@ -17,6 +17,7 @@ const testState = vi.hoisted(() => ({
   apiPost: vi.fn(),
   clearSession: vi.fn(),
   getToken: vi.fn(() => 'real-jwt-token'),
+  switchActiveCompany: vi.fn(),
   isDemoSession: false,
   companies: [{ id: '1', name: 'Empresa Demo', cnpj: '12.345.678/0001-99' }] as TestCompany[],
   selectedCompany: {
@@ -54,6 +55,7 @@ vi.mock('@/services/api', () => ({
   getActiveCompanyId: vi.fn(() => '1'),
   getToken: testState.getToken,
   setActiveCompanyId: vi.fn(),
+  switchActiveCompany: testState.switchActiveCompany,
 }));
 
 vi.mock('@/lib/config/demo-policy', () => ({
@@ -73,6 +75,7 @@ describe('Sidebar', () => {
     testState.apiGet.mockResolvedValue({ data: testState.companies });
     testState.apiPost.mockResolvedValue({ data: { message: 'Logged out successfully' } });
     testState.getToken.mockReturnValue('real-jwt-token');
+    testState.switchActiveCompany.mockResolvedValue({ access_token: 'next-token' });
     testState.demoFallbackEnabled = true;
     Object.defineProperty(window, 'location', {
       configurable: true,
@@ -98,6 +101,41 @@ describe('Sidebar', () => {
 
     expect(testState.mockPush).toHaveBeenCalledWith('/dashboard/enterprise');
     expect(testState.mockPush).not.toHaveBeenCalledWith('/dashboard/modules/business-rules');
+  });
+
+  it('confirma troca de empresa real no backend para renovar token e contexto JWT', async () => {
+    testState.isDemoSession = false;
+    testState.companies = [
+      { id: 'company-amel', name: 'Amel Contabilidade Digital LTDA', cnpj: '12.345.678/0001-10' },
+    ];
+    testState.selectedCompany = null;
+
+    render(<Sidebar />);
+
+    fireEvent.click(screen.getByText('Amel Contabilidade Digital LTDA'));
+
+    await waitFor(() => {
+      expect(testState.switchActiveCompany).toHaveBeenCalledWith('company-amel');
+    });
+  });
+
+  it('mantem troca de empresa demo local sem chamar switch-company real', async () => {
+    testState.isDemoSession = true;
+    testState.companies = [
+      { id: 'demo-001', name: 'Tech Solutions Ltda', cnpj: '12.345.678/0001-90' },
+    ];
+    testState.selectedCompany = null;
+
+    render(<Sidebar />);
+
+    fireEvent.click(screen.getByText('Tech Solutions Ltda'));
+
+    await waitFor(() => {
+      expect(testState.setSelectedCompany).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'demo-001' }),
+      );
+    });
+    expect(testState.switchActiveCompany).not.toHaveBeenCalled();
   });
 
   it('does not apply demo companies when a real session cannot load companies from the API', async () => {
@@ -177,6 +215,70 @@ describe('Sidebar', () => {
           id: 'amel-company-id',
           name: 'Amel Contabilidade Digital LTDA',
           role: 'ACCOUNTANT',
+        }),
+      ]);
+    });
+  });
+
+  it('keeps stored real companies visible when the company API temporarily fails', async () => {
+    testState.isDemoSession = false;
+    testState.companies = [];
+    testState.selectedCompany = null;
+    testState.apiGet.mockRejectedValueOnce({ response: { status: 500 } });
+    window.localStorage.setItem(
+      'bcost_user',
+      JSON.stringify({
+        id: 'user-amanda',
+        email: 'amandacontabil@bcost.com.br',
+        companies: [
+          {
+            id: 'company-amel',
+            name: 'Amel Contabilidade Digital LTDA',
+            cnpj: '12.345.678/0001-10',
+          },
+        ],
+      }),
+    );
+
+    render(<Sidebar />);
+
+    await waitFor(() => {
+      expect(testState.setCompanies).toHaveBeenCalledWith([
+        expect.objectContaining({
+          id: 'company-amel',
+          name: 'Amel Contabilidade Digital LTDA',
+        }),
+      ]);
+    });
+  });
+
+  it('uses stored real companies when the company API returns an empty list', async () => {
+    testState.isDemoSession = false;
+    testState.companies = [];
+    testState.selectedCompany = null;
+    testState.apiGet.mockResolvedValueOnce({ data: [] });
+    window.localStorage.setItem(
+      'bcost_user',
+      JSON.stringify({
+        id: 'user-amanda',
+        email: 'amandacontabil@bcost.com.br',
+        companies: [
+          {
+            id: 'company-amel',
+            name: 'Amel Contabilidade Digital LTDA',
+            cnpj: '12.345.678/0001-10',
+          },
+        ],
+      }),
+    );
+
+    render(<Sidebar />);
+
+    await waitFor(() => {
+      expect(testState.setCompanies).toHaveBeenCalledWith([
+        expect.objectContaining({
+          id: 'company-amel',
+          name: 'Amel Contabilidade Digital LTDA',
         }),
       ]);
     });

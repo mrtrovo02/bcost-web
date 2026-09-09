@@ -456,10 +456,17 @@ export function setStoredUser(user?: BcostUser | null): void {
   if (!isBrowser() || !user) return;
   const safe = sanitizeUser(user);
   const normalizedCompanies = normalizeCompanyPayload(safe.companies ?? safe);
+  const preferredCompanyId =
+    safe.companyId ??
+    safe.activeCompanyId ??
+    safe.company_id ??
+    safe.company?.id;
 
   if (normalizedCompanies.length > 0) {
     safe.companies = normalizedCompanies;
-    safe.company = normalizedCompanies[0];
+    safe.company =
+      normalizedCompanies.find((company) => company.id === preferredCompanyId) ??
+      normalizedCompanies[0];
   }
 
   const json = JSON.stringify(safe);
@@ -471,9 +478,7 @@ export function setStoredUser(user?: BcostUser | null): void {
     }
   }
   const companyId =
-    safe.companyId ??
-    safe.activeCompanyId ??
-    safe.company_id ??
+    preferredCompanyId ??
     safe.company?.id ??
     normalizedCompanies[0]?.id;
   if (typeof companyId === 'string') setActiveCompanyId(companyId);
@@ -746,6 +751,12 @@ export async function verifyMfa(
     mfaSession,
     otpCode,
   });
+  persistAuthResponse(data);
+  return data;
+}
+
+export async function switchActiveCompany(companyId: string): Promise<AuthResponse> {
+  const { data } = await apiPost<AuthResponse>('/auth/switch-company', { companyId });
   persistAuthResponse(data);
   return data;
 }

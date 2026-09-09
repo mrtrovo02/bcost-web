@@ -7,6 +7,7 @@ describe('CompaniesPage company loading contract', () => {
     const source = readFileSync(join(process.cwd(), 'app/dashboard/companies/page.tsx'), 'utf8');
 
     expect(source).toContain('useCompaniesQuery()');
+    expect(source).toContain('companiesQuery.data && companiesQuery.data.length > 0');
     expect(source).not.toContain('await companyService.getAll()');
     expect(source).not.toContain('if (isDemoSession) {\n        return;\n      }');
   });
