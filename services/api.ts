@@ -351,6 +351,10 @@ function lsRemove(keys: readonly string[]): void {
   }
 }
 
+function removeReadableTokenStorage(): void {
+  lsRemove(TOKEN_KEYS);
+}
+
 function isDemoId(value?: string | null): boolean {
   return typeof value === 'string' && value.toLowerCase().startsWith('demo-');
 }
@@ -487,6 +491,27 @@ function sanitizeUser(user: BcostUser): BcostUser {
 // Token getters & setters
 export function getToken(): string | null {
   if (!isBrowser()) return null;
+
+  if (isOfficialBcostHost()) {
+    for (const key of TOKEN_KEYS) {
+      const value = readCookie(key);
+      if (value === DEMO_TOKEN && isDemoTokenAllowed()) {
+        return DEMO_TOKEN;
+      }
+    }
+
+    const legacy = lsGet(TOKEN_KEYS);
+    if (legacy === DEMO_TOKEN && isDemoTokenAllowed()) {
+      return DEMO_TOKEN;
+    }
+
+    if (legacy) {
+      removeReadableTokenStorage();
+    }
+
+    return null;
+  }
+
   for (const key of TOKEN_KEYS) {
     const v = readCookie(key);
     if (isValidValue(v)) {
@@ -512,6 +537,12 @@ export function getToken(): string | null {
 
 export function setToken(token: string): void {
   if (!isBrowser() || !isValidValue(token)) return;
+
+  if (isOfficialBcostHost() && token !== DEMO_TOKEN) {
+    removeReadableTokenStorage();
+    return;
+  }
+
   for (const key of TOKEN_KEYS) deleteCookie(key);
   lsSet(TOKEN_KEYS, token);
   for (const key of TOKEN_KEYS) writeCookie(key, token);

@@ -65,6 +65,23 @@ describe('isDemoSession', () => {
     expect(resolveRequestHeaders(getToken(), 'demo-001')).toEqual({});
   });
 
+  it('ignores readable real tokens on official bCost domains to avoid stale Authorization headers', () => {
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: {
+        hostname: 'app.bcost.com.br',
+        pathname: '/dashboard',
+        search: '',
+        replace: vi.fn(),
+      },
+    });
+    localStorage.setItem('bcost_token', 'stale-real-jwt-with-null-company');
+
+    expect(getToken()).toBeNull();
+    expect(localStorage.getItem('bcost_token')).toBeNull();
+    expect(resolveRequestHeaders(getToken(), 'company-real-001')).toEqual({});
+  });
+
   it('keeps local demo support on localhost during development', () => {
     Object.defineProperty(window, 'location', {
       configurable: true,
