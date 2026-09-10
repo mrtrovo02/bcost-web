@@ -12,6 +12,7 @@ import {
   resolveRequestAuthMetadata,
   resolveRequestCompanyId,
   resolveRequestHeaders,
+  setStoredToken,
   switchActiveCompany,
   verifyMfa,
 } from '../api';
@@ -100,6 +101,24 @@ describe('isDemoSession', () => {
 
     expect(isDemoSession()).toBe(false);
     expect(resolveRequestHeaders(getToken(), 'demo-001')).toEqual({});
+  });
+
+  it('clears readable demo cookies when a real token is persisted on official bCost domains', () => {
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: {
+        hostname: 'app.bcost.com.br',
+        pathname: '/login',
+        search: '',
+        replace: vi.fn(),
+      },
+    });
+    localStorage.setItem('bcost_token', 'demo-token-local');
+
+    setStoredToken('real-jwt-token');
+
+    expect(localStorage.getItem('bcost_token')).toBeNull();
+    expect(getToken()).toBeNull();
   });
 
   it('keeps local demo support on localhost during development', () => {

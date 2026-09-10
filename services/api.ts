@@ -544,6 +544,7 @@ export function setToken(token: string): void {
 
   if (isOfficialBcostHost() && token !== DEMO_TOKEN) {
     removeReadableTokenStorage();
+    for (const key of TOKEN_KEYS) deleteCookie(key);
     return;
   }
 
