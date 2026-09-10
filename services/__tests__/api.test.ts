@@ -121,6 +121,33 @@ describe('isDemoSession', () => {
     expect(getToken()).toBeNull();
   });
 
+  it('purges stale demo token when a real user is stored on official bCost domains', () => {
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: {
+        hostname: 'app.bcost.com.br',
+        pathname: '/dashboard',
+        search: '',
+        replace: vi.fn(),
+      },
+    });
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_DEMO', 'true');
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_DEMO_FALLBACK', 'true');
+    vi.stubEnv('NEXT_PUBLIC_DEMO_ACCESS_MODE', 'controlled');
+    localStorage.setItem('bcost_token', 'demo-token-local');
+    localStorage.setItem(
+      'bcost_user',
+      JSON.stringify({
+        id: '4e76c6d3-78c4-4d5d-b626-51aa3d760710',
+        email: 'amandacontabil@bcost.com.br',
+      }),
+    );
+
+    expect(getToken()).toBeNull();
+    expect(isDemoSession()).toBe(false);
+    expect(localStorage.getItem('bcost_token')).toBeNull();
+  });
+
   it('keeps local demo support on localhost during development', () => {
     Object.defineProperty(window, 'location', {
       configurable: true,

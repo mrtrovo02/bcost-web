@@ -359,6 +359,28 @@ function removeReadableTokenStorage(): void {
   lsRemove(TOKEN_KEYS);
 }
 
+function hasStoredRealUser(): boolean {
+  if (!isBrowser()) return false;
+
+  for (const key of USER_KEYS) {
+    try {
+      const raw = window.localStorage.getItem(key);
+      if (!raw) continue;
+
+      const parsed = JSON.parse(raw) as Partial<BcostUser>;
+      const email = typeof parsed.email === 'string' ? parsed.email.toLowerCase() : '';
+      const id = typeof parsed.id === 'string' ? parsed.id.toLowerCase() : '';
+
+      if (email && email !== 'demo@bcost.com.br') return true;
+      if (id && !id.startsWith('demo-')) return true;
+    } catch {
+      window.localStorage.removeItem(key);
+    }
+  }
+
+  return false;
+}
+
 function isDemoId(value?: string | null): boolean {
   return typeof value === 'string' && value.toLowerCase().startsWith('demo-');
 }
@@ -500,12 +522,20 @@ export function getToken(): string | null {
     for (const key of TOKEN_KEYS) {
       const value = readCookie(key);
       if (value === DEMO_TOKEN && isDemoTokenAllowed()) {
+        if (hasStoredRealUser()) {
+          clearToken();
+          return null;
+        }
         return DEMO_TOKEN;
       }
     }
 
     const legacy = lsGet(TOKEN_KEYS);
     if (legacy === DEMO_TOKEN && isDemoTokenAllowed()) {
+      if (hasStoredRealUser()) {
+        clearToken();
+        return null;
+      }
       return DEMO_TOKEN;
     }
 
