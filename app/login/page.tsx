@@ -9,6 +9,7 @@ import {
   clearSession,
   getBcostTraceIdFromError,
   isMfaRequiredResponse,
+  logout,
   type LoginResponse,
 } from '@/services/api';
 import { seedDemoData } from '@/services/demo-data';
@@ -241,10 +242,16 @@ export default function LoginPage() {
           <button
             type="button"
             disabled={!demoModeEnabled || Boolean(mfaSession)}
-            onClick={() => {
+            onClick={async () => {
+              setIsLoading(true);
+              setErrorMessage(null);
+              await logout();
               const seeded = seedDemoData();
+              setIsLoading(false);
               if (seeded) {
                 router.replace('/dashboard/intelligence');
+              } else {
+                setErrorMessage('Modo demonstração indisponível neste ambiente.');
               }
             }}
             className={`flex-1 py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-xs transition-all flex justify-center items-center bg-slate-800 border border-white/5 text-slate-300 active:scale-[0.98] ${

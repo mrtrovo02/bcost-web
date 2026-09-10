@@ -82,6 +82,26 @@ describe('isDemoSession', () => {
     expect(resolveRequestHeaders(getToken(), 'company-real-001')).toEqual({});
   });
 
+  it('does not classify stale demo company storage as demo session on official bCost domains', () => {
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: {
+        hostname: 'app.bcost.com.br',
+        pathname: '/dashboard',
+        search: '',
+        replace: vi.fn(),
+      },
+    });
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_DEMO', 'true');
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_DEMO_FALLBACK', 'true');
+    vi.stubEnv('NEXT_PUBLIC_DEMO_ACCESS_MODE', 'controlled');
+    localStorage.setItem('bcost_active_company', 'demo-001');
+    localStorage.setItem('companyId', 'demo-001');
+
+    expect(isDemoSession()).toBe(false);
+    expect(resolveRequestHeaders(getToken(), 'demo-001')).toEqual({});
+  });
+
   it('keeps local demo support on localhost during development', () => {
     Object.defineProperty(window, 'location', {
       configurable: true,

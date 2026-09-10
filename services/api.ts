@@ -107,6 +107,10 @@ export function isDemoSession(): boolean {
   const hasDemoToken = token === DEMO_TOKEN;
   const hasDemoCompanyContext = isDemoCompanyContext();
 
+  if (isOfficialBcostHost()) {
+    return hasDemoToken;
+  }
+
   if (token && !hasDemoToken) return false;
 
   return hasDemoToken || hasDemoCompanyContext;
@@ -920,6 +924,11 @@ export async function verifyMfa(
   });
   persistAuthResponse(data);
   return data;
+}
+
+export async function logout(): Promise<void> {
+  await apiPost('/auth/logout').catch(() => undefined);
+  clearSession();
 }
 
 export async function switchActiveCompany(companyId: string): Promise<AuthResponse> {
