@@ -51,6 +51,7 @@ describe('CompanySessionHydrator persistence contract', () => {
   it('sonda sessao real HttpOnly no host oficial mesmo sem token legivel', () => {
     expect(hydratorSource).toContain('function isOfficialBcostHost');
     expect(hydratorSource).toContain('if (isOfficialBcostHost())');
+    expect(hydratorSource).toContain('const hydratedRealSession = await hydrateOfficialRealSession(() => cancelled)');
     expect(hydratorSource).toContain('const authMe = await fetchAuthMe().catch(() => null)');
     expect(hydratorSource).toContain('if (authCompanyId && !isDemoCompanyId(authCompanyId))');
   });

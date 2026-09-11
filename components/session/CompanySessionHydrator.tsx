@@ -335,12 +335,62 @@ async function fetchCompanies(): Promise<CompanyLike[]> {
   return normalizeCompanies(response.data);
 }
 
+async function hydrateOfficialRealSession(cancelled: () => boolean): Promise<boolean> {
+  const authMe = await fetchAuthMe().catch(() => null);
+  if (cancelled()) return true;
+  if (!authMe) return false;
+
+  const user = authMe.user || authMe || {};
+  let authCompanies = normalizeCompanies(user?.companies || authMe?.companies);
+  if (authCompanies.length === 0 && user?.company?.id) {
+    authCompanies = [user.company];
+  }
+
+  const authCompanyId = firstString(
+    user?.companyId,
+    user?.activeCompanyId,
+    authMe?.companyId,
+    authMe?.activeCompanyId,
+    authCompanies[0]?.id,
+  );
+
+  if (!authCompanyId || isDemoCompanyId(authCompanyId)) {
+    return false;
+  }
+
+  if (authCompanies.length === 0) {
+    authCompanies = await fetchCompanies().catch(() => []);
+    if (cancelled()) return true;
+  }
+
+  if (authCompanies.length === 0) {
+    authCompanies = [
+      {
+        id: authCompanyId,
+        name: 'Empresa vinculada',
+        role: 'MEMBER',
+      },
+    ];
+  }
+
+  clearAuthContext();
+  clearCompanyContext();
+  persistAuthenticatedUser(authMe, authCompanies);
+  persistRealCompanyContext(authCompanyId, authCompanies);
+  return true;
+}
+
 export function CompanySessionHydrator() {
   useEffect(() => {
     let cancelled = false;
 
     async function hydrate() {
       if (typeof window === 'undefined') return;
+
+      if (isOfficialBcostHost()) {
+        const hydratedRealSession = await hydrateOfficialRealSession(() => cancelled);
+        if (cancelled || hydratedRealSession) return;
+      }
 
       const token = resolveToken();
       if (!token) {
