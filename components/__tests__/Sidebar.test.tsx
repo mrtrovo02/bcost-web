@@ -17,6 +17,7 @@ const testState = vi.hoisted(() => ({
   apiPost: vi.fn(),
   clearSession: vi.fn(),
   getToken: vi.fn(() => 'real-jwt-token'),
+  logout: vi.fn(),
   switchActiveCompany: vi.fn(),
   isDemoSession: false,
   companies: [{ id: '1', name: 'Empresa Demo', cnpj: '12.345.678/0001-99' }] as TestCompany[],
@@ -54,6 +55,7 @@ vi.mock('@/services/api', () => ({
   deleteCookie: vi.fn(),
   getActiveCompanyId: vi.fn(() => '1'),
   getToken: testState.getToken,
+  logout: testState.logout,
   setActiveCompanyId: vi.fn(),
   switchActiveCompany: testState.switchActiveCompany,
 }));
@@ -75,6 +77,7 @@ describe('Sidebar', () => {
     testState.apiGet.mockResolvedValue({ data: testState.companies });
     testState.apiPost.mockResolvedValue({ data: { message: 'Logged out successfully' } });
     testState.getToken.mockReturnValue('real-jwt-token');
+    testState.logout.mockResolvedValue(undefined);
     testState.switchActiveCompany.mockResolvedValue({ access_token: 'next-token' });
     testState.demoFallbackEnabled = true;
     Object.defineProperty(window, 'location', {
@@ -97,10 +100,10 @@ describe('Sidebar', () => {
   it('routes service catalog navigation to the enterprise storefront instead of a roadmap module', () => {
     render(<Sidebar />);
 
-    fireEvent.click(screen.getByText('Regras & Catálogo'));
-
-    expect(testState.mockPush).toHaveBeenCalledWith('/dashboard/enterprise');
-    expect(testState.mockPush).not.toHaveBeenCalledWith('/dashboard/modules/business-rules');
+    expect(screen.getByText('Regras & Catálogo').closest('a')).toHaveAttribute(
+      'href',
+      '/dashboard/enterprise',
+    );
   });
 
   it('confirma troca de empresa real no backend para renovar token e contexto JWT', async () => {
@@ -319,17 +322,14 @@ describe('Sidebar', () => {
     expect(testState.apiGet).not.toHaveBeenCalled();
   });
 
-  it('revokes the current token on logout before clearing the browser session', async () => {
+  it('revokes the current cookie session on logout before clearing the browser session', async () => {
     render(<Sidebar />);
 
     fireEvent.click(screen.getByText('Sair do Terminal'));
 
     await waitFor(() => {
-      expect(testState.apiPost).toHaveBeenCalledWith('/auth/logout', {
-        token: 'real-jwt-token',
-      });
+      expect(testState.logout).toHaveBeenCalled();
     });
-    expect(testState.clearSession).toHaveBeenCalled();
     expect(window.location.replace).toHaveBeenCalledWith('/login');
   });
 });

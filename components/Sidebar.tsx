@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useCallback, useRef, useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
   Activity,
   BarChart3,
@@ -30,7 +31,7 @@ import {
   clearActiveCompanyId,
   deleteCookie,
   getActiveCompanyId,
-  getToken,
+  logout,
   setActiveCompanyId,
   switchActiveCompany,
 } from '@/services/api';
@@ -98,7 +99,6 @@ export default function Sidebar() {
   const { companies, setCompanies, selectedCompany, setSelectedCompany, isDemoSession } =
     useCompany();
   const pathname = usePathname();
-  const router = useRouter();
 
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
@@ -233,15 +233,10 @@ export default function Sidebar() {
   const handleLogout = async () => {
     setIsLoggingOut(true);
 
-    const token = getToken();
-
-    if (token && token !== 'demo-token-local') {
-      await api.post('/auth/logout', { token }).catch((error: unknown) => {
-        console.warn('[bCost Sidebar]: logout remoto não confirmado.', error);
-      });
-    }
-
-    clearSession();
+    await logout().catch((error: unknown) => {
+      console.warn('[bCost Sidebar]: logout remoto não confirmado.', error);
+      clearSession();
+    });
     SESSION_COOKIE_NAMES.forEach((name) => deleteCookie(name));
     localStorage.clear();
     sessionStorage.clear();
@@ -364,10 +359,10 @@ export default function Sidebar() {
 
       <div className="relative flex min-h-0 flex-1 flex-col">
         <div className="px-7 pb-5 pt-8">
-          <button
-            type="button"
+          <Link
+            href="/dashboard"
+            prefetch
             className="group flex w-full items-center gap-3 text-left"
-            onClick={() => router.push('/dashboard')}
           >
             <div className="relative flex h-14 w-14 items-center justify-center rounded-[1.15rem] bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-[0_18px_35px_rgba(37,99,235,0.35)] ring-1 ring-white/15 transition-transform duration-300 group-hover:-translate-y-0.5">
               <ShieldCheck size={27} />
@@ -381,7 +376,7 @@ export default function Sidebar() {
                 v7.2 Enterprise
               </p>
             </div>
-          </button>
+          </Link>
         </div>
 
         <div className="mx-5 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
@@ -448,14 +443,12 @@ export default function Sidebar() {
             title="Sistema de Comando"
             items={commandItems}
             isActiveRoute={isActiveRoute}
-            onNavigate={(href) => router.push(href)}
           />
 
           <NavigationSection
             title="Controladoria & Sistema"
             items={systemItems}
             isActiveRoute={isActiveRoute}
-            onNavigate={(href) => router.push(href)}
           />
         </div>
 
@@ -517,12 +510,10 @@ function NavigationSection({
   title,
   items,
   isActiveRoute,
-  onNavigate,
 }: {
   title: string;
   items: NavigationItem[];
   isActiveRoute: (href: string) => boolean;
-  onNavigate: (href: string) => void;
 }) {
   return (
     <section className="mt-8">
@@ -531,9 +522,10 @@ function NavigationSection({
         {items.map((item) => {
           const isActive = isActiveRoute(item.href);
           return (
-            <button
-              key={item.href}
-              onClick={() => onNavigate(item.href)}
+            <Link
+              key={`${item.href}:${item.label}`}
+              href={item.href}
+              prefetch
               className={`group relative flex w-full items-center gap-3.5 overflow-hidden rounded-2xl px-3.5 py-3 text-left transition-all duration-300 ${
                 isActive
                   ? 'bg-gradient-to-r from-blue-500/18 via-blue-500/9 to-transparent text-white shadow-[inset_0_0_0_1px_rgba(96,165,250,0.25)]'
@@ -578,7 +570,7 @@ function NavigationSection({
                   }`}
                 />
               ) : null}
-            </button>
+            </Link>
           );
         })}
       </nav>
