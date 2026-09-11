@@ -653,18 +653,49 @@ export function getStoredUser(): BcostUser | null {
 export function setStoredUser(user?: BcostUser | null): void {
   if (!isBrowser() || !user) return;
   const safe = sanitizeUser(user);
-  const normalizedCompanies = normalizeCompanyPayload(safe.companies ?? safe);
-  const preferredCompanyId =
+  const isRealUser =
+    safe.email?.toLowerCase() !== 'demo@bcost.com.br' &&
+    !String(safe.id).toLowerCase().startsWith('demo-');
+  const rawCompanies = normalizeCompanyPayload(safe.companies ?? safe);
+  const normalizedCompanies = isRealUser
+    ? rawCompanies.filter((company) => !isDemoId(company.id))
+    : rawCompanies;
+  const rawPreferredCompanyId =
     safe.companyId ??
     safe.activeCompanyId ??
     safe.company_id ??
     safe.company?.id;
+  const preferredCompanyId =
+    isRealUser && isDemoId(typeof rawPreferredCompanyId === 'string' ? rawPreferredCompanyId : null)
+      ? undefined
+      : rawPreferredCompanyId;
+
+  if (isRealUser && isDemoId(safe.company?.id)) {
+    delete safe.company;
+  }
 
   if (normalizedCompanies.length > 0) {
     safe.companies = normalizedCompanies;
     safe.company =
       normalizedCompanies.find((company) => company.id === preferredCompanyId) ??
       normalizedCompanies[0];
+  } else if (isRealUser) {
+    delete safe.companies;
+  }
+
+  const companyId =
+    preferredCompanyId ??
+    safe.company?.id ??
+    normalizedCompanies[0]?.id;
+  if (typeof companyId === 'string' && (!isRealUser || !isDemoId(companyId))) {
+    safe.companyId = companyId;
+    safe.activeCompanyId = companyId;
+    setActiveCompanyId(companyId);
+  } else if (isRealUser) {
+    delete safe.companyId;
+    delete safe.activeCompanyId;
+    delete safe.company_id;
+    clearStoredCompanyData();
   }
 
   const json = JSON.stringify(safe);
@@ -675,16 +706,12 @@ export function setStoredUser(user?: BcostUser | null): void {
       /* empty */
     }
   }
-  const companyId =
-    preferredCompanyId ??
-    safe.company?.id ??
-    normalizedCompanies[0]?.id;
-  if (typeof companyId === 'string') setActiveCompanyId(companyId);
 
   if (normalizedCompanies.length > 0) {
     try {
       window.localStorage.setItem('bcost_companies', JSON.stringify(normalizedCompanies));
       window.localStorage.setItem('companies', JSON.stringify(normalizedCompanies));
+      window.localStorage.setItem('bcost_active_company_data', JSON.stringify(safe.company));
     } catch {
       /* empty */
     }

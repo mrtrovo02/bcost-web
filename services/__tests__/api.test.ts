@@ -12,6 +12,7 @@ import {
   resolveRequestAuthMetadata,
   resolveRequestCompanyId,
   resolveRequestHeaders,
+  setStoredUser,
   setStoredToken,
   switchActiveCompany,
   verifyMfa,
@@ -146,6 +147,53 @@ describe('isDemoSession', () => {
     expect(getToken()).toBeNull();
     expect(isDemoSession()).toBe(false);
     expect(localStorage.getItem('bcost_token')).toBeNull();
+  });
+
+  it('does not persist stale demo company context for authenticated real users', () => {
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: {
+        hostname: 'app.bcost.com.br',
+        pathname: '/dashboard',
+        search: '',
+        replace: vi.fn(),
+      },
+    });
+    localStorage.setItem('bcost_company_id', 'demo-001');
+    localStorage.setItem('bcost_active_company', 'demo-001');
+    localStorage.setItem(
+      'bcost_active_company_data',
+      JSON.stringify({
+        id: 'demo-001',
+        name: 'Empresa Demo',
+      }),
+    );
+
+    setStoredUser({
+      id: '4e76c6d3-78c4-4d5d-b626-51aa3d760710',
+      email: 'amandacontabil@bcost.com.br',
+      name: 'Amanda Narvaes',
+      companyId: 'demo-001',
+      activeCompanyId: 'demo-001',
+      company: {
+        id: 'demo-001',
+        name: 'Empresa Demo',
+      },
+      companies: [
+        {
+          id: 'demo-001',
+          name: 'Empresa Demo',
+        },
+      ],
+    });
+
+    expect(localStorage.getItem('bcost_company_id')).toBeNull();
+    expect(localStorage.getItem('bcost_active_company')).toBeNull();
+    expect(localStorage.getItem('bcost_active_company_data')).toBeNull();
+    expect(localStorage.getItem('bcost_companies')).toBeNull();
+    expect(localStorage.getItem('companies')).toBeNull();
+    expect(localStorage.getItem('bcost_user')).toContain('Amanda Narvaes');
+    expect(localStorage.getItem('bcost_user')).not.toContain('demo-001');
   });
 
   it('keeps local demo support on localhost during development', () => {
