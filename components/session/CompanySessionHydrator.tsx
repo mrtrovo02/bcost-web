@@ -65,6 +65,13 @@ function shouldUseLocalDemo() {
   return process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true';
 }
 
+function isOfficialBcostHost(): boolean {
+  if (typeof window === 'undefined') return false;
+
+  const hostname = window.location.hostname.toLowerCase();
+  return hostname === 'bcost.com.br' || hostname.endsWith('.bcost.com.br');
+}
+
 function readLocalStorage(keys: string[]): string | null {
   if (typeof window === 'undefined') return null;
 
@@ -75,6 +82,28 @@ function readLocalStorage(keys: string[]): string | null {
     }
   }
   return null;
+}
+
+function hasStoredRealUser(): boolean {
+  if (typeof window === 'undefined') return false;
+
+  for (const key of USER_KEYS) {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) continue;
+
+    try {
+      const parsed = JSON.parse(raw) as { id?: unknown; email?: unknown };
+      const id = typeof parsed.id === 'string' ? parsed.id.toLowerCase() : '';
+      const email = typeof parsed.email === 'string' ? parsed.email.toLowerCase() : '';
+
+      if (email && email !== 'demo@bcost.com.br') return true;
+      if (id && !id.startsWith('demo-')) return true;
+    } catch {
+      window.localStorage.removeItem(key);
+    }
+  }
+
+  return false;
 }
 
 function readCookie(name: string): string | null {
@@ -98,6 +127,12 @@ function resolveToken(): string | null {
   // Prioriza a leitura de cookies conforme a nova arquitetura do api.ts
   const cookieToken = readCookie('bcost_token') || readCookie('bcost_access_token');
   if (cookieToken) {
+    if (cookieToken === DEMO_TOKEN && isOfficialBcostHost() && hasStoredRealUser()) {
+      clearAuthContext();
+      clearCompanyContext();
+      return null;
+    }
+
     if (cookieToken === DEMO_TOKEN && !shouldUseLocalDemo()) {
       clearAuthContext();
       clearCompanyContext();
@@ -110,6 +145,12 @@ function resolveToken(): string | null {
   // Fallback e migração de tokens legados encontrados no localStorage
   const legacyToken = readLocalStorage(TOKEN_KEYS);
   if (legacyToken && typeof window !== 'undefined') {
+    if (legacyToken === DEMO_TOKEN && isOfficialBcostHost() && hasStoredRealUser()) {
+      clearAuthContext();
+      clearCompanyContext();
+      return null;
+    }
+
     if (legacyToken === DEMO_TOKEN && !shouldUseLocalDemo()) {
       clearAuthContext();
       clearCompanyContext();
@@ -303,6 +344,43 @@ export function CompanySessionHydrator() {
 
       const token = resolveToken();
       if (!token) {
+        if (isOfficialBcostHost()) {
+          const authMe = await fetchAuthMe().catch(() => null);
+          if (cancelled) return;
+
+          const user = authMe?.user || authMe || {};
+          let authCompanies = normalizeCompanies(user?.companies || authMe?.companies);
+          if (authCompanies.length === 0 && user?.company?.id) {
+            authCompanies = [user.company];
+          }
+
+          if (authCompanies.length === 0) {
+            authCompanies = await fetchCompanies().catch(() => []);
+            if (cancelled) return;
+          }
+
+          const authCompanyId = firstString(
+            user?.companyId,
+            user?.activeCompanyId,
+            authMe?.companyId,
+            authMe?.activeCompanyId,
+            authCompanies[0]?.id,
+          );
+
+          if (authMe) {
+            persistAuthenticatedUser(authMe, authCompanies);
+          }
+
+          if (authCompanyId && !isDemoCompanyId(authCompanyId)) {
+            clearCompanyContext();
+            persistRealCompanyContext(authCompanyId, authCompanies);
+            return;
+          }
+
+          clearCompanyContext();
+          return;
+        }
+
         if (companyContextAlreadyExists()) {
           if (shouldUseLocalDemo()) return;
           clearCompanyContext();

@@ -48,6 +48,23 @@ describe('CompanySessionHydrator persistence contract', () => {
     expect(hydratorSource).not.toContain('redirectToExpiredLogin');
   });
 
+  it('sonda sessao real HttpOnly no host oficial mesmo sem token legivel', () => {
+    expect(hydratorSource).toContain('function isOfficialBcostHost');
+    expect(hydratorSource).toContain('if (isOfficialBcostHost())');
+    expect(hydratorSource).toContain('const authMe = await fetchAuthMe().catch(() => null)');
+    expect(hydratorSource).toContain('if (authCompanyId && !isDemoCompanyId(authCompanyId))');
+  });
+
+  it('remove token demo contaminado quando existe usuario real armazenado no host oficial', () => {
+    expect(hydratorSource).toContain('function hasStoredRealUser');
+    expect(hydratorSource).toContain(
+      'if (cookieToken === DEMO_TOKEN && isOfficialBcostHost() && hasStoredRealUser())',
+    );
+    expect(hydratorSource).toContain(
+      'if (legacyToken === DEMO_TOKEN && isOfficialBcostHost() && hasStoredRealUser())',
+    );
+  });
+
   it('cria contexto minimo quando auth/me possui empresa ativa mas lista ainda nao chegou', () => {
     expect(hydratorSource).toContain('const authCompanyId = firstString(');
     expect(hydratorSource).toContain(
