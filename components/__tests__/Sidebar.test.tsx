@@ -190,6 +190,49 @@ describe('Sidebar', () => {
     });
   });
 
+  it('replaces stale selected demo company when a real session loads linked companies', async () => {
+    testState.isDemoSession = false;
+    testState.companies = [
+      { id: 'demo-001', name: 'Empresa Demo', cnpj: '00.000.000/0001-91' },
+    ];
+    testState.selectedCompany = {
+      id: 'demo-001',
+      name: 'Empresa Demo',
+      cnpj: '00.000.000/0001-91',
+    };
+    testState.apiGet.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'company-amel',
+          name: 'Amel Contabilidade Digital LTDA',
+          cnpj: '41.702.512/0001-87',
+        },
+      ],
+    });
+
+    render(<Sidebar />);
+
+    await waitFor(() => {
+      expect(testState.setSelectedCompany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'company-amel',
+          name: 'Amel Contabilidade Digital LTDA',
+        }),
+      );
+    });
+
+    expect(testState.setCompanies).toHaveBeenCalledWith([
+      expect.objectContaining({
+        id: 'company-amel',
+      }),
+    ]);
+    expect(testState.setCompanies).not.toHaveBeenCalledWith([
+      expect.objectContaining({
+        id: 'demo-001',
+      }),
+    ]);
+  });
+
   it('normalizes membership company API responses so linked companies appear in the sidebar', async () => {
     testState.isDemoSession = false;
     testState.companies = [];

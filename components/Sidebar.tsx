@@ -95,6 +95,17 @@ function readStoredSidebarCompanies(): SidebarCompany[] {
   return [];
 }
 
+function isDemoCompanyId(value?: string | null): boolean {
+  return typeof value === 'string' && value.toLowerCase().startsWith('demo-');
+}
+
+function sanitizeCompaniesForSession(
+  companiesList: SidebarCompany[],
+  isDemo: boolean,
+): SidebarCompany[] {
+  return isDemo ? companiesList : companiesList.filter((company) => !isDemoCompanyId(company.id));
+}
+
 export default function Sidebar() {
   const { companies, setCompanies, selectedCompany, setSelectedCompany, isDemoSession } =
     useCompany();
@@ -135,24 +146,31 @@ export default function Sidebar() {
   const applyCompanies = useCallback(
     (companiesList: SidebarCompany[]) => {
       if (!isMountedRef.current) return;
-      setCompanies(companiesList);
+      const sessionCompanies = sanitizeCompaniesForSession(companiesList, isDemoSession);
+      setCompanies(sessionCompanies);
 
-      if (companiesList.length === 0) {
+      if (sessionCompanies.length === 0) {
         selectedCompanyRef.current = null;
         clearCompanyContext();
         return;
       }
 
-      if (!selectedCompanyRef.current) {
-        const savedId = getActiveCompanyId();
-        const restored = companiesList.find((c) => c.id === savedId) || companiesList[0];
+      const selectedIsValid =
+        selectedCompanyRef.current &&
+        sessionCompanies.some((company) => company.id === selectedCompanyRef.current?.id) &&
+        (isDemoSession || !isDemoCompanyId(selectedCompanyRef.current.id));
 
-        setSelectedCompany(restored);
-        setActiveCompanyId(restored.id);
-        localStorage.setItem('bcost_active_company_data', JSON.stringify(restored));
-      }
+      if (selectedIsValid) return;
+
+      const savedId = getActiveCompanyId();
+      const restored = sessionCompanies.find((c) => c.id === savedId) || sessionCompanies[0];
+
+      selectedCompanyRef.current = restored;
+      setSelectedCompany(restored);
+      setActiveCompanyId(restored.id);
+      localStorage.setItem('bcost_active_company_data', JSON.stringify(restored));
     },
-    [clearCompanyContext, setCompanies, setSelectedCompany],
+    [clearCompanyContext, isDemoSession, setCompanies, setSelectedCompany],
   );
 
   const loadCompanies = useCallback(async () => {
@@ -176,7 +194,8 @@ export default function Sidebar() {
       const { data } = await api.get<DemoCompany[] | { data?: DemoCompany[] }>('/company');
       const companiesList = normalizeCompanyPayload(data) as SidebarCompany[];
       lastCompanyLoadFailureRef.current = null;
-      applyCompanies(companiesList.length > 0 ? companiesList : readStoredSidebarCompanies());
+      const storedCompanies = sanitizeCompaniesForSession(readStoredSidebarCompanies(), false);
+      applyCompanies(companiesList.length > 0 ? companiesList : storedCompanies);
     } catch (error) {
       const blockedStatus = getRequestFailureStatus(error);
       if (blockedStatus) {
@@ -190,7 +209,7 @@ export default function Sidebar() {
         '[bCost Sidebar]: API indisponível para carregar empresas da sessão real.',
         blockedStatus ? `status=${blockedStatus}` : '',
       );
-      const storedCompanies = readStoredSidebarCompanies();
+      const storedCompanies = sanitizeCompaniesForSession(readStoredSidebarCompanies(), false);
       applyCompanies(storedCompanies.length > 0 ? storedCompanies : []);
     } finally {
       isLoadingCompaniesRef.current = false;
