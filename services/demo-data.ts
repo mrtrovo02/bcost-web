@@ -40,6 +40,18 @@ export interface DemoCompany {
   plan: string;
 }
 
+interface DemoUser {
+  id: string;
+  email: string;
+  name: string;
+  companyId: string;
+  activeCompanyId: string;
+  role: string;
+  active: true;
+  company: DemoCompany;
+  companies: DemoCompany[];
+}
+
 export interface DemoFiscalData {
   company: string;
   comparison: {
@@ -333,6 +345,11 @@ export function seedDemoData(): boolean {
     return false;
   }
 
+  const activeCompany = DEMO_COMPANIES[0];
+  if (!activeCompany) {
+    return false;
+  }
+
   for (const key of [
     'bcost_active_company',
     'bcost_active_company_data',
@@ -365,27 +382,32 @@ export function seedDemoData(): boolean {
     deleteCookie(cookieName);
   }
 
-  localStorage.setItem('bcost_active_company', DEMO_COMPANIES[0].id);
-  localStorage.setItem('bcost_active_company_data', JSON.stringify(DEMO_COMPANIES[0]));
+  const demoUser: DemoUser = {
+    id: 'demo-user-1',
+    email: 'demo@bcost.com.br',
+    name: 'Usuário Demo',
+    companyId: activeCompany.id,
+    activeCompanyId: activeCompany.id,
+    role: activeCompany.role,
+    active: true,
+    company: activeCompany,
+    companies: DEMO_COMPANIES,
+  };
+
+  localStorage.setItem('bcost_active_company', activeCompany.id);
+  localStorage.setItem('bcost_active_company_data', JSON.stringify(activeCompany));
   localStorage.setItem('bcost_companies', JSON.stringify(DEMO_COMPANIES));
   localStorage.setItem('companies', JSON.stringify(DEMO_COMPANIES));
-  localStorage.setItem('bcost_company_id', DEMO_COMPANIES[0].id);
+  localStorage.setItem('bcost_company_id', activeCompany.id);
   localStorage.setItem('bcost_token', DEMO_TOKEN);
-  localStorage.setItem(
-    'bcost_user',
-    JSON.stringify({
-      id: 'demo-user-1',
-      email: 'demo@bcost.com.br',
-      name: 'Usuário Demo',
-    }),
-  );
+  localStorage.setItem('bcost_user', JSON.stringify(demoUser));
+  localStorage.setItem('user', JSON.stringify(demoUser));
 
   writeCookie('bcost_token', DEMO_TOKEN);
   writeCookie('bcost_access_token', DEMO_TOKEN);
-  writeCookie('bcost_company_id', DEMO_COMPANIES[0].id);
+  writeCookie('bcost_company_id', activeCompany.id);
 
   sessionStorage.setItem('bcost_demo_seeded', 'true');
-
-  console.log('📦 [bCost Demo]: Dados de demonstração semeados com sucesso!');
+  window.dispatchEvent(new CustomEvent('bcost:demo-session-seeded'));
   return true;
 }

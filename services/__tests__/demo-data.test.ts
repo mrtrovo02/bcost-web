@@ -25,7 +25,6 @@ describe('seedDemoData', () => {
     });
     window.localStorage.clear();
     window.sessionStorage.clear();
-    vi.spyOn(console, 'log').mockImplementation(() => undefined);
   });
 
   it('clears real and legacy session artifacts before creating the demo session', () => {
@@ -58,6 +57,15 @@ describe('seedDemoData', () => {
     expect(window.localStorage.getItem('bcost_token')).toBe('demo-token-local');
     expect(window.localStorage.getItem('bcost_company_id')).toBe(DEMO_COMPANIES[0]?.id);
     expect(window.sessionStorage.getItem('bcost_demo_seeded')).toBe('true');
+    const user = JSON.parse(window.localStorage.getItem('bcost_user') ?? '{}') as {
+      companyId?: string;
+      activeCompanyId?: string;
+      companies?: unknown[];
+    };
+    expect(user.companyId).toBe(DEMO_COMPANIES[0]?.id);
+    expect(user.activeCompanyId).toBe(DEMO_COMPANIES[0]?.id);
+    expect(user.companies).toHaveLength(DEMO_COMPANIES.length);
+    expect(window.localStorage.getItem('user')).toBe(window.localStorage.getItem('bcost_user'));
     expect(deleteCookieMock).toHaveBeenCalledWith('bcost_token');
     expect(deleteCookieMock).toHaveBeenCalledWith('bcost_access_token');
     expect(deleteCookieMock).toHaveBeenCalledWith('bcost_refresh_token');
