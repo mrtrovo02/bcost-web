@@ -216,6 +216,19 @@ function firstString(...values: unknown[]): string | null {
   return null;
 }
 
+function firstRealCompanyId(...values: unknown[]): string | null {
+  const candidate = firstString(...values);
+  if (candidate && !isDemoCompanyId(candidate)) return candidate;
+
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim().length > 0 && !isDemoCompanyId(value)) {
+      return value.trim();
+    }
+  }
+
+  return null;
+}
+
 function persistCompanyContext(companyId: string, companies: CompanyLike[]) {
   if (typeof window === 'undefined') return;
 
@@ -270,7 +283,7 @@ function persistAuthenticatedUser(authMe: AuthMeLike, companies: CompanyLike[]) 
   if (!user.id || !user.email) return;
 
   const storedCompanies = toStoredCompanies(companies);
-  const companyId = firstString(
+  const companyId = firstRealCompanyId(
     user.companyId,
     user.activeCompanyId,
     user.company_id,
@@ -346,7 +359,7 @@ async function hydrateOfficialRealSession(cancelled: () => boolean): Promise<boo
     authCompanies = [user.company];
   }
 
-  const authCompanyId = firstString(
+  const authCompanyId = firstRealCompanyId(
     user?.companyId,
     user?.activeCompanyId,
     authMe?.companyId,
@@ -409,7 +422,7 @@ export function CompanySessionHydrator() {
             if (cancelled) return;
           }
 
-          const authCompanyId = firstString(
+          const authCompanyId = firstRealCompanyId(
             user?.companyId,
             user?.activeCompanyId,
             authMe?.companyId,
@@ -487,7 +500,7 @@ export function CompanySessionHydrator() {
         authCompanies = [user.company];
       }
 
-      const authCompanyId = firstString(
+      const authCompanyId = firstRealCompanyId(
         user?.companyId,
         user?.activeCompanyId,
         authMe?.companyId,
@@ -514,7 +527,7 @@ export function CompanySessionHydrator() {
         persistAuthenticatedUser(authMe, authCompanies);
       }
 
-      const resolvedCompanyId = firstString(
+      const resolvedCompanyId = firstRealCompanyId(
         user?.companyId,
         user?.activeCompanyId,
         authMe?.companyId,

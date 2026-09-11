@@ -67,11 +67,19 @@ describe('CompanySessionHydrator persistence contract', () => {
   });
 
   it('cria contexto minimo quando auth/me possui empresa ativa mas lista ainda nao chegou', () => {
-    expect(hydratorSource).toContain('const authCompanyId = firstString(');
+    expect(hydratorSource).toContain('const authCompanyId = firstRealCompanyId(');
     expect(hydratorSource).toContain(
       'if (authCompanies.length === 0 && authCompanyId && !isDemoCompanyId(authCompanyId))',
     );
     expect(hydratorSource).toContain("name: 'Empresa vinculada'");
+  });
+
+  it('prioriza empresa real quando auth/me ainda possui companyId demo antigo', () => {
+    expect(hydratorSource).toContain('function firstRealCompanyId');
+    expect(hydratorSource).toContain('if (candidate && !isDemoCompanyId(candidate)) return candidate;');
+    expect(hydratorSource).toContain('storedCompanies[0]?.id');
+    expect(hydratorSource).not.toContain('const authCompanyId = firstString(');
+    expect(hydratorSource).not.toContain('const resolvedCompanyId = firstString(');
   });
 
   it('nao força reload da pagina ao hidratar empresa real', () => {
