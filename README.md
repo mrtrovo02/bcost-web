@@ -1,4 +1,6 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# bCost Web
+
+Frontend oficial da plataforma bCost, construido com Next.js App Router, React, TypeScript e contratos HTTP tipados para a API NestJS.
 
 ## Getting Started
 
@@ -16,11 +18,9 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
 ## Production Safety
 
-For real client operations, keep operational demo fallbacks disabled:
+Para operacao com clientes reais, mantenha fallbacks demonstrativos desabilitados:
 
 ```bash
 NEXT_PUBLIC_ENABLE_DEMO=false
@@ -29,7 +29,18 @@ NEXT_PUBLIC_DEMO_ACCESS_MODE=disabled
 NEXT_PUBLIC_API_URL=https://api.seu-dominio.com.br/api/v1
 ```
 
-`NEXT_PUBLIC_ENABLE_DEMO_FALLBACK=true` should only be used in local development or controlled demos with `NEXT_PUBLIC_DEMO_ACCESS_MODE=controlled`. Production screens must fail clearly when the API, tenant company, entitlements, or module endpoints are unavailable, instead of silently showing sample data.
+Modo demo controlado deve ficar restrito a desenvolvimento local ou ambiente de demonstracao explicitamente segregado. Telas produtivas devem falhar de forma clara quando API, empresa tenant, entitlements ou endpoints de modulo estiverem indisponiveis, sem substituir dados reais por amostras silenciosas.
+
+Before opening a pull request:
+
+```bash
+npm run security:scan
+npm run release:check
+npm run typecheck
+npm run test:release
+npm run test:session
+npm run build
+```
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 

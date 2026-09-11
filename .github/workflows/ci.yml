@@ -45,6 +45,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Scan versioned security configuration
+        run: npm run security:scan
+
       - name: Validate production environment contract
         run: npm run release:check
 
