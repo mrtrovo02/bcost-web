@@ -287,6 +287,37 @@ describe('isDemoSession', () => {
     expect(sessionStorage.getItem('bcost_trace_id_expires_at')).toBeNull();
   });
 
+  it('clears company storage before publishing the final empty session context', () => {
+    const contextEvents: Array<{
+      companyId?: string;
+      companies?: unknown[];
+      storedCompanyId: string | null;
+    }> = [];
+    window.localStorage.setItem('bcost_user', JSON.stringify({ id: 'user-real', email: 'real@bcost.com.br' }));
+    window.localStorage.setItem('bcost_company_id', 'company-real-001');
+    window.localStorage.setItem(
+      'bcost_active_company_data',
+      JSON.stringify({ id: 'company-real-001', name: 'Empresa Real' }),
+    );
+    window.addEventListener('bcost:company-context-updated', (event) => {
+      const detail = (event as CustomEvent<{ companyId?: string; companies?: unknown[] }>).detail;
+      contextEvents.push({
+        ...detail,
+        storedCompanyId: window.localStorage.getItem('bcost_company_id'),
+      });
+    });
+
+    clearSession();
+
+    expect(window.localStorage.getItem('bcost_company_id')).toBeNull();
+    expect(window.localStorage.getItem('bcost_active_company_data')).toBeNull();
+    expect(contextEvents.at(-1)).toEqual({
+      companyId: undefined,
+      companies: [],
+      storedCompanyId: null,
+    });
+  });
+
   it('overwrites stale per-call auth and tenant headers through the axios interceptor', async () => {
     localStorage.setItem('bcost_token', 'real-jwt-token');
     localStorage.setItem('bcost_company_id', 'company-real-001');

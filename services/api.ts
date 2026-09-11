@@ -733,13 +733,14 @@ export function hasSession(): boolean {
 export function clearSession(): void {
   clearToken();
   clearRefreshToken();
-  clearStoredUser();
   clearStoredCompanyData();
+  clearStoredUser();
   if (isBrowser()) {
     window.sessionStorage.removeItem(TRACE_SESSION_KEY);
     window.sessionStorage.removeItem(TRACE_SESSION_EXPIRES_AT_KEY);
     window.sessionStorage.removeItem('bcost_company_context_reloaded_once');
   }
+  dispatchCompanyContextUpdated(undefined, []);
 }
 
 export const clearStorageSession = clearSession;
