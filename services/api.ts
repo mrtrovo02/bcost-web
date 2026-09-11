@@ -46,7 +46,7 @@ const COMPANY_KEYS = [
   'bcost_active_company',
   'activeCompanyId',
 ] as const;
-const USER_KEYS = ['bcost_user', 'user'] as const;
+const USER_KEYS = ['bcost_user', 'user', 'auth_user'] as const;
 const COMPANY_DATA_KEYS = [
   'bcost_active_company_data',
   'bcost_companies',
@@ -392,8 +392,9 @@ export function resolveRequestAuthMetadata(
   const hasRealToken = Boolean(token && token !== DEMO_TOKEN);
   const hasDemoToken = token === DEMO_TOKEN;
   const hasDemoCompanyWithoutRealToken = !hasRealToken && isDemoId(companyId);
-  const isDemoRequest =
-    isDemoModeEnabled() && (hasDemoToken || hasDemoCompanyWithoutRealToken);
+  const isDemoRequest = isOfficialBcostHost()
+    ? isDemoModeEnabled() && hasDemoToken
+    : isDemoModeEnabled() && (hasDemoToken || hasDemoCompanyWithoutRealToken);
 
   return {
     token: isDemoRequest ? DEMO_TOKEN : token,
@@ -408,6 +409,7 @@ export function resolveRequestCompanyId(
   if (!companyId) return null;
 
   if (isDemoId(companyId) && !isDemoModeEnabled()) return null;
+  if (isOfficialBcostHost() && isDemoId(companyId) && token !== DEMO_TOKEN) return null;
 
   const hasRealToken = Boolean(token && token !== DEMO_TOKEN);
   const hasDemoToken = token === DEMO_TOKEN;
@@ -709,6 +711,7 @@ export function clearSession(): void {
   if (isBrowser()) {
     window.sessionStorage.removeItem(TRACE_SESSION_KEY);
     window.sessionStorage.removeItem(TRACE_SESSION_EXPIRES_AT_KEY);
+    window.sessionStorage.removeItem('bcost_company_context_reloaded_once');
   }
 }
 

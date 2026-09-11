@@ -238,8 +238,6 @@ export default function Sidebar() {
       clearSession();
     });
     SESSION_COOKIE_NAMES.forEach((name) => deleteCookie(name));
-    localStorage.clear();
-    sessionStorage.clear();
     window.location.replace('/login');
   };
 

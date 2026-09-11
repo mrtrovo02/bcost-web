@@ -73,4 +73,9 @@ describe('CompanySessionHydrator persistence contract', () => {
     );
     expect(hydratorSource).toContain("name: 'Empresa vinculada'");
   });
+
+  it('nao força reload da pagina ao hidratar empresa real', () => {
+    expect(hydratorSource).not.toContain('window.location.reload()');
+    expect(hydratorSource).not.toContain('bcost_company_context_reloaded_once');
+  });
 });

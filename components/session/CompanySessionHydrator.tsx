@@ -537,12 +537,6 @@ export function CompanySessionHydrator() {
       }
 
       persistRealCompanyContext(String(resolvedCompanyId), authCompanies);
-
-      const reloadFlag = 'bcost_company_context_reloaded_once';
-      if (!window.sessionStorage.getItem(reloadFlag)) {
-        window.sessionStorage.setItem(reloadFlag, '1');
-        window.location.reload();
-      }
     }
 
     hydrate();
