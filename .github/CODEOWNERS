@@ -1,0 +1,9 @@
+* @mrtrovo
+
+/app/login/ @mrtrovo
+/app/dashboard/ @mrtrovo
+/components/session/ @mrtrovo
+/services/api.ts @mrtrovo
+/services/demo-data.ts @mrtrovo
+/lib/api/ @mrtrovo
+/.github/ @mrtrovo
