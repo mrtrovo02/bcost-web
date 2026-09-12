@@ -88,6 +88,11 @@ describe('CompanySessionHydrator persistence contract', () => {
     expect(hydratorSource).toContain('if (!resolvedCompanyId) {\n        clearCompanyContext();\n        return;\n      }');
   });
 
+  it('nao persiste contexto demo quando a policy demonstrativa nao esta habilitada', () => {
+    expect(hydratorSource).toContain('if (isDemoCompanyId(companyId) && !shouldUseLocalDemo())');
+    expect(hydratorSource).toContain('clearCompanyContext();\n    return;');
+  });
+
   it('nao força reload da pagina ao hidratar empresa real', () => {
     expect(hydratorSource).not.toContain('window.location.reload()');
     expect(hydratorSource).not.toContain('bcost_company_context_reloaded_once');

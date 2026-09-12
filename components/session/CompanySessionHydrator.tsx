@@ -231,6 +231,10 @@ function firstRealCompanyId(...values: unknown[]): string | null {
 
 function persistCompanyContext(companyId: string, companies: CompanyLike[]) {
   if (typeof window === 'undefined') return;
+  if (isDemoCompanyId(companyId) && !shouldUseLocalDemo()) {
+    clearCompanyContext();
+    return;
+  }
 
   const cleanCompanies =
     companies.length > 0
