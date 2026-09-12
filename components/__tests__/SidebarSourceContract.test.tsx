@@ -13,4 +13,8 @@ describe('Sidebar source contract', () => {
     expect(sidebarSource).not.toContain('sessionStorage.clear()');
     expect(sidebarSource).toContain('clearSession()');
   });
+
+  it('mantem prefetch desligado nos links de navegacao para nao travar dashboards grandes', () => {
+    expect(sidebarSource).toContain('prefetch={false}');
+  });
 });
