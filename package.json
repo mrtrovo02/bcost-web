@@ -14,6 +14,7 @@
     "test": "vitest run",
     "test:release": "vitest run scripts/__tests__/validate-production-env.test.ts lib/config/__tests__/demo-policy.test.ts services/__tests__/demo-data.test.ts --pool=threads --maxWorkers=1 --no-fileParallelism",
     "test:session": "vitest run services/__tests__/api.test.ts components/__tests__/Sidebar.test.tsx app/context/__tests__/CompanyContext.test.tsx app/dashboard/companies/__tests__/CompaniesPageCompanyLoading.test.ts components/session/__tests__/CompanySessionHydratorPersistence.test.ts lib/api/__tests__/tenant-company-resolution.test.ts --pool=threads --maxWorkers=1 --no-fileParallelism",
+    "test:proxy": "vitest run proxy.test.ts app/login/__tests__/LoginPageSessionGuard.test.ts --pool=threads --maxWorkers=1 --no-fileParallelism",
     "test:tax-scenarios": "vitest run lib/api/__tests__/tax-scenarios.test.ts --pool=threads --maxWorkers=1 --no-fileParallelism",
     "test:watch": "vitest"
   },

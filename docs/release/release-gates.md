@@ -8,6 +8,7 @@
 - `npm run typecheck`
 - `npm run test:release`
 - `npm run test:session`
+- `npm run test:proxy`
 - `npm run test:tax-scenarios`
 - `npm run build`
 

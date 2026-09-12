@@ -63,6 +63,9 @@ jobs:
       - name: Run session contract tests
         run: npm run test:session
 
+      - name: Run proxy route protection tests
+        run: npm run test:proxy
+
       - name: Run tax scenario API contract tests
         run: npm run test:tax-scenarios
 
