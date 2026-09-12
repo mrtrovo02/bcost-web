@@ -82,6 +82,12 @@ describe('CompanySessionHydrator persistence contract', () => {
     expect(hydratorSource).not.toContain('const resolvedCompanyId = firstString(');
   });
 
+  it('bloqueia fallback demo quando existe sessao real sem empresa resolvida', () => {
+    expect(hydratorSource).toContain('persistAuthenticatedUser(authMe, authCompanies);');
+    expect(hydratorSource).toContain('clearCompanyContext();\n    persistAuthenticatedUser(authMe, authCompanies);\n    return true;');
+    expect(hydratorSource).toContain('if (!resolvedCompanyId) {\n        clearCompanyContext();\n        return;\n      }');
+  });
+
   it('nao força reload da pagina ao hidratar empresa real', () => {
     expect(hydratorSource).not.toContain('window.location.reload()');
     expect(hydratorSource).not.toContain('bcost_company_context_reloaded_once');

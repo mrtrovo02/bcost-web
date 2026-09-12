@@ -368,7 +368,9 @@ async function hydrateOfficialRealSession(cancelled: () => boolean): Promise<boo
   );
 
   if (!authCompanyId || isDemoCompanyId(authCompanyId)) {
-    return false;
+    clearCompanyContext();
+    persistAuthenticatedUser(authMe, authCompanies);
+    return true;
   }
 
   if (authCompanies.length === 0) {
@@ -537,11 +539,7 @@ export function CompanySessionHydrator() {
       );
 
       if (!resolvedCompanyId) {
-        if (shouldUseLocalDemo()) {
-          persistCompanyContext('demo-001', readCompaniesFromStorage());
-        } else {
-          clearCompanyContext();
-        }
+        clearCompanyContext();
         return;
       }
 
