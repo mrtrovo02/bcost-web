@@ -549,7 +549,7 @@ function NavigationSection({
             <Link
               key={`${item.href}:${item.label}`}
               href={item.href}
-              prefetch
+              prefetch={false}
               className={`group relative flex w-full items-center gap-3.5 overflow-hidden rounded-2xl px-3.5 py-3 text-left transition-all duration-300 ${
                 isActive
                   ? 'bg-gradient-to-r from-blue-500/18 via-blue-500/9 to-transparent text-white shadow-[inset_0_0_0_1px_rgba(96,165,250,0.25)]'
