@@ -10,6 +10,7 @@
     "release:check": "node scripts/validate-production-env.cjs",
     "security:scan": "node scripts/check-versioned-secrets.cjs",
     "smoke:production": "node scripts/smoke-production.cjs",
+    "deploy:verify": "node scripts/verify-deploy-state.cjs",
     "predeploy:code": "node scripts/predeploy-check.cjs --code-only",
     "predeploy:check": "node scripts/predeploy-check.cjs",
     "predeploy:full": "node scripts/predeploy-check.cjs --with-build",
