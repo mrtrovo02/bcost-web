@@ -63,5 +63,8 @@ jobs:
       - name: Run session contract tests
         run: npm run test:session
 
+      - name: Run tax scenario API contract tests
+        run: npm run test:tax-scenarios
+
       - name: Build
         run: npm run build
