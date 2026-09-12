@@ -2,6 +2,9 @@
 
 ## Gates bloqueantes
 
+- `npm run predeploy:check`
+- `npm run predeploy:full` quando o ambiente local/EC2 tiver memoria suficiente para build
+- `npm run predeploy:code` para validar codigo fora do ambiente produtivo sem exigir variaveis publicas produtivas
 - `npm audit --audit-level=high`
 - `npm run security:scan`
 - `npm run release:check`
@@ -11,6 +14,8 @@
 - `npm run test:proxy`
 - `npm run test:tax-scenarios`
 - `npm run build`
+
+`predeploy:check` e `predeploy:full` sao os comandos preferenciais para EC2 e ambientes com variaveis produtivas. `predeploy:code` e o comando preferencial para validacao local/CI sem variaveis publicas produtivas. A lista detalhada acima permanece como contrato auditorio do que esses comandos cobrem.
 
 ## Smoke de produção
 
