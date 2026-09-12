@@ -1,5 +1,6 @@
 import { FiscalRepository } from '@/domain/fiscal/fiscal.repository';
 import { TaxDataEntity, TaxDataProps } from '@/domain/fiscal/tax-data.entity';
+import { assertOperationalDemoFallbackEnabled, isDemoEntityId } from '@/lib/config/demo-policy';
 import { apiGet, apiPost, isDemoSession } from '@/services/api';
 import { getDemoFiscalData } from '@/services/demo-data';
 
@@ -31,9 +32,10 @@ export class AxiosFiscalRepository implements FiscalRepository {
     const periodParam = period ? `&period=${encodeURIComponent(period)}` : '';
     const url = `/modules/fiscal/tax-data?company_id=${encodeURIComponent(companyId)}${periodParam}`;
 
-    const shouldUseDemoFallback = isDemoSession() || companyId.toLowerCase().startsWith('demo-');
+    const shouldUseDemoFallback = isDemoSession() && isDemoEntityId(companyId);
 
     if (shouldUseDemoFallback) {
+      assertOperationalDemoFallbackEnabled();
       return new TaxDataEntity(this.buildDemoTaxData(companyId));
     }
 

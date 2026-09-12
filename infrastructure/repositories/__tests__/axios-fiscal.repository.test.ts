@@ -8,10 +8,18 @@ vi.mock('@/services/api', () => ({
   isDemoSession: vi.fn(),
 }));
 
+vi.mock('@/lib/config/demo-policy', () => ({
+  assertOperationalDemoFallbackEnabled: vi.fn(),
+  isDemoEntityId: (value?: string | null) =>
+    typeof value === 'string' && value.toLowerCase().startsWith('demo-'),
+}));
+
 const { apiGet, isDemoSession } = await import('@/services/api');
+const { assertOperationalDemoFallbackEnabled } = await import('@/lib/config/demo-policy');
 
 const apiGetMock = vi.mocked(apiGet);
 const isDemoSessionMock = vi.mocked(isDemoSession);
+const assertOperationalDemoFallbackEnabledMock = vi.mocked(assertOperationalDemoFallbackEnabled);
 
 function createAxiosResponse<T>(data: T): AxiosResponse<T> {
   return {
@@ -37,6 +45,8 @@ describe('AxiosFiscalRepository', () => {
     const repository = new AxiosFiscalRepository();
     const entity = await repository.getTaxDataByCompany('demo-001');
 
+    expect(assertOperationalDemoFallbackEnabledMock).toHaveBeenCalled();
+    expect(apiGetMock).not.toHaveBeenCalled();
     expect(entity.toJSON()).toMatchObject({
       totalRevenue: expect.any(Number),
       estimatedTax: expect.any(Number),
@@ -77,5 +87,16 @@ describe('AxiosFiscalRepository', () => {
     await expect(repository.getTaxDataByCompany('company-real')).rejects.toMatchObject({
       status: 404,
     });
+  });
+
+  it('does not return demo fiscal data for a stale demo company id without explicit demo session', async () => {
+    isDemoSessionMock.mockReturnValue(false);
+    apiGetMock.mockRejectedValueOnce({ status: 401, message: 'Unauthorized' });
+
+    const repository = new AxiosFiscalRepository();
+    await expect(repository.getTaxDataByCompany('demo-001')).rejects.toMatchObject({
+      status: 401,
+    });
+    expect(assertOperationalDemoFallbackEnabledMock).not.toHaveBeenCalled();
   });
 });
