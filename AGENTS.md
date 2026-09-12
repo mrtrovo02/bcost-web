@@ -51,6 +51,14 @@ P4 — Escalabilidade e UX:
 - Paginar listagens, evitar telas travadas, eliminar rotas perdidas e deduplicar modulos basico/enterprise.
 - Produto deve parecer vendavel no primeiro acesso: valor claro, fluxos acionaveis e riscos declarados.
 
+P5 — Pre-producao comercial rapida:
+- Antes de novas telas comerciais, priorizar deploy repetivel, smoke test pos-deploy, rollback documentado, CI completo com cobertura medida e higiene operacional.
+- Concluir migracao para sessao baseada em cookie HttpOnly/Secure/SameSite=Strict; token real nao deve depender de `localStorage`.
+- `localStorage` pode guardar apenas contexto nao sensivel, cache demonstrativo explicitamente demo e preferencias de UI.
+- Endurecer CSP gradualmente, removendo `unsafe-eval` primeiro e planejando nonce/hash para reduzir `unsafe-inline` sem quebrar Next.js.
+- Definir estrategia de LICENSE/visibilidade dos repositorios antes de venda publica ampla.
+- Documentar runbooks de incidente, LGPD basica, SLO beta, backup/restore e contatos de escalacao.
+
 ## Regras De Engenharia
 
 - Mudancas incrementais, pequenas e separadas por repo.
