@@ -752,7 +752,6 @@ export function persistAuthResponse(data: AuthResponse): void {
 
   if (token) setToken(token);
   if (refreshToken) setRefreshToken(refreshToken);
-  if (data.user) setStoredUser(data.user);
 
   const rawCompanies = normalizeCompanyPayload(data.companies ?? data.user?.companies ?? data.user);
   const companies = isRealToken
@@ -772,6 +771,16 @@ export function persistAuthResponse(data: AuthResponse): void {
       : companies[0]?.id;
   if (typeof companyId === 'string' && (!isRealToken || !isDemoId(companyId))) {
     setActiveCompanyId(companyId);
+  }
+
+  if (data.user) {
+    setStoredUser({
+      ...data.user,
+      companies,
+      companyId,
+      activeCompanyId: companyId,
+      company: companies.find((company) => company.id === companyId) ?? companies[0],
+    });
   }
 
   if (companies.length > 0) {
