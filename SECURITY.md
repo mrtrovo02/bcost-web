@@ -24,3 +24,9 @@ Report suspected vulnerabilities privately to the repository owner and include:
 - Readable browser storage must not be treated as the source of truth for production authentication.
 - Frontend requests must use the centralized API client and must not send bypass headers.
 - Security fixes must pass session tests, release checks, typecheck, build, and the versioned secret scan before deployment.
+
+## Incident Response
+
+For production incidents, follow [docs/runbooks/incident-response.md](docs/runbooks/incident-response.md).
+
+Treat login loops, demo/real session mixing, missing active companies, broken protected routes, billing failures, and API client regressions as high-priority incidents until proven otherwise.
