@@ -48,17 +48,5 @@ jobs:
       - name: Audit npm dependencies
         run: npm audit --audit-level=high
 
-      - name: Scan versioned security configuration
-        run: npm run security:scan
-
-      - name: Validate production environment contract
-        run: npm run release:check
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Run CI test suite
-        run: npm run test:ci
-
-      - name: Build
-        run: npm run build
+      - name: Run predeploy production gate
+        run: npm run predeploy:full
