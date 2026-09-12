@@ -1,6 +1,8 @@
 'use strict';
 
 const DEFAULT_TIMEOUT_MS = 15_000;
+const DEFAULT_RETRIES = 5;
+const DEFAULT_RETRY_DELAY_MS = 2_000;
 
 const checks = [
   {
@@ -100,17 +102,56 @@ async function runCheck(check) {
   }
 }
 
+function wait(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+async function runCheckWithRetry(check) {
+  const retries = Number(process.env.BCOST_SMOKE_RETRIES || DEFAULT_RETRIES);
+  const retryDelayMs = Number(process.env.BCOST_SMOKE_RETRY_DELAY_MS || DEFAULT_RETRY_DELAY_MS);
+  let lastResult = null;
+
+  for (let attempt = 1; attempt <= retries; attempt += 1) {
+    const result = await runCheck(check);
+
+    if (result.ok) {
+      return {
+        ...result,
+        attempt,
+      };
+    }
+
+    lastResult = {
+      ...result,
+      attempt,
+    };
+
+    if (attempt < retries) {
+      console.warn(
+        `WARN ${check.name} tentativa ${attempt}/${retries} falhou: ${result.reason}. Nova tentativa em ${retryDelayMs}ms.`,
+      );
+      await wait(retryDelayMs);
+    }
+  }
+
+  return lastResult;
+}
+
 async function main() {
   const results = [];
 
   for (const check of checks) {
-    results.push(await runCheck(check));
+    results.push(await runCheckWithRetry(check));
   }
 
   for (const result of results) {
     const marker = result.ok ? 'OK' : 'FAIL';
     const suffix = result.reason ? ` - ${result.reason}` : '';
-    console.log(`${marker} ${result.name} ${result.status ?? 'NO_STATUS'} ${result.durationMs}ms${suffix}`);
+    console.log(
+      `${marker} ${result.name} ${result.status ?? 'NO_STATUS'} ${result.durationMs}ms attempt=${result.attempt}${suffix}`,
+    );
   }
 
   const failed = results.filter((result) => !result.ok);
