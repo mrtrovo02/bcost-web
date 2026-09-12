@@ -554,6 +554,40 @@ describe('isDemoSession', () => {
     ]);
   });
 
+  it('filters stale demo companies from real login responses before persisting context', async () => {
+    vi.spyOn(api, 'post').mockResolvedValueOnce({
+      data: {
+        access_token: 'real-jwt-token',
+        companyId: 'demo-001',
+        user: {
+          id: 'user-amanda',
+          email: 'amandacontabil@bcost.com.br',
+          name: 'Amanda Narvaes',
+          activeCompanyId: 'demo-001',
+          companies: [
+            {
+              id: 'demo-001',
+              name: 'Empresa Demo',
+            },
+            {
+              id: 'company-amel',
+              name: 'Amel Contabilidade Digital LTDA',
+              cnpj: '41.702.512/0001-87',
+            },
+          ],
+        },
+      },
+    });
+
+    await login('amandacontabil@bcost.com.br', 'secure-password');
+
+    expect(localStorage.getItem('bcost_company_id')).toBe('company-amel');
+    expect(localStorage.getItem('bcost_active_company_data')).toContain('company-amel');
+    expect(localStorage.getItem('bcost_active_company_data')).not.toContain('demo-001');
+    expect(localStorage.getItem('bcost_companies')).toContain('company-amel');
+    expect(localStorage.getItem('bcost_companies')).not.toContain('demo-001');
+  });
+
   it('persists the complete auth contract returned by switch-company', async () => {
     vi.spyOn(api, 'post').mockResolvedValueOnce({
       data: {
