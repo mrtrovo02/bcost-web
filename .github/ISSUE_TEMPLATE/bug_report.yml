@@ -1,0 +1,35 @@
+name: Frontend bug report
+description: Report a frontend defect with session, demo separation, module, billing, or UX impact.
+title: "fix(web): "
+labels:
+  - bug
+  - frontend
+body:
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: Describe the customer, session, tenant, fiscal, billing, or conversion risk.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Provide route, browser, user type, company context, steps, and expected vs actual result.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Add sanitized console logs, trace IDs, screenshots, or network status codes.
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety checks
+      options:
+        - label: No secrets, tokens, fiscal XMLs, credentials, or customer data are included.
+          required: true
+        - label: Demo versus real session behavior was considered.
+          required: true
