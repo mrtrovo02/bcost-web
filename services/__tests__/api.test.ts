@@ -252,11 +252,10 @@ describe('isDemoSession', () => {
     expect(resolveRequestCompanyId(null, 'demo-001')).toBe('demo-001');
   });
 
-  it('adds the controlled demo session header for explicit demo requests', () => {
+  it('does not send a demo bypass header for explicit demo requests', () => {
     expect(resolveRequestHeaders('demo-token-local', 'demo-001')).toEqual({
       Authorization: 'Bearer demo-token-local',
       'x-company-id': 'demo-001',
-      'x-demo-session': 'true',
     });
   });
 

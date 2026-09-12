@@ -436,10 +436,6 @@ export function resolveRequestHeaders(
     headers['x-company-id'] = requestCompanyId;
   }
 
-  if (authMetadata.isDemoRequest) {
-    headers['x-demo-session'] = 'true';
-  }
-
   return headers;
 }
 
@@ -873,10 +869,6 @@ api.interceptors.request.use(
 
     if (requestHeaders['x-company-id']) {
       config.headers['x-company-id'] = requestHeaders['x-company-id'];
-    }
-
-    if (requestHeaders['x-demo-session']) {
-      config.headers['x-demo-session'] = requestHeaders['x-demo-session'];
     }
 
     config.headers[TRACE_HEADER] = createBcostTraceId();
