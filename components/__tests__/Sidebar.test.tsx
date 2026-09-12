@@ -375,4 +375,20 @@ describe('Sidebar', () => {
     });
     expect(window.location.replace).toHaveBeenCalledWith('/login');
   });
+
+  it('redirects logout even when remote revocation does not answer quickly', async () => {
+    testState.logout.mockReturnValue(new Promise<void>(() => undefined));
+
+    render(<Sidebar />);
+
+    fireEvent.click(screen.getByText('Sair do Terminal'));
+
+    await waitFor(
+      () => {
+        expect(testState.clearSession).toHaveBeenCalled();
+        expect(window.location.replace).toHaveBeenCalledWith('/login');
+      },
+      { timeout: 3_000 },
+    );
+  }, 4_000);
 });

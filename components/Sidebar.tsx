@@ -56,6 +56,7 @@ type NavigationItem = {
 };
 
 const COMPANY_LOAD_COOLDOWN_MS = 30_000;
+const LOGOUT_REDIRECT_TIMEOUT_MS = 2_000;
 const COMPANY_CONTEXT_STORAGE_KEYS = [
   'bcost_active_company_data',
   'bcost_companies',
@@ -104,6 +105,12 @@ function sanitizeCompaniesForSession(
   isDemo: boolean,
 ): SidebarCompany[] {
   return isDemo ? companiesList : companiesList.filter((company) => !isDemoCompanyId(company.id));
+}
+
+function resolveAfterLogoutTimeout(): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, LOGOUT_REDIRECT_TIMEOUT_MS);
+  });
 }
 
 export default function Sidebar() {
@@ -252,10 +259,10 @@ export default function Sidebar() {
   const handleLogout = async () => {
     setIsLoggingOut(true);
 
-    await logout().catch((error: unknown) => {
+    await Promise.race([logout(), resolveAfterLogoutTimeout()]).catch((error: unknown) => {
       console.warn('[bCost Sidebar]: logout remoto não confirmado.', error);
-      clearSession();
     });
+    clearSession();
     SESSION_COOKIE_NAMES.forEach((name) => deleteCookie(name));
     window.location.replace('/login');
   };
