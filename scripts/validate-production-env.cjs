@@ -136,14 +136,20 @@ function validateCspDebt() {
   if (!fs.existsSync(nextConfigPath)) return;
 
   const source = fs.readFileSync(nextConfigPath, 'utf8');
-  const hasUnsafeEval = source.includes("'unsafe-eval'") || source.includes('"unsafe-eval"');
   const hasUnsafeInline = source.includes("'unsafe-inline'") || source.includes('"unsafe-inline"');
+  const hasRuntimeUnsafeEval =
+    source.includes("script-src 'self' 'unsafe-inline' 'unsafe-eval'") ||
+    source.includes('script-src "self" "unsafe-inline" "unsafe-eval"');
   const enforceStrictCsp = valueOf('BCOST_ENFORCE_STRICT_CSP') === 'true';
 
-  if (!hasUnsafeEval && !hasUnsafeInline) return;
+  if (hasRuntimeUnsafeEval) {
+    errors.push('Content-Security-Policy: unsafe-eval nao pode estar ativo em producao.');
+  }
+
+  if (!hasUnsafeInline) return;
 
   const message =
-    'Content-Security-Policy: unsafe-inline/unsafe-eval ainda presentes; permitido no beta, mas deve ser removido antes da venda enterprise ampla.';
+    'Content-Security-Policy: unsafe-inline ainda presente; permitido no beta, mas deve ser removido antes da venda enterprise ampla.';
 
   if (enforceStrictCsp) {
     errors.push(message);

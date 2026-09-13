@@ -48,6 +48,14 @@ const connectSources = [
     : []),
 ].join(' ');
 
+const scriptSources = [
+  "'self'",
+  "'unsafe-inline'",
+  ...(isDevelopment ? ["'unsafe-eval'"] : []),
+].join(' ');
+
+const styleSources = ["'self'", "'unsafe-inline'"].join(' ');
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
@@ -129,7 +137,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: `default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src ${connectSources}; frame-ancestors 'self'; base-uri 'self'; form-action 'self'`,
+            value: `default-src 'self'; script-src ${scriptSources}; style-src ${styleSources}; img-src 'self' data: https:; font-src 'self' data:; connect-src ${connectSources}; frame-ancestors 'self'; base-uri 'self'; form-action 'self'`,
           },
         ],
       },
