@@ -19,6 +19,7 @@ const checks = [
     name: 'api-public-health',
     url: process.env.BCOST_SMOKE_API_HEALTH_URL || 'https://api.bcost.com.br/api/v1/health',
     expectJsonStatus: 'UP',
+    expectTraceId: true,
   },
 ];
 
@@ -104,6 +105,20 @@ async function runCheck(check) {
           status: response.status,
           durationMs,
           reason: 'Content-Security-Policy contem unsafe-eval',
+        };
+      }
+    }
+
+    if (check.expectTraceId) {
+      const traceId = response.headers.get('x-bcost-trace-id') || '';
+
+      if (!traceId) {
+        return {
+          name: check.name,
+          ok: false,
+          status: response.status,
+          durationMs,
+          reason: 'x-bcost-trace-id ausente',
         };
       }
     }

@@ -14,4 +14,10 @@ describe('frontend production smoke contract', () => {
     expect(smokeProductionSource).toContain('unsafe-eval');
     expect(smokeProductionSource).toContain('Content-Security-Policy contem unsafe-eval');
   });
+
+  it('requires API trace id in public production smoke', () => {
+    expect(smokeProductionSource).toContain('expectTraceId: true');
+    expect(smokeProductionSource).toContain("response.headers.get('x-bcost-trace-id')");
+    expect(smokeProductionSource).toContain('x-bcost-trace-id ausente');
+  });
 });

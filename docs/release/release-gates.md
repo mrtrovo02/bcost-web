@@ -29,6 +29,8 @@ pm2 logs bcost-web --lines 80
 
 O smoke público deve reprovar se a rota `/login` não expuser
 `Content-Security-Policy` ou se o header voltar a permitir `unsafe-eval`.
+O mesmo smoke também valida `x-bcost-trace-id` na API pública para manter
+correlação operacional entre frontend, Nginx e backend.
 
 Quando o build for feito diretamente na EC2, pare o processo antes de remover
 `.next`:
