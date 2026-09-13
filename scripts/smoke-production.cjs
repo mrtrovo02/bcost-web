@@ -13,6 +13,7 @@ const checks = [
   {
     name: 'web-login-page',
     url: process.env.BCOST_SMOKE_WEB_LOGIN_URL || 'https://app.bcost.com.br/login',
+    expectCspWithoutUnsafeEval: true,
   },
   {
     name: 'api-public-health',
@@ -79,6 +80,30 @@ async function runCheck(check) {
           status: response.status,
           durationMs,
           reason: `status esperado ${check.expectJsonStatus}, recebido ${String(status)}`,
+        };
+      }
+    }
+
+    if (check.expectCspWithoutUnsafeEval) {
+      const csp = response.headers.get('content-security-policy') || '';
+
+      if (!csp) {
+        return {
+          name: check.name,
+          ok: false,
+          status: response.status,
+          durationMs,
+          reason: 'Content-Security-Policy ausente',
+        };
+      }
+
+      if (csp.includes("'unsafe-eval'") || csp.includes('"unsafe-eval"')) {
+        return {
+          name: check.name,
+          ok: false,
+          status: response.status,
+          durationMs,
+          reason: 'Content-Security-Policy contem unsafe-eval',
         };
       }
     }

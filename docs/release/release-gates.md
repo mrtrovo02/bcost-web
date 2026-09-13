@@ -23,7 +23,22 @@ Após deploy na EC2:
 
 ```bash
 curl -i http://127.0.0.1:3000/api/health
+npm run smoke:production
 pm2 logs bcost-web --lines 80
+```
+
+O smoke público deve reprovar se a rota `/login` não expuser
+`Content-Security-Policy` ou se o header voltar a permitir `unsafe-eval`.
+
+Quando o build for feito diretamente na EC2, pare o processo antes de remover
+`.next`:
+
+```bash
+pm2 stop bcost-web || true
+rm -rf .next
+npm run predeploy:full
+pm2 restart bcost-web --update-env
+npm run deploy:verify
 ```
 
 Validar no navegador:

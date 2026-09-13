@@ -110,10 +110,12 @@ Venda enterprise ampla exige adicionalmente:
 ```bash
 cd ~/bcost.web/bcost-web
 git pull origin main
-npm ci
-npm run release:check
-npm run build
-pm2 reload bcost-web --update-env
+npm ci --include=dev
+pm2 stop bcost-web || true
+rm -rf .next
+npm run predeploy:full
+pm2 restart bcost-web --update-env
+npm run deploy:verify
 pm2 logs bcost-web --lines 80
 ```
 
