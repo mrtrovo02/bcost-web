@@ -48,7 +48,11 @@ const baseEnv: NodeJS.ProcessEnv = {
 
 function runReleaseCheck(
   overrides: Partial<NodeJS.ProcessEnv> = {},
-  options: { readonly writeProxy?: boolean; readonly proxySource?: string } = {},
+  options: {
+    readonly writeProxy?: boolean;
+    readonly proxySource?: string;
+    readonly nextConfigSource?: string;
+  } = {},
 ): ReleaseCheckResult {
   const tempDirectory = mkdtempSync(join(tmpdir(), 'bcost-web-release-check-'));
   tempDirectories.push(tempDirectory);
@@ -59,6 +63,10 @@ function runReleaseCheck(
       options.proxySource ?? protectedProxySource,
       'utf8',
     );
+  }
+
+  if (options.nextConfigSource) {
+    writeFileSync(join(tempDirectory, 'next.config.ts'), options.nextConfigSource, 'utf8');
   }
 
   const result = spawnSync(process.execPath, [scriptPath], {
@@ -191,5 +199,24 @@ void companyCookie;
 
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('isControlledDemoAccessEnabled');
+  });
+
+  it('bloqueia CSP permissiva quando o gate enterprise e explicitamente ativado', () => {
+    const result = runReleaseCheck(
+      { BCOST_ENFORCE_STRICT_CSP: 'true' },
+      {
+        nextConfigSource: `
+export default {
+  async headers() {
+    return [{ source: '/(.*)', headers: [{ key: 'Content-Security-Policy', value: "script-src 'self' 'unsafe-inline' 'unsafe-eval'" }] }];
+  },
+};
+`,
+      },
+    );
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('Content-Security-Policy');
+    expect(result.stderr).toContain('venda enterprise ampla');
   });
 });

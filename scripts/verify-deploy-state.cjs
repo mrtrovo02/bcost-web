@@ -88,8 +88,9 @@ function verifyGitState() {
 
 function main() {
   verifyGitState();
+  runNpmScript('release:check');
   runNpmScript('smoke:production');
-  console.log('Deploy verificado: git e smoke de producao aprovados.');
+  console.log('Deploy verificado: git, ambiente produtivo e smoke de producao aprovados.');
 }
 
 try {
@@ -98,4 +99,3 @@ try {
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;
 }
-

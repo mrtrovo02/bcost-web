@@ -30,9 +30,11 @@ Nada pode prometer automacao oficial sem lastro. Onde nao ha automacao oficial, 
 
 P0 — Bloqueadores de vendabilidade:
 - Sessao enterprise robusta, sem loop de login e sem mistura demo/real.
+- Eliminar dependencia de token real em `localStorage`; sessao produtiva deve convergir para cookie HttpOnly/Secure/SameSite=Strict e storage do navegador deve guardar apenas contexto nao sensivel, cache demo explicito e preferencias de UI.
 - Observabilidade antes de Stripe: traces, mensagens de erro uteis, estado de falha claro, correlacao com `x-bcost-trace-id` e alertas de jornadas criticas. Avaliar Sentry/OpenTelemetry somente depois de verificar dependencias e variaveis.
 - Limpeza de repositorio: `.env` real, dumps e certificados fora do git.
 - Testes de isolamento tenant na UI/API client quando houver selecao de empresa.
+- Smoke autenticado em producao deve provar usuario real, empresa esperada, ausencia de empresa demo em sessao real e logout funcional.
 
 P1 — Fechamento mensal:
 - Checklist de fechamento por competencia, periodo travavel, memoria de calculo, snapshot/hash, aprovacao CRC e dossie de evidencias exportavel.
@@ -59,11 +61,34 @@ P5 — Pre-producao comercial rapida:
 - Definir estrategia de LICENSE/visibilidade dos repositorios antes de venda publica ampla.
 - Documentar runbooks de incidente, LGPD basica, SLO beta, backup/restore e contatos de escalacao.
 
+## Gates De Lancamento
+
+Beta pago/controlado exige:
+
+- `release:check`, `test:ci`, build e `deploy:verify` aprovados no frontend publicado.
+- Login real, logout, token expirado e troca de empresa testados manualmente ou por smoke autenticado.
+- Demo controlada jamais pode hidratar empresa real; sessao real jamais pode hidratar empresa `demo-*`.
+- Paywall/entitlements devem bloquear tambem por contrato de API, nao apenas esconder botao na UI.
+- Erros de API em telas vendaveis devem mostrar estado recuperavel com trace/correlation id quando disponivel.
+
+Venda enterprise ampla exige adicionalmente:
+
+- CI/CD com rollback automatizado ou procedimento reversivel testado.
+- Cobertura medida com threshold inicial e suite completa em agenda noturna.
+- CSP endurecida, sem `unsafe-eval` e com plano de nonce/hash para reduzir `unsafe-inline`.
+- `BCOST_ENFORCE_STRICT_CSP=true` precisa passar no `release:check` antes de posicionar o frontend como enterprise amplo.
+- Rotas protegidas server-side por `proxy.ts`/middleware equivalente antes da hidratacao do cliente.
+- Cliente TypeScript gerado ou validado por OpenAPI para reduzir divergencia de contrato.
+
 ## Regras De Engenharia
 
 - Mudancas incrementais, pequenas e separadas por repo.
 - Nunca enfraquecer seguranca para "fazer funcionar".
 - Nunca misturar demo com producao nem esconder erro real com dado demonstrativo.
+- Alteracao em login, logout, refresh, cookies, selecao de empresa, demo/producao ou billing exige teste de regressao focado.
+- SDD obrigatorio: contratos de API, tipos e DTOs mandam na UI; nao consumir campo nao confirmado no client tipado.
+- TDD obrigatorio em simuladores, billing, paywall, sessoes, troca de empresa e fluxos fiscais expostos.
+- Reuso antes de criacao: procurar page, hook, service, client HTTP, normalizer e componente existente antes de criar outro.
 - Toda resposta consumida de API deve ter contrato tipado. Mudanca de contrato exige atualizacao do client e da UI na mesma rodada.
 - Componentes devem ter estados de loading, erro, vazio e sucesso quando consomem dados externos.
 - Commits convencionais e com um contexto por commit.

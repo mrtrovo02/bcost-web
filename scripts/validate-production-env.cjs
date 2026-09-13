@@ -131,6 +131,28 @@ function validateServerSideRouteProtection() {
   }
 }
 
+function validateCspDebt() {
+  const nextConfigPath = path.resolve(process.cwd(), 'next.config.ts');
+  if (!fs.existsSync(nextConfigPath)) return;
+
+  const source = fs.readFileSync(nextConfigPath, 'utf8');
+  const hasUnsafeEval = source.includes("'unsafe-eval'") || source.includes('"unsafe-eval"');
+  const hasUnsafeInline = source.includes("'unsafe-inline'") || source.includes('"unsafe-inline"');
+  const enforceStrictCsp = valueOf('BCOST_ENFORCE_STRICT_CSP') === 'true';
+
+  if (!hasUnsafeEval && !hasUnsafeInline) return;
+
+  const message =
+    'Content-Security-Policy: unsafe-inline/unsafe-eval ainda presentes; permitido no beta, mas deve ser removido antes da venda enterprise ampla.';
+
+  if (enforceStrictCsp) {
+    errors.push(message);
+    return;
+  }
+
+  warnings.push(message);
+}
+
 function validateDemoPolicy() {
   const demoEnabled = valueOf('NEXT_PUBLIC_ENABLE_DEMO');
   const demoFallbackEnabled = valueOf('NEXT_PUBLIC_ENABLE_DEMO_FALLBACK');
@@ -182,6 +204,7 @@ function validateProductionEnvironment() {
   validateInternalApiUrl();
   validateSocketUrl();
   validateDemoPolicy();
+  validateCspDebt();
 
   requireHttpsUrl('NEXT_PUBLIC_APP_URL', REQUIRED_APP_ORIGIN);
   validateServerSideRouteProtection();

@@ -17,4 +17,14 @@ describe('api source contract', () => {
     expect(apiSource).toContain('if (hasRealToken && isDemoId(companyId)) return null;');
     expect(apiSource).toContain('if (token && !hasDemoToken) return false;');
   });
+
+  it('keeps logout deterministic and clears all client-readable session context', () => {
+    expect(apiSource).toContain("await apiPost('/auth/logout').catch(() => undefined);");
+    expect(apiSource).toContain('clearSession();');
+    expect(apiSource).toContain('clearToken();');
+    expect(apiSource).toContain('clearRefreshToken();');
+    expect(apiSource).toContain('clearStoredCompanyData();');
+    expect(apiSource).toContain('clearStoredUser();');
+    expect(apiSource).toContain("window.sessionStorage.removeItem('bcost_company_context_reloaded_once');");
+  });
 });
