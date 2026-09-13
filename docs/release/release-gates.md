@@ -17,6 +17,10 @@
 
 `predeploy:check` e `predeploy:full` sao os comandos preferenciais para EC2 e ambientes com variaveis produtivas. `predeploy:code` e o comando preferencial para validacao local/CI sem variaveis publicas produtivas. A lista detalhada acima permanece como contrato auditorio do que esses comandos cobrem.
 
+Quando `NEXT_PUBLIC_RELEASE_STAGE` estiver em `official`, `live`,
+`enterprise` ou `production-live`, a demo controlada deve estar desligada.
+Use demo controlada somente em beta/piloto explicitamente segregado.
+
 ## Smoke de produção
 
 Após deploy na EC2:
@@ -31,6 +35,8 @@ O smoke público deve reprovar se a rota `/login` não expuser
 `Content-Security-Policy` ou se o header voltar a permitir `unsafe-eval`.
 O mesmo smoke também valida `x-bcost-trace-id` na API pública para manter
 correlação operacional entre frontend, Nginx e backend.
+Ele também executa preflight CORS contra a API oficial e reprova se o header
+legado `x-demo-session` voltar a ser aceito.
 
 Quando o build for feito diretamente na EC2, pare o processo antes de remover
 `.next`:

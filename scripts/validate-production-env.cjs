@@ -163,10 +163,19 @@ function validateDemoPolicy() {
   const demoEnabled = valueOf('NEXT_PUBLIC_ENABLE_DEMO');
   const demoFallbackEnabled = valueOf('NEXT_PUBLIC_ENABLE_DEMO_FALLBACK');
   const demoAccessMode = valueOf('NEXT_PUBLIC_DEMO_ACCESS_MODE');
+  const releaseStage = valueOf('NEXT_PUBLIC_RELEASE_STAGE').toLowerCase();
+  const officialStages = new Set(['official', 'live', 'enterprise', 'production-live']);
   const hasControlledDemo =
     demoEnabled === 'true' && demoFallbackEnabled === 'true' && demoAccessMode === 'controlled';
 
   if (hasControlledDemo) {
+    if (officialStages.has(releaseStage)) {
+      errors.push(
+        'NEXT_PUBLIC_ENABLE_DEMO: demo controlada deve ficar desligada em stage oficial/live/enterprise.',
+      );
+      return;
+    }
+
     warnings.push(
       'Demo controlada habilitada no app oficial; valide que dados reais e demonstrativos permanecem segregados.',
     );

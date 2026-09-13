@@ -146,6 +146,18 @@ describe('frontend production release gate', () => {
     expect(result.stderr).toContain('Demo controlada habilitada');
   });
 
+  it('bloqueia demo controlada em stage oficial enterprise', () => {
+    const result = runReleaseCheck({
+      NEXT_PUBLIC_ENABLE_DEMO: 'true',
+      NEXT_PUBLIC_ENABLE_DEMO_FALLBACK: 'true',
+      NEXT_PUBLIC_DEMO_ACCESS_MODE: 'controlled',
+      NEXT_PUBLIC_RELEASE_STAGE: 'enterprise',
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('demo controlada deve ficar desligada');
+  });
+
   it('bloqueia demo parcial sem modo controlled', () => {
     const result = runReleaseCheck({
       NEXT_PUBLIC_ENABLE_DEMO: 'true',

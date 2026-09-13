@@ -21,6 +21,14 @@ const checks = [
     expectJsonStatus: 'UP',
     expectTraceId: true,
   },
+  {
+    name: 'api-cors-preflight',
+    url: process.env.BCOST_SMOKE_API_HEALTH_URL || 'https://api.bcost.com.br/api/v1/health',
+    method: 'OPTIONS',
+    expectStatus: 204,
+    expectCorsOrigin: 'https://app.bcost.com.br',
+    forbidCorsHeader: 'x-demo-session',
+  },
 ];
 
 function timeoutSignal(timeoutMs) {
@@ -50,18 +58,36 @@ async function runCheck(check) {
 
   try {
     const response = await fetch(check.url, {
-      method: 'GET',
+      method: check.method || 'GET',
       redirect: 'follow',
       signal: timer.signal,
       headers: {
         'user-agent': 'bcost-web-smoke/1.0',
+        ...(check.method === 'OPTIONS'
+          ? {
+              origin: 'https://app.bcost.com.br',
+              'access-control-request-method': 'GET',
+              'access-control-request-headers': 'authorization,x-company-id',
+            }
+          : {}),
       },
     });
 
     const durationMs = Date.now() - startedAt;
     const body = await readResponseBody(response);
 
-    if (!response.ok) {
+    const expectedStatus = check.expectStatus;
+    if (expectedStatus && response.status !== expectedStatus) {
+      return {
+        name: check.name,
+        ok: false,
+        status: response.status,
+        durationMs,
+        reason: `HTTP esperado ${expectedStatus}`,
+      };
+    }
+
+    if (!expectedStatus && !response.ok) {
       return {
         name: check.name,
         ok: false,
@@ -119,6 +145,32 @@ async function runCheck(check) {
           status: response.status,
           durationMs,
           reason: 'x-bcost-trace-id ausente',
+        };
+      }
+    }
+
+    if (check.expectCorsOrigin) {
+      const allowOrigin = response.headers.get('access-control-allow-origin') || '';
+      if (allowOrigin !== check.expectCorsOrigin) {
+        return {
+          name: check.name,
+          ok: false,
+          status: response.status,
+          durationMs,
+          reason: `Access-Control-Allow-Origin esperado ${check.expectCorsOrigin}, recebido ${allowOrigin || 'ausente'}`,
+        };
+      }
+    }
+
+    if (check.forbidCorsHeader) {
+      const allowHeaders = (response.headers.get('access-control-allow-headers') || '').toLowerCase();
+      if (allowHeaders.includes(check.forbidCorsHeader.toLowerCase())) {
+        return {
+          name: check.name,
+          ok: false,
+          status: response.status,
+          durationMs,
+          reason: `Access-Control-Allow-Headers contem header proibido ${check.forbidCorsHeader}`,
         };
       }
     }

@@ -20,4 +20,12 @@ describe('frontend production smoke contract', () => {
     expect(smokeProductionSource).toContain("response.headers.get('x-bcost-trace-id')");
     expect(smokeProductionSource).toContain('x-bcost-trace-id ausente');
   });
+
+  it('validates official API CORS preflight without demo session headers', () => {
+    expect(smokeProductionSource).toContain("name: 'api-cors-preflight'");
+    expect(smokeProductionSource).toContain("method: 'OPTIONS'");
+    expect(smokeProductionSource).toContain("expectCorsOrigin: 'https://app.bcost.com.br'");
+    expect(smokeProductionSource).toContain("forbidCorsHeader: 'x-demo-session'");
+    expect(smokeProductionSource).toContain('Access-Control-Allow-Headers contem header proibido');
+  });
 });
