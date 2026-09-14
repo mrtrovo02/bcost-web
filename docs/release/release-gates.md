@@ -17,6 +17,11 @@
 
 `predeploy:check` e `predeploy:full` sao os comandos preferenciais para EC2 e ambientes com variaveis produtivas. `predeploy:code` e o comando preferencial para validacao local/CI sem variaveis publicas produtivas. A lista detalhada acima permanece como contrato auditorio do que esses comandos cobrem.
 
+`NEXT_PUBLIC_RELEASE_STAGE` e obrigatorio no release produtivo. Use `beta` ou
+`controlled-beta` para piloto/beta pago e use `official`, `live`,
+`enterprise` ou `production-live` somente quando os gates de venda oficial
+estiverem cumpridos.
+
 Quando `NEXT_PUBLIC_RELEASE_STAGE` estiver em `official`, `live`,
 `enterprise` ou `production-live`, a demo controlada deve estar desligada.
 Use demo controlada somente em beta/piloto explicitamente segregado.

@@ -15,6 +15,7 @@ NEXT_PUBLIC_APP_NAME=bCost
 NEXT_PUBLIC_ENABLE_DEMO=false
 NEXT_PUBLIC_ENABLE_DEMO_FALLBACK=false
 NEXT_PUBLIC_DEMO_ACCESS_MODE=disabled
+NEXT_PUBLIC_RELEASE_STAGE=beta
 ```
 
 ## Demo pública controlada
@@ -42,9 +43,13 @@ Nunca use `NEXT_PUBLIC_ENABLE_DEMO=true` com `NEXT_PUBLIC_DEMO_ACCESS_MODE` vazi
 ```bash
 cd ~/bcost.web/bcost-web
 git pull origin main
-npm ci
-npm run release:check
-npm run build
+npm ci --engine-strict --include=dev
+export BUILD_VERSION="$(git rev-parse --short HEAD)"
+export NEXT_PUBLIC_BUILD_VERSION="$BUILD_VERSION"
+export NEXT_PUBLIC_RELEASE_STAGE="${NEXT_PUBLIC_RELEASE_STAGE:-beta}"
+npm run predeploy:full
 pm2 restart bcost-web --update-env
+pm2 save
+npm run deploy:verify
 pm2 logs bcost-web --lines 80
 ```

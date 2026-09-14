@@ -112,6 +112,31 @@ function validateBuildVersion() {
   }
 }
 
+function validateReleaseStage() {
+  const releaseStage = valueOf('NEXT_PUBLIC_RELEASE_STAGE').toLowerCase();
+  const supportedStages = new Set([
+    'beta',
+    'controlled-beta',
+    'official',
+    'live',
+    'enterprise',
+    'production-live',
+  ]);
+
+  if (!releaseStage) {
+    errors.push(
+      'NEXT_PUBLIC_RELEASE_STAGE: defina beta, controlled-beta, official, live, enterprise ou production-live para evitar deploy ambiguo.',
+    );
+    return;
+  }
+
+  if (!supportedStages.has(releaseStage)) {
+    errors.push(
+      'NEXT_PUBLIC_RELEASE_STAGE: valor desconhecido; use beta, controlled-beta, official, live, enterprise ou production-live.',
+    );
+  }
+}
+
 function runtimeNodeMajor() {
   const version = valueOf('BCOST_NODE_VERSION_OVERRIDE') || process.versions.node;
   const major = Number.parseInt(version.split('.')[0] ?? '', 10);
@@ -155,14 +180,20 @@ function validateCspDebt() {
   if (!fs.existsSync(nextConfigPath)) return;
 
   const source = fs.readFileSync(nextConfigPath, 'utf8');
+  const scriptSourcesArray = /const\s+scriptSources\s*=\s*\[[\s\S]*?['"]unsafe-inline['"][\s\S]*?\]/.test(
+    source,
+  );
+  const styleSourcesArray = /const\s+styleSources\s*=\s*\[[\s\S]*?['"]unsafe-inline['"][\s\S]*?\]/.test(
+    source,
+  );
   const scriptSourceUnsafeInline =
     source.includes("script-src 'self' 'unsafe-inline'") ||
     source.includes('script-src "self" "unsafe-inline"') ||
-    source.includes('const scriptSources = ["\'self\'", "\'unsafe-inline\'"');
+    scriptSourcesArray;
   const styleSourceUnsafeInline =
     source.includes("style-src 'self' 'unsafe-inline'") ||
     source.includes('style-src "self" "unsafe-inline"') ||
-    source.includes('const styleSources = ["\'self\'", "\'unsafe-inline\'"');
+    styleSourcesArray;
   const hasRuntimeUnsafeEval =
     source.includes("script-src 'self' 'unsafe-inline' 'unsafe-eval'") ||
     source.includes('script-src "self" "unsafe-inline" "unsafe-eval"');
@@ -235,6 +266,7 @@ function validateDemoPolicy() {
 function validateProductionEnvironment() {
   validateSupportedNodeRuntime();
   validateBuildVersion();
+  validateReleaseStage();
   requireEquals('NODE_ENV', 'production', 'deve ser production no build oficial.');
   validateApiBasePath('NEXT_PUBLIC_API_URL');
 

@@ -81,6 +81,7 @@ Venda enterprise ampla exige adicionalmente:
 - Cobertura medida com threshold inicial e suite completa em agenda noturna.
 - CSP endurecida, sem `unsafe-eval` e com plano de nonce/hash para reduzir `unsafe-inline`.
 - `BCOST_ENFORCE_STRICT_CSP=true` precisa passar no `release:check` antes de posicionar o frontend como enterprise amplo.
+- `NEXT_PUBLIC_RELEASE_STAGE` deve ser declarado e coerente com o deploy: `beta`/`controlled-beta` para beta pago e `official`/`live`/`enterprise`/`production-live` para venda oficial.
 - Rotas protegidas server-side por `proxy.ts`/middleware equivalente antes da hidratacao do cliente.
 - Cliente TypeScript gerado ou validado por OpenAPI para reduzir divergencia de contrato.
 
@@ -117,6 +118,7 @@ git pull origin main
 npm ci --engine-strict --include=dev
 export BUILD_VERSION="$(git rev-parse --short HEAD)"
 export NEXT_PUBLIC_BUILD_VERSION="$BUILD_VERSION"
+export NEXT_PUBLIC_RELEASE_STAGE="${NEXT_PUBLIC_RELEASE_STAGE:-beta}"
 pm2 stop bcost-web || true
 rm -rf .next
 npm run predeploy:full
@@ -125,4 +127,4 @@ npm run deploy:verify
 pm2 logs bcost-web --lines 80
 ```
 
-Variaveis produtivas obrigatorias incluem `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_SOCKET_URL`, `INTERNAL_API_URL`, `NEXT_PUBLIC_ENABLE_DEMO=false`, `NEXT_PUBLIC_ENABLE_DEMO_FALLBACK=false` e `NEXT_PUBLIC_DEMO_ACCESS_MODE=disabled`.
+Variaveis produtivas obrigatorias incluem `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_SOCKET_URL`, `INTERNAL_API_URL`, `NEXT_PUBLIC_ENABLE_DEMO=false`, `NEXT_PUBLIC_ENABLE_DEMO_FALLBACK=false`, `NEXT_PUBLIC_DEMO_ACCESS_MODE=disabled` e `NEXT_PUBLIC_RELEASE_STAGE`.

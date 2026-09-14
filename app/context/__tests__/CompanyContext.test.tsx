@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CompanyProvider, useCompany, type Company } from '../CompanyContext';
@@ -271,7 +271,9 @@ describe('CompanyProvider', () => {
       }),
     );
 
-    window.dispatchEvent(new CustomEvent('bcost:user-session-updated'));
+    await act(async () => {
+      window.dispatchEvent(new CustomEvent('bcost:user-session-updated'));
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('selected')).toHaveTextContent('company-amel');

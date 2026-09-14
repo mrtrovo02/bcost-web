@@ -45,6 +45,7 @@ const baseEnv: NodeJS.ProcessEnv = {
   NEXT_PUBLIC_ENABLE_DEMO: 'false',
   NEXT_PUBLIC_ENABLE_DEMO_FALLBACK: 'false',
   NEXT_PUBLIC_DEMO_ACCESS_MODE: 'disabled',
+  NEXT_PUBLIC_RELEASE_STAGE: 'beta',
   NEXT_PUBLIC_APP_URL: 'https://app.bcost.com.br',
 };
 
@@ -149,6 +150,26 @@ describe('frontend production release gate', () => {
     expect(result.stderr).toContain('determinístico');
   });
 
+  it('bloqueia stage ausente para evitar deploy ambiguo', () => {
+    const result = runReleaseCheck({
+      NEXT_PUBLIC_RELEASE_STAGE: '',
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('NEXT_PUBLIC_RELEASE_STAGE');
+    expect(result.stderr).toContain('evitar deploy ambiguo');
+  });
+
+  it('bloqueia stage desconhecido para evitar deploy ambiguo', () => {
+    const result = runReleaseCheck({
+      NEXT_PUBLIC_RELEASE_STAGE: 'preview',
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('NEXT_PUBLIC_RELEASE_STAGE');
+    expect(result.stderr).toContain('valor desconhecido');
+  });
+
   it('bloqueia demo pública habilitada no host oficial', () => {
     const result = runReleaseCheck({ NEXT_PUBLIC_ENABLE_DEMO: 'true' });
 
@@ -239,7 +260,10 @@ void companyCookie;
       {},
       {
         nextConfigSource: `
-const scriptSources = ["'self'", "'unsafe-inline'"].join(' ');
+const scriptSources = [
+  "'self'",
+  "'unsafe-inline'",
+].join(' ');
 export default {};
 `,
       },
