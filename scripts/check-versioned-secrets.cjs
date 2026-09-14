@@ -33,6 +33,12 @@ const forbiddenProductionFlags = [
   'NEXT_PUBLIC_ENABLE_DEMO_FALLBACK',
 ];
 
+const forbiddenFrontendRuntimePackages = new Set(['bullmq', 'ioredis']);
+const forbiddenFrontendRuntimeImports = [
+  { packageName: 'bullmq', reason: 'filas e workers pertencem ao backend ou a worker dedicado' },
+  { packageName: 'ioredis', reason: 'conexao Redis direta nao deve rodar no processo Next.js' },
+];
+
 const findings = [];
 
 function normalizePath(filePath) {
@@ -60,6 +66,27 @@ function inspectFile(filePath) {
 
   if (content.includes('\u0000')) return;
 
+  if (normalizePath(filePath) === 'package.json') {
+    try {
+      const manifest = JSON.parse(content);
+      const dependencies = {
+        ...(manifest.dependencies ?? {}),
+        ...(manifest.devDependencies ?? {}),
+        ...(manifest.optionalDependencies ?? {}),
+      };
+
+      for (const packageName of forbiddenFrontendRuntimePackages) {
+        if (Object.prototype.hasOwnProperty.call(dependencies, packageName)) {
+          findings.push(
+            `${filePath}: dependencia proibida no frontend (${packageName}); mova filas/Redis para backend ou worker dedicado`,
+          );
+        }
+      }
+    } catch {
+      findings.push(`${filePath}: package.json invalido para verificacao de dependencias proibidas`);
+    }
+  }
+
   secretPattern.lastIndex = 0;
   for (const match of content.matchAll(secretPattern)) {
     const index = match.index ?? 0;
@@ -68,6 +95,17 @@ function inspectFile(filePath) {
   }
 
   if (isTestFile(filePath)) return;
+
+  for (const forbiddenImport of forbiddenFrontendRuntimeImports) {
+    const packageName = forbiddenImport.packageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const importPattern = new RegExp(
+      `(?:from\\s+['"]${packageName}['"]|require\\(\\s*['"]${packageName}['"]\\s*\\))`,
+    );
+
+    if (importPattern.test(content)) {
+      findings.push(`${filePath}: import proibido de ${forbiddenImport.packageName}; ${forbiddenImport.reason}`);
+    }
+  }
 
   const lines = content.split(/\r?\n/);
   for (let index = 0; index < lines.length; index += 1) {

@@ -36,6 +36,8 @@ const baseEnv: NodeJS.ProcessEnv = {
   SystemRoot: process.env.SystemRoot,
   WINDIR: process.env.WINDIR,
   NODE_ENV: 'production',
+  BCOST_NODE_VERSION_OVERRIDE: '24.0.0',
+  BUILD_VERSION: 'release-check-test',
   NEXT_PUBLIC_API_URL: 'https://api.bcost.com.br/api/v1',
   NEXT_PUBLIC_API_BASE_URL: 'https://api.bcost.com.br/api/v1',
   INTERNAL_API_URL: 'http://127.0.0.1:5000',
@@ -126,6 +128,25 @@ describe('frontend production release gate', () => {
 
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('NODE_ENV');
+  });
+
+  it('bloqueia runtime Node abaixo da linha LTS alvo', () => {
+    const result = runReleaseCheck({ BCOST_NODE_VERSION_OVERRIDE: '20.20.2' });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('NODE_RUNTIME');
+    expect(result.stderr).toContain('Node.js 24 LTS');
+  });
+
+  it('bloqueia build produtivo sem BUILD_VERSION deterministico', () => {
+    const result = runReleaseCheck({
+      BUILD_VERSION: '',
+      NEXT_PUBLIC_BUILD_VERSION: '',
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('BUILD_VERSION');
+    expect(result.stderr).toContain('determinístico');
   });
 
   it('bloqueia demo pública habilitada no host oficial', () => {

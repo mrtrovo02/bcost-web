@@ -8,6 +8,7 @@ const withBuild = process.argv.includes('--with-build');
 const codeOnly = process.argv.includes('--code-only');
 
 const steps = [
+  ['runtime:check', 'Garante Node.js 24 LTS antes de testar, compilar ou publicar.'],
   ['security:scan', 'Bloqueia segredos versionados e flags demo perigosas.'],
 ];
 

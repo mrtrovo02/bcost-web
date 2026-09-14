@@ -54,12 +54,15 @@ P4 — Escalabilidade e UX:
 - Produto deve parecer vendavel no primeiro acesso: valor claro, fluxos acionaveis e riscos declarados.
 
 P5 — Pre-producao comercial rapida:
+- Migrar runtime produtivo, Docker/PM2 e CI para Node 24 LTS. Node 20 nao e baseline aceitavel para venda enterprise ampla.
 - Antes de novas telas comerciais, priorizar deploy repetivel, smoke test pos-deploy, rollback documentado, CI completo com cobertura medida e higiene operacional.
 - Concluir migracao para sessao baseada em cookie HttpOnly/Secure/SameSite=Strict; token real nao deve depender de `localStorage`.
 - `localStorage` pode guardar apenas contexto nao sensivel, cache demonstrativo explicitamente demo e preferencias de UI.
 - Endurecer CSP gradualmente, removendo `unsafe-eval` primeiro e planejando nonce/hash para reduzir `unsafe-inline` sem quebrar Next.js.
 - Definir estrategia de LICENSE/visibilidade dos repositorios antes de venda publica ampla.
 - Documentar runbooks de incidente, LGPD basica, SLO beta, backup/restore e contatos de escalacao.
+- Filas, workers, BullMQ, Redis, RPAs e processamento XML recorrente nao devem rodar dentro do Next.js. Esses componentes pertencem ao backend ou a worker dedicado.
+- OpenAPI publicado e cliente TypeScript gerado/validado devem ser a fonte operacional dos contratos consumidos pela UI.
 
 ## Gates De Lancamento
 
@@ -73,6 +76,7 @@ Beta pago/controlado exige:
 
 Venda enterprise ampla exige adicionalmente:
 
+- Node 24 LTS em CI, build e EC2.
 - CI/CD com rollback automatizado ou procedimento reversivel testado.
 - Cobertura medida com threshold inicial e suite completa em agenda noturna.
 - CSP endurecida, sem `unsafe-eval` e com plano de nonce/hash para reduzir `unsafe-inline`.
@@ -110,7 +114,9 @@ Venda enterprise ampla exige adicionalmente:
 ```bash
 cd ~/bcost.web/bcost-web
 git pull origin main
-npm ci --include=dev
+npm ci --engine-strict --include=dev
+export BUILD_VERSION="$(git rev-parse --short HEAD)"
+export NEXT_PUBLIC_BUILD_VERSION="$BUILD_VERSION"
 pm2 stop bcost-web || true
 rm -rf .next
 npm run predeploy:full

@@ -106,6 +106,25 @@ function validateInternalApiUrl() {
   }
 }
 
+function validateBuildVersion() {
+  if (!valueOf('BUILD_VERSION') && !valueOf('NEXT_PUBLIC_BUILD_VERSION')) {
+    errors.push('BUILD_VERSION: obrigatório para build produtivo determinístico no Next.js.');
+  }
+}
+
+function runtimeNodeMajor() {
+  const version = valueOf('BCOST_NODE_VERSION_OVERRIDE') || process.versions.node;
+  const major = Number.parseInt(version.split('.')[0] ?? '', 10);
+  return Number.isFinite(major) ? major : null;
+}
+
+function validateSupportedNodeRuntime() {
+  const major = runtimeNodeMajor();
+  if (major === null || major < 24) {
+    errors.push('NODE_RUNTIME: use Node.js 24 LTS ou superior para build/deploy produtivo.');
+  }
+}
+
 function validateServerSideRouteProtection() {
   const proxyPath = path.resolve(process.cwd(), 'proxy.ts');
   if (!fs.existsSync(proxyPath)) {
@@ -202,6 +221,8 @@ function validateDemoPolicy() {
 }
 
 function validateProductionEnvironment() {
+  validateSupportedNodeRuntime();
+  validateBuildVersion();
   requireEquals('NODE_ENV', 'production', 'deve ser production no build oficial.');
   validateApiBasePath('NEXT_PUBLIC_API_URL');
 
