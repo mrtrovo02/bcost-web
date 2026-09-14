@@ -155,7 +155,14 @@ function validateCspDebt() {
   if (!fs.existsSync(nextConfigPath)) return;
 
   const source = fs.readFileSync(nextConfigPath, 'utf8');
-  const hasUnsafeInline = source.includes("'unsafe-inline'") || source.includes('"unsafe-inline"');
+  const scriptSourceUnsafeInline =
+    source.includes("script-src 'self' 'unsafe-inline'") ||
+    source.includes('script-src "self" "unsafe-inline"') ||
+    source.includes('const scriptSources = ["\'self\'", "\'unsafe-inline\'"');
+  const styleSourceUnsafeInline =
+    source.includes("style-src 'self' 'unsafe-inline'") ||
+    source.includes('style-src "self" "unsafe-inline"') ||
+    source.includes('const styleSources = ["\'self\'", "\'unsafe-inline\'"');
   const hasRuntimeUnsafeEval =
     source.includes("script-src 'self' 'unsafe-inline' 'unsafe-eval'") ||
     source.includes('script-src "self" "unsafe-inline" "unsafe-eval"');
@@ -165,10 +172,15 @@ function validateCspDebt() {
     errors.push('Content-Security-Policy: unsafe-eval nao pode estar ativo em producao.');
   }
 
-  if (!hasUnsafeInline) return;
+  if (!scriptSourceUnsafeInline && !styleSourceUnsafeInline) return;
 
-  const message =
-    'Content-Security-Policy: unsafe-inline ainda presente; permitido no beta, mas deve ser removido antes da venda enterprise ampla.';
+  const directives = [
+    scriptSourceUnsafeInline ? 'script-src' : '',
+    styleSourceUnsafeInline ? 'style-src' : '',
+  ].filter(Boolean);
+  const message = `Content-Security-Policy: unsafe-inline ainda presente em ${directives.join(
+    ' e ',
+  )}; permitido no beta Next.js atual, mas deve migrar para nonce/hash antes da venda enterprise ampla.`;
 
   if (enforceStrictCsp) {
     errors.push(message);

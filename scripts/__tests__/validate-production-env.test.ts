@@ -234,6 +234,23 @@ void companyCookie;
     expect(result.stderr).toContain('isControlledDemoAccessEnabled');
   });
 
+  it('sinaliza unsafe-inline em script-src produtivo como divida controlada no beta', () => {
+    const result = runReleaseCheck(
+      {},
+      {
+        nextConfigSource: `
+const scriptSources = ["'self'", "'unsafe-inline'"].join(' ');
+export default {};
+`,
+      },
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toContain('script-src');
+    expect(result.stderr).toContain('unsafe-inline');
+    expect(result.stderr).toContain('nonce/hash');
+  });
+
   it('bloqueia CSP permissiva quando o gate enterprise e explicitamente ativado', () => {
     const result = runReleaseCheck(
       { BCOST_ENFORCE_STRICT_CSP: 'true' },
@@ -241,7 +258,7 @@ void companyCookie;
         nextConfigSource: `
 export default {
   async headers() {
-    return [{ source: '/(.*)', headers: [{ key: 'Content-Security-Policy', value: "script-src 'self' 'unsafe-inline' 'unsafe-eval'" }] }];
+    return [{ source: '/(.*)', headers: [{ key: 'Content-Security-Policy', value: "script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'" }] }];
   },
 };
 `,
@@ -250,6 +267,7 @@ export default {
 
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('Content-Security-Policy');
+    expect(result.stderr).toContain('script-src');
     expect(result.stderr).toContain('venda enterprise ampla');
   });
 });
