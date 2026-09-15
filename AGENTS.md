@@ -89,6 +89,7 @@ Venda enterprise ampla exige adicionalmente:
 - CSP endurecida, sem `unsafe-eval` e com plano de nonce/hash para reduzir `unsafe-inline`.
 - `BCOST_ENFORCE_STRICT_CSP=true` precisa passar no `release:check` antes de posicionar o frontend como enterprise amplo.
 - `NEXT_PUBLIC_RELEASE_STAGE` deve ser declarado e coerente com o deploy: `beta`/`controlled-beta` para beta pago e `official`/`live`/`enterprise`/`production-live` para venda oficial.
+- CI deve executar `npm run predeploy:full` com `NEXT_PUBLIC_RELEASE_STAGE` declarado; nunca publicar build sem stage, security scan, `test:ci` e build no mesmo gate.
 - Rotas protegidas server-side por `proxy.ts`/middleware equivalente antes da hidratacao do cliente.
 - Cliente TypeScript gerado ou validado por OpenAPI para reduzir divergencia de contrato.
 
