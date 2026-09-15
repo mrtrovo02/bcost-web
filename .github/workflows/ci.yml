@@ -30,6 +30,7 @@ jobs:
       INTERNAL_API_URL: http://127.0.0.1:5000
       BUILD_VERSION: ci-${{ github.sha }}
       NEXT_PUBLIC_BUILD_VERSION: ci-${{ github.sha }}
+      NEXT_PUBLIC_RELEASE_STAGE: beta
       NEXT_PUBLIC_ENABLE_DEMO: "false"
       NEXT_PUBLIC_ENABLE_DEMO_FALLBACK: "false"
       NEXT_PUBLIC_DEMO_ACCESS_MODE: disabled
