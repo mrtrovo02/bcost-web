@@ -89,8 +89,11 @@ function verifyGitState() {
 function main() {
   verifyGitState();
   runNpmScript('release:check');
+  runNpmScript('test:session');
+  runNpmScript('test:proxy');
+  runNpmScript('test:tax-scenarios');
   runNpmScript('smoke:production');
-  console.log('Deploy verificado: git, ambiente produtivo e smoke de producao aprovados.');
+  console.log('Deploy verificado: git, sessao, proxy, simulador tributario, ambiente produtivo e smoke de producao aprovados.');
 }
 
 try {
