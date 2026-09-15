@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useCallback, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useCallback, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -370,10 +370,10 @@ export default function Sidebar() {
     [],
   );
 
-  const isActiveRoute = (href: string) => {
+  const isActiveRoute = useCallback((href: string) => {
     if (href === '/dashboard') return pathname === href;
     return pathname === href || pathname.startsWith(`${href}/`);
-  };
+  }, [pathname]);
 
   return (
     <aside className="w-[19.25rem] shrink-0 bg-[#030713] border-r border-blue-400/10 flex flex-col h-screen sticky top-0 z-50 font-sans shadow-[24px_0_70px_rgba(0,0,0,0.45)] relative overflow-hidden">
@@ -530,7 +530,7 @@ function SectionTitle({ label, meta }: { label: string; meta?: string }) {
   );
 }
 
-function NavigationSection({
+const NavigationSection = memo(function NavigationSection({
   title,
   items,
   isActiveRoute,
@@ -549,7 +549,7 @@ function NavigationSection({
             <Link
               key={`${item.href}:${item.label}`}
               href={item.href}
-              prefetch
+              prefetch={false}
               className={`group relative flex w-full items-center gap-3.5 overflow-hidden rounded-2xl px-3.5 py-3 text-left transition-all duration-300 ${
                 isActive
                   ? 'bg-gradient-to-r from-blue-500/18 via-blue-500/9 to-transparent text-white shadow-[inset_0_0_0_1px_rgba(96,165,250,0.25)]'
@@ -600,4 +600,4 @@ function NavigationSection({
       </nav>
     </section>
   );
-}
+});

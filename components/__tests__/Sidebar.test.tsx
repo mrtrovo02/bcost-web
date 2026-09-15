@@ -1,4 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Sidebar from '../Sidebar';
 
@@ -104,6 +106,13 @@ describe('Sidebar', () => {
       'href',
       '/dashboard/enterprise',
     );
+  });
+
+  it('does not prefetch every dashboard module from the sidebar', () => {
+    const source = readFileSync(join(process.cwd(), 'components', 'Sidebar.tsx'), 'utf8');
+
+    expect(source).toContain('const NavigationSection = memo(function NavigationSection');
+    expect(source).toContain('prefetch={false}');
   });
 
   it('confirma troca de empresa real no backend para renovar token e contexto JWT', async () => {
