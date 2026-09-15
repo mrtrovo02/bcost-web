@@ -63,6 +63,13 @@ P5 — Pre-producao comercial rapida:
 - Documentar runbooks de incidente, LGPD basica, SLO beta, backup/restore e contatos de escalacao.
 - Filas, workers, BullMQ, Redis, RPAs e processamento XML recorrente nao devem rodar dentro do Next.js. Esses componentes pertencem ao backend ou a worker dedicado.
 - OpenAPI publicado e cliente TypeScript gerado/validado devem ser a fonte operacional dos contratos consumidos pela UI.
+- Diretriz v6 de runtime: manter Node 24 LTS como baseline e injetar `BUILD_VERSION` no pipeline; fallback via Git existe, mas deploy oficial deve ser deterministico.
+- Diretriz v6 de sessao: remover progressivamente token real do `localStorage`; `localStorage` so pode guardar contexto nao sensivel e cache demo explicitamente marcado.
+- Diretriz v6 de CSP: `unsafe-inline` e aceitavel apenas no beta controlado; venda enterprise ampla exige nonce/hash e `BCOST_ENFORCE_STRICT_CSP=true` verde.
+- Diretriz v6 de supply chain: pinagem SHA de GitHub Actions, SBOM e trilha de assinatura/attestation entram no backlog de release amplo.
+- Diretriz v6 de contratos: frontend deve convergir para cliente TypeScript gerado/validado por OpenAPI; tipos manuais em `lib/api` precisam de contrato e teste.
+- Diretriz v6 de cobertura: CI deve evoluir de subconjuntos para suite completa com `coverageThreshold` inicial e aumento por sprint.
+- Diretriz v6 de produto: LGPD, retencao/exclusao de dados, DR e plano de continuidade sao requisitos para venda enterprise ampla.
 
 ## Gates De Lancamento
 
