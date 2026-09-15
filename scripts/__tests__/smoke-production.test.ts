@@ -8,6 +8,12 @@ const smokeProductionSource = readFileSync(
 );
 
 describe('frontend production smoke contract', () => {
+  it('checks the Next.js runtime health outside the API rewrite and validates build drift', () => {
+    expect(smokeProductionSource).toContain("url: process.env.BCOST_SMOKE_WEB_HEALTH_URL || 'https://app.bcost.com.br/web-health'");
+    expect(smokeProductionSource).toContain('expectBuildVersion');
+    expect(smokeProductionSource).toContain('buildVersion esperado');
+  });
+
   it('blocks production login shell when CSP allows unsafe-eval', () => {
     expect(smokeProductionSource).toContain('expectCspWithoutUnsafeEval');
     expect(smokeProductionSource).toContain('content-security-policy');

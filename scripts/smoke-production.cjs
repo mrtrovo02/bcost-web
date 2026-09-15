@@ -7,8 +7,9 @@ const DEFAULT_RETRY_DELAY_MS = 2_000;
 const checks = [
   {
     name: 'web-public-health',
-    url: process.env.BCOST_SMOKE_WEB_HEALTH_URL || 'https://app.bcost.com.br/api/health',
+    url: process.env.BCOST_SMOKE_WEB_HEALTH_URL || 'https://app.bcost.com.br/web-health',
     expectJsonStatus: 'UP',
+    expectBuildVersion: process.env.BUILD_VERSION || process.env.NEXT_PUBLIC_BUILD_VERSION || '',
   },
   {
     name: 'web-login-page',
@@ -107,6 +108,20 @@ async function runCheck(check) {
           status: response.status,
           durationMs,
           reason: `status esperado ${check.expectJsonStatus}, recebido ${String(status)}`,
+        };
+      }
+    }
+
+    if (check.expectBuildVersion) {
+      const buildVersion = body && typeof body === 'object' ? body.buildVersion : undefined;
+
+      if (buildVersion !== check.expectBuildVersion) {
+        return {
+          name: check.name,
+          ok: false,
+          status: response.status,
+          durationMs,
+          reason: `buildVersion esperado ${check.expectBuildVersion}, recebido ${String(buildVersion)}`,
         };
       }
     }
