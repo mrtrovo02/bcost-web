@@ -119,6 +119,7 @@ npm ci --engine-strict --include=dev
 export BUILD_VERSION="$(git rev-parse --short HEAD)"
 export NEXT_PUBLIC_BUILD_VERSION="$BUILD_VERSION"
 export NEXT_PUBLIC_RELEASE_STAGE="${NEXT_PUBLIC_RELEASE_STAGE:-beta}"
+export BCOST_NEXT_BUILD_HEAP_MB="${BCOST_NEXT_BUILD_HEAP_MB:-2048}"
 pm2 stop bcost-web || true
 rm -rf .next
 npm run predeploy:full
