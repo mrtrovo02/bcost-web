@@ -9,6 +9,12 @@ const scannerSource = readFileSync(
 );
 
 describe('frontend security scanner', () => {
+  it('mantem bloqueio para arquivos .env reais versionados', () => {
+    expect(scannerSource).toContain('isForbiddenTrackedEnvFile');
+    expect(scannerSource).toContain('arquivo de ambiente real nao deve ser versionado');
+    expect(scannerSource).toContain("fileName.endsWith('.example')");
+  });
+
   it('bloqueia escrita direta de tokens reais em localStorage no codigo produtivo', () => {
     expect(scannerSource).toContain('clientReadableTokenKeys');
     expect(scannerSource).toContain('clientReadableTokenWritePattern');
