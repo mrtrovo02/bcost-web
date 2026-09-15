@@ -54,6 +54,23 @@ const clientReadableTokenWritePattern = new RegExp(
   )})['"]\s*,\s*([^)]+)\)`,
   'g',
 );
+const forbiddenSecretArtifactExtensions = new Set([
+  '.pem',
+  '.key',
+  '.p12',
+  '.pfx',
+  '.crt',
+  '.cer',
+  '.der',
+]);
+const forbiddenSecretArtifactNames = new Set([
+  'id_rsa',
+  'id_dsa',
+  'id_ecdsa',
+  'id_ed25519',
+  'known_hosts',
+  'authorized_keys',
+]);
 
 const findings = [];
 
@@ -69,6 +86,20 @@ function isForbiddenTrackedEnvFile(filePath) {
   if (fileName.endsWith('.example') || fileName.endsWith('.template')) return false;
 
   return true;
+}
+
+function isForbiddenTrackedSecretArtifact(filePath) {
+  const normalized = normalizePath(filePath);
+  const fileName = normalized.split('/').pop() || '';
+  const lowerFileName = fileName.toLowerCase();
+  const extensionIndex = lowerFileName.lastIndexOf('.');
+  const extension = extensionIndex >= 0 ? lowerFileName.slice(extensionIndex) : '';
+
+  if (lowerFileName.endsWith('.example') || lowerFileName.endsWith('.template')) return false;
+  if (forbiddenSecretArtifactNames.has(lowerFileName)) return true;
+  if (forbiddenSecretArtifactExtensions.has(extension)) return true;
+
+  return false;
 }
 
 function shouldSkip(filePath) {
@@ -165,6 +196,11 @@ function inspectFile(filePath) {
 for (const filePath of git.stdout.split(/\r?\n/).filter(Boolean)) {
   if (isForbiddenTrackedEnvFile(filePath)) {
     findings.push(`${filePath}: arquivo de ambiente real nao deve ser versionado`);
+    continue;
+  }
+
+  if (isForbiddenTrackedSecretArtifact(filePath)) {
+    findings.push(`${filePath}: chave, certificado ou artefato criptografico nao deve ser versionado`);
     continue;
   }
 
