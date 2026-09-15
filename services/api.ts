@@ -824,6 +824,31 @@ export function isAuthMissingError(error: unknown): error is AuthMissingError {
   );
 }
 
+function collectMessageCandidates(value: unknown): string[] {
+  if (typeof value === 'string') return [value];
+  if (!value || typeof value !== 'object') return [];
+
+  const record = value as Record<string, unknown>;
+  const directMessages = [
+    record.message,
+    record.error,
+    record.title,
+    record.detail,
+  ].flatMap(collectMessageCandidates);
+
+  return directMessages;
+}
+
+function isRevokedSessionError(error: unknown): boolean {
+  if (!axios.isAxiosError(error)) return false;
+
+  return collectMessageCandidates(error.response?.data).some((message) =>
+    message.toLowerCase().includes('sessão revogada') ||
+    message.toLowerCase().includes('sessao revogada') ||
+    message.toLowerCase().includes('session revoked'),
+  );
+}
+
 // Instancia Axios unificada
 function resolveApiBase(): string {
   const configuredBase =
@@ -902,7 +927,9 @@ api.interceptors.response.use(
       const requestConfig = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
       const isRefreshRequest = requestUrl.includes('/auth/refresh');
 
-      if (!isRefreshRequest && requestConfig && !requestConfig._retry && !isDemoSession()) {
+      const isRevokedSession = isRevokedSessionError(error);
+
+      if (!isRefreshRequest && !isRevokedSession && requestConfig && !requestConfig._retry && !isDemoSession()) {
         requestConfig._retry = true;
         refreshRequest ??= api
           .post<AuthResponse>('/auth/refresh')

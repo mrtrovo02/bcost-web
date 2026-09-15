@@ -429,6 +429,58 @@ describe('isDemoSession', () => {
     expect(error).toMatchObject({ bcostTraceId: traceId });
   });
 
+  it('does not attempt refresh when the backend reports a revoked session', async () => {
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: {
+        hostname: 'app.bcost.com.br',
+        pathname: '/dashboard',
+        search: '',
+        replace: vi.fn(),
+      },
+    });
+    localStorage.setItem('bcost_user', JSON.stringify({ id: 'user-real', email: 'real@bcost.com.br' }));
+    localStorage.setItem('bcost_company_id', 'company-real-001');
+    const postSpy = vi.spyOn(api, 'post');
+
+    await api
+      .get('/auth/me', {
+        adapter: async (config) => {
+          throw {
+            isAxiosError: true,
+            config,
+            response: {
+              status: 401,
+              headers: {
+                'x-bcost-trace-id': 'revoked-trace-001',
+              },
+              data: {
+                statusCode: 401,
+                message: 'Sessão revogada: faça login novamente para continuar.',
+              },
+            },
+          };
+        },
+      })
+      .catch((caught: unknown) => caught);
+
+    expect(postSpy).not.toHaveBeenCalledWith('/auth/refresh');
+    expect(localStorage.getItem('bcost_user')).toBeNull();
+    expect(localStorage.getItem('bcost_company_id')).toBeNull();
+    expect(window.location.replace).toHaveBeenCalledWith(
+      expect.stringContaining('/login?session=expired'),
+    );
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: {
+        hostname: 'localhost',
+        pathname: '/login',
+        search: '',
+        replace: vi.fn(),
+      },
+    });
+  });
+
   it('falls back to the request trace ID when the response has no trace header', async () => {
     const error = await api
       .get('/fails-without-response-trace', {
