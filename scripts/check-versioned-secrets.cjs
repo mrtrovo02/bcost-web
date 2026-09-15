@@ -38,6 +38,22 @@ const forbiddenFrontendRuntimeImports = [
   { packageName: 'bullmq', reason: 'filas e workers pertencem ao backend ou a worker dedicado' },
   { packageName: 'ioredis', reason: 'conexao Redis direta nao deve rodar no processo Next.js' },
 ];
+const clientReadableTokenKeys = [
+  'bcost_token',
+  'bcost_access_token',
+  'access_token',
+  'accessToken',
+  'token',
+  'bcost_refresh_token',
+  'refresh_token',
+  'refreshToken',
+];
+const clientReadableTokenWritePattern = new RegExp(
+  String.raw`(?:window\.)?localStorage\.setItem\(\s*['"](?:${clientReadableTokenKeys.join(
+    '|',
+  )})['"]\s*,\s*([^)]+)\)`,
+  'g',
+);
 
 const findings = [];
 
@@ -95,6 +111,21 @@ function inspectFile(filePath) {
   }
 
   if (isTestFile(filePath)) return;
+
+  clientReadableTokenWritePattern.lastIndex = 0;
+  for (const match of content.matchAll(clientReadableTokenWritePattern)) {
+    const index = match.index ?? 0;
+    const line = content.slice(0, index).split(/\r?\n/).length;
+    const valueExpression = match[1] ?? '';
+    const isExplicitDemoToken =
+      valueExpression.includes('DEMO_TOKEN') || valueExpression.includes('demo-token-local');
+
+    if (!isExplicitDemoToken) {
+      findings.push(
+        `${filePath}:${line}: escrita direta de token real em localStorage; use cookie HttpOnly/Secure ou contexto demo explicito`,
+      );
+    }
+  }
 
   for (const forbiddenImport of forbiddenFrontendRuntimeImports) {
     const packageName = forbiddenImport.packageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
