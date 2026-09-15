@@ -15,6 +15,14 @@ describe('frontend security scanner', () => {
     expect(scannerSource).toContain("fileName.endsWith('.example')");
   });
 
+  it('mantem bloqueio para chaves e certificados versionados', () => {
+    expect(scannerSource).toContain('isForbiddenTrackedSecretArtifact');
+    expect(scannerSource).toContain("'.pem'");
+    expect(scannerSource).toContain("'.p12'");
+    expect(scannerSource).toContain("'id_rsa'");
+    expect(scannerSource).toContain('artefato criptografico nao deve ser versionado');
+  });
+
   it('bloqueia escrita direta de tokens reais em localStorage no codigo produtivo', () => {
     expect(scannerSource).toContain('clientReadableTokenKeys');
     expect(scannerSource).toContain('clientReadableTokenWritePattern');
