@@ -6,6 +6,7 @@ const deployVerifySource = readFileSync(
   join(process.cwd(), 'scripts', 'verify-deploy-state.cjs'),
   'utf8',
 );
+const agentsSource = readFileSync(join(process.cwd(), 'AGENTS.md'), 'utf8');
 
 describe('frontend deploy verification contract', () => {
   it('keeps production release check before public smoke tests', () => {
@@ -25,5 +26,11 @@ describe('frontend deploy verification contract', () => {
     expect(proxyIndex).toBeLessThan(taxScenariosIndex);
     expect(taxScenariosIndex).toBeLessThan(smokeIndex);
     expect(releaseCheckIndex).toBeLessThan(smokeIndex);
+  });
+
+  it('documents deterministic frontend build version injection in the EC2 runbook', () => {
+    expect(agentsSource).toContain('export BUILD_VERSION="$(git rev-parse --short HEAD)"');
+    expect(agentsSource).toContain('export NEXT_PUBLIC_BUILD_VERSION="$BUILD_VERSION"');
+    expect(agentsSource).toContain('pm2 restart bcost-web --update-env');
   });
 });

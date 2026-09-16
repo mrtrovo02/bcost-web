@@ -6,6 +6,7 @@ const ciWorkflowSource = readFileSync(
   join(process.cwd(), '.github', 'workflows', 'ci.yml'),
   'utf8',
 );
+const packageJsonSource = readFileSync(join(process.cwd(), 'package.json'), 'utf8');
 
 describe('frontend CI workflow contract', () => {
   it('declara release stage produtivo antes de executar o predeploy completo', () => {
@@ -21,5 +22,10 @@ describe('frontend CI workflow contract', () => {
     expect(ciWorkflowSource).toContain('NEXT_PUBLIC_ENABLE_DEMO: "false"');
     expect(ciWorkflowSource).toContain('NEXT_PUBLIC_ENABLE_DEMO_FALLBACK: "false"');
     expect(ciWorkflowSource).toContain('NEXT_PUBLIC_DEMO_ACCESS_MODE: disabled');
+  });
+
+  it('mantem contratos de sidebar dentro da suite de sessao', () => {
+    expect(packageJsonSource).toContain('components/__tests__/SidebarSourceContract.test.tsx');
+    expect(packageJsonSource).toContain('components/__tests__/SidebarNavigationContract.test.ts');
   });
 });

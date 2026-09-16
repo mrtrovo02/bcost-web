@@ -9,7 +9,7 @@ describe('Sidebar navigation responsiveness contract', () => {
     expect(source).toContain('const LOGOUT_REDIRECT_TIMEOUT_MS = 800;');
   });
 
-  it('keeps sidebar route prefetch enabled for dashboard navigation', () => {
-    expect(source).not.toContain('prefetch={false}');
+  it('keeps sidebar route prefetch disabled for heavy dashboard navigation', () => {
+    expect(source).toContain('prefetch={false}');
   });
 });
