@@ -22,7 +22,7 @@ Describe the change and the user-facing or production risk it reduces.
 
 - [ ] `npm run predeploy:code`
 - [ ] `npm run predeploy:full` when production env variables are available
-- [ ] `npm run security:scan`
+- [ ] `npm run check:versioned-secrets` or `npm run security:scan`
 - [ ] `npm run typecheck`
 - [ ] focused tests for changed module
 - [ ] `npm run build`

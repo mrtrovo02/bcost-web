@@ -15,6 +15,7 @@
     "release:check": "node scripts/validate-production-env.cjs",
     "release:check:beta": "node scripts/run-beta-release-check.cjs",
     "security:scan": "node scripts/check-versioned-secrets.cjs",
+    "check:versioned-secrets": "node scripts/check-versioned-secrets.cjs",
     "smoke:production": "node scripts/smoke-production.cjs",
     "deploy:verify": "node scripts/verify-deploy-state.cjs",
     "predeploy:code": "node scripts/predeploy-check.cjs --code-only",

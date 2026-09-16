@@ -7,8 +7,27 @@ const scannerSource = readFileSync(
   join(process.cwd(), 'scripts', 'check-versioned-secrets.cjs'),
   'utf8',
 );
+const pullRequestTemplateSource = readFileSync(
+  join(process.cwd(), '.github', 'pull_request_template.md'),
+  'utf8',
+);
+const packageJson = JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8')) as {
+  readonly scripts?: Record<string, string>;
+};
 
 describe('frontend security scanner', () => {
+  it('expoe aliases npm estaveis para a varredura de segredos versionados', () => {
+    expect(packageJson.scripts?.['security:scan']).toBe('node scripts/check-versioned-secrets.cjs');
+    expect(packageJson.scripts?.['check:versioned-secrets']).toBe(
+      'node scripts/check-versioned-secrets.cjs',
+    );
+  });
+
+  it('mantem checklist de PR apontando para o scanner operacional de segredos', () => {
+    expect(pullRequestTemplateSource).toContain('npm run check:versioned-secrets');
+    expect(pullRequestTemplateSource).toContain('npm run security:scan');
+  });
+
   it('mantem bloqueio para arquivos .env reais versionados', () => {
     expect(scannerSource).toContain('isForbiddenTrackedEnvFile');
     expect(scannerSource).toContain('arquivo de ambiente real nao deve ser versionado');

@@ -115,6 +115,7 @@ Venda enterprise ampla exige adicionalmente:
 - `npm run build`
 - `npm run release:check` quando a alteracao impactar producao/env
 - `npm run release:check:beta` pode ser usado para validar localmente o contrato de beta controlado com placeholders nao sensiveis; nao substitui `release:check` no ambiente real.
+- `npm run check:versioned-secrets` ou `npm run security:scan` antes de publicar snapshot, backup ou branch nova.
 - Teste visual/fluxo quando tocar rotas criticas, auth, billing ou fechamento
 - Commit e push separado por repo
 - Nota de deploy EC2 com comandos exatos
