@@ -279,4 +279,44 @@ describe('CompanyProvider', () => {
       expect(screen.getByTestId('selected')).toHaveTextContent('company-amel');
     });
   });
+
+  it('clears selected company and company list when the user session is cleared', async () => {
+    getActiveCompanyIdMock.mockReturnValue('company-amel');
+    window.localStorage.setItem(
+      'bcost_user',
+      JSON.stringify({
+        id: 'user-amanda',
+        email: 'amandacontabil@bcost.com.br',
+        companies: [
+          {
+            id: 'company-amel',
+            name: 'Amel Contabilidade Digital LTDA',
+            cnpj: '12.345.678/0001-90',
+          },
+        ],
+      }),
+    );
+
+    render(
+      <CompanyProvider>
+        <CompanyContextProbe />
+      </CompanyProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('selected')).toHaveTextContent('company-amel');
+    });
+
+    getActiveCompanyIdMock.mockReturnValue(null);
+    window.localStorage.clear();
+
+    await act(async () => {
+      window.dispatchEvent(new CustomEvent('bcost:user-session-updated'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('selected')).toHaveTextContent('none');
+      expect(screen.getByTestId('companies')).toHaveTextContent('');
+    });
+  });
 });

@@ -114,6 +114,7 @@ Venda enterprise ampla exige adicionalmente:
 - Teste unitario/direcionado do modulo tocado
 - `npm run build`
 - `npm run release:check` quando a alteracao impactar producao/env
+- `npm run release:check:beta` pode ser usado para validar localmente o contrato de beta controlado com placeholders nao sensiveis; nao substitui `release:check` no ambiente real.
 - Teste visual/fluxo quando tocar rotas criticas, auth, billing ou fechamento
 - Commit e push separado por repo
 - Nota de deploy EC2 com comandos exatos
@@ -130,6 +131,7 @@ export NEXT_PUBLIC_RELEASE_STAGE="${NEXT_PUBLIC_RELEASE_STAGE:-beta}"
 export BCOST_NEXT_BUILD_HEAP_MB="${BCOST_NEXT_BUILD_HEAP_MB:-2048}"
 pm2 stop bcost-web || true
 rm -rf .next
+npm run release:check
 npm run predeploy:full
 pm2 restart bcost-web --update-env
 npm run deploy:verify

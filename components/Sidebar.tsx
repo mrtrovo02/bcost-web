@@ -257,6 +257,8 @@ export default function Sidebar() {
   ];
 
   const handleLogout = async () => {
+    if (isLoggingOut) return;
+
     setIsLoggingOut(true);
 
     await Promise.race([logout(), resolveAfterLogoutTimeout()]).catch((error: unknown) => {

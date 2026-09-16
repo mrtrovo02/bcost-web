@@ -11,6 +11,7 @@ type ReleaseCheckResult = {
 };
 
 const scriptPath = resolve(process.cwd(), 'scripts', 'validate-production-env.cjs');
+const betaScriptPath = resolve(process.cwd(), 'scripts', 'run-beta-release-check.cjs');
 const tempDirectories: string[] = [];
 const protectedProxySource = `
 export const config = {
@@ -100,6 +101,46 @@ describe('frontend production release gate', () => {
 
     expect(result.status).toBe(0);
     expect(result.stdout).toContain('Release check aprovado');
+  });
+
+  it('oferece runner beta reprodutivel com demo desligada e build deterministico local', () => {
+    const result = spawnSync(process.execPath, [betaScriptPath], {
+      cwd: process.cwd(),
+      env: {
+        NODE_ENV: 'test',
+        PATH: process.env.PATH,
+        Path: process.env.Path,
+        SystemRoot: process.env.SystemRoot,
+        WINDIR: process.env.WINDIR,
+      },
+      encoding: 'utf8',
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('Release check aprovado');
+    expect(result.stderr).not.toContain('NEXT_PUBLIC_ENABLE_DEMO');
+    expect(result.stderr).not.toContain('BUILD_VERSION');
+  });
+
+  it('mantem o runner beta deterministico mesmo com demo ou stage oficial herdados do shell', () => {
+    const result = spawnSync(process.execPath, [betaScriptPath], {
+      cwd: process.cwd(),
+      env: {
+        ...baseEnv,
+        NEXT_PUBLIC_RELEASE_STAGE: 'enterprise',
+        NEXT_PUBLIC_ENABLE_DEMO: 'true',
+        NEXT_PUBLIC_ENABLE_DEMO_FALLBACK: 'true',
+        NEXT_PUBLIC_DEMO_ACCESS_MODE: 'controlled',
+        BUILD_VERSION: '',
+        NEXT_PUBLIC_BUILD_VERSION: '',
+      },
+      encoding: 'utf8',
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('Release check aprovado');
+    expect(result.stderr).not.toContain('demo controlada deve ficar desligada');
+    expect(result.stderr).not.toContain('BUILD_VERSION');
   });
 
   it('bloqueia API pública sem o prefixo /api/v1', () => {
