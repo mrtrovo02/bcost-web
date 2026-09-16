@@ -84,10 +84,20 @@ function verifyGitState() {
   }
 
   console.log(`Git OK: HEAD sincronizado com origin/main (${head.slice(0, 12)}).`);
+
+  return head;
+}
+
+function ensureDeterministicBuildVersion(head) {
+  const buildVersion = head.slice(0, 8);
+
+  process.env.BUILD_VERSION ||= buildVersion;
+  process.env.NEXT_PUBLIC_BUILD_VERSION ||= process.env.BUILD_VERSION;
 }
 
 function main() {
-  verifyGitState();
+  const head = verifyGitState();
+  ensureDeterministicBuildVersion(head);
   runNpmScript('release:check');
   runNpmScript('test:session');
   runNpmScript('test:proxy');

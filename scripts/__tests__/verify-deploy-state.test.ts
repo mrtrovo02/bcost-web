@@ -33,4 +33,11 @@ describe('frontend deploy verification contract', () => {
     expect(agentsSource).toContain('export NEXT_PUBLIC_BUILD_VERSION="$BUILD_VERSION"');
     expect(agentsSource).toContain('pm2 restart bcost-web --update-env');
   });
+
+  it('derives deterministic build version from git when the shell does not export it', () => {
+    expect(deployVerifySource).toContain('function ensureDeterministicBuildVersion(head)');
+    expect(deployVerifySource).toContain('process.env.BUILD_VERSION ||= buildVersion');
+    expect(deployVerifySource).toContain('process.env.NEXT_PUBLIC_BUILD_VERSION ||= process.env.BUILD_VERSION');
+    expect(deployVerifySource).toContain('ensureDeterministicBuildVersion(head)');
+  });
 });
